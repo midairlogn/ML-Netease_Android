@@ -432,13 +432,17 @@ public class FloatingLyricsManager {
     }
 
     private void updateCurrentLyricLine() {
+        if (musicPlayerManager.getCurrentSong() == null) {
+            if (tvLyricsCurrent != null) tvLyricsCurrent.setText("No Music");
+            if (tvLyricsNext != null) tvLyricsNext.setText("");
+            return;
+        }
+
         if (currentLyrics == null || currentLyrics.isEmpty()) {
             if (tvLyricsCurrent != null) tvLyricsCurrent.setText("No Lyrics");
             if (tvLyricsNext != null) tvLyricsNext.setText("");
             return;
         }
-
-        if (!musicPlayerManager.isPlaying()) return;
 
         int pos = musicPlayerManager.getCurrentPosition();
         int newIndex = -1;

@@ -27,6 +27,7 @@ public class MusicPlayerManager {
     private Random random = new Random();
     private int retryCount = 0;
     private static final int MAX_RETRY = 1;
+    private int resumePosition = 0;
     private boolean isCompletionListenerEnabled = false;
 
     // Callbacks
@@ -173,21 +174,17 @@ public class MusicPlayerManager {
 
 
     public void play(int index) {
+        play(index, false);
+    }
+
+    private void play(int index, boolean isRetry) {
         if (index < 0 || index >= playlist.size()) return;
-        // Reset retry count when starting a new play request manually or via next/prev
-        // Note: If this method is called internally for retry, we should handle retryCount carefully.
-        // But here we assume play(index) is a fresh start.
-        // For retry, we might want to preserve retryCount, but if we call play(index) it will reset.
-        // So for retry logic, we shouldn't call play(index) directly if we want to track retries across it,
-        // OR we just accept that play(index) resets it and we only use the retry check inside onError BEFORE calling play.
-        // Wait, if play(index) resets it, then calling play(index) from onError implies we are starting a "fresh" attempt
-        // which will have its own chance to fail.
-        // If we want to limit TOTAL retries for a single song "session", we need to distinguish.
-        // Let's change the logic: reset retryCount only if index != currentIndex OR explicitly requested.
-        // Actually, simplest is: play(index) resets retryCount.
-        // In onError, we check retryCount. If < MAX, we increment AND THEN call play(index).
-        // But play(index) will reset it back to 0!
-        // So we need a flag or a separate method for retry, OR play(index) should not reset retryCount unconditionally.
+
+        // If it is not a retry, reset retry count and resume position
+        if (!isRetry) {
+            retryCount = 0;
+            resumePosition = 0;
+        }
 
         boolean isNewSong = (index != currentIndex);
         currentIndex = index;
@@ -195,7 +192,6 @@ public class MusicPlayerManager {
         isCompletionListenerEnabled = false;
 
         if (isNewSong) {
-            retryCount = 0;
             // Stop previous playback to prevent onCompletion events from firing for the old song
             // while we are loading the new one. This prevents race conditions where the old song
             // finishes and triggers playNext() -> play(index+1).
@@ -274,6 +270,10 @@ public class MusicPlayerManager {
 
             mediaPlayer.prepareAsync();
             mediaPlayer.setOnPreparedListener(mp -> {
+                if (resumePosition > 0) {
+                    mp.seekTo(resumePosition);
+                    resumePosition = 0;
+                }
                 mp.start();
                 isPaused = false;
                 // Enable completion listener only after successful preparation and start
@@ -287,8 +287,14 @@ public class MusicPlayerManager {
                 if (retryCount < MAX_RETRY) {
                     retryCount++;
                     android.util.Log.d("MusicPlayerManager", "Retrying playback... Attempt " + retryCount);
+                    // Save position
+                    try {
+                        resumePosition = mp.getCurrentPosition();
+                    } catch (Exception e) {
+                        resumePosition = 0;
+                    }
                     // Reload current song
-                    play(currentIndex);
+                    play(currentIndex, true);
                     return true;
                 }
 
