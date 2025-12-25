@@ -1,6 +1,6 @@
 # ML-Netease_Android
 
-An Android music player application that integrates with Netease Cloud Music, featuring a custom floating lyrics overlay.
+An Android music player application that integrates with Netease Cloud Music.
 
 ## Features
 
