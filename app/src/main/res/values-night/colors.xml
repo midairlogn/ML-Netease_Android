@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand Color: Apple Music Red (Slightly brighter for dark mode) -->
+    <color name="brand_primary">#FF375F</color>
+
+    <!-- Backgrounds -->
+    <color name="background_primary">#1C1C1E</color>
+    <color name="background_secondary">#2C2C2E</color>
+    <color name="background_tertiary">#3A3A3C</color>
+
+    <!-- Text -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#98989D</color>
+    <color name="text_tertiary">#545458</color>
+
+    <!-- UI Elements -->
+    <color name="divider">#38383A</color>
+    <color name="overlay">#FFFFFF</color>
+
+    <!-- Lyrics -->
+    <color name="lyrics_highlight">#FFFFFF</color>
+    <color name="lyrics_normal">#98989D</color>
+
+    <!-- Navigation -->
+    <color name="nav_bar_background">#1C1C1E</color>
+    <color name="nav_item_selected">#FF375F</color>
+    <color name="nav_item_unselected">#98989D</color>
+
+    <color name="text_on_brand">#FFFFFF</color>
+</resources>

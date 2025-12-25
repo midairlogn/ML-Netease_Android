@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background_primary"
+    android:padding="16dp">
+
+    <!-- Search Section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/search_background"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="4dp">
+
+        <EditText
+            android:id="@+id/search_input"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Search Music"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary"
+            android:background="@null"
+            android:minHeight="40dp"
+            android:inputType="text"/>
+
+        <Button
+            android:id="@+id/search_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Search"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="@color/brand_primary"
+            android:layout_marginStart="8dp"/>
+    </LinearLayout>
+
+    <RadioGroup
+        android:id="@+id/search_type_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:checkedButton="@+id/radio_song"
+        android:layout_marginBottom="16dp">
+
+        <RadioButton
+            android:id="@+id/radio_song"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Song"
+            android:textColor="@color/text_primary"
+            android:buttonTint="@color/brand_primary"
+            android:layout_marginEnd="16dp"/>
+
+        <RadioButton
+            android:id="@+id/radio_playlist"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Playlist"
+            android:textColor="@color/text_primary"
+            android:buttonTint="@color/brand_primary"
+            android:layout_marginEnd="16dp"/>
+
+        <RadioButton
+            android:id="@+id/radio_album"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Album"
+            android:textColor="@color/text_primary"
+            android:buttonTint="@color/brand_primary"/>
+    </RadioGroup>
+
+    <Button
+        android:id="@+id/btn_play_all"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Play All"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="@color/brand_primary"
+        android:layout_marginBottom="8dp"
+        android:visibility="gone"/>
+
+    <!-- Player Info (Mini Player) -->
+    <LinearLayout
+        android:id="@+id/player_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@color/background_secondary"
+        android:padding="12dp"
+        android:visibility="gone"
+        android:layout_marginBottom="8dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/current_song_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Song Title"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end"/>
+
+            <TextView
+                android:id="@+id/current_song_artist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Artist"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:maxLines="1"
+                android:ellipsize="end"/>
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btn_play_pause"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Play"
+            android:textColor="@color/text_on_brand"
+            android:backgroundTint="@color/brand_primary"
+            android:layout_marginStart="12dp"/>
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
+
+</LinearLayout>

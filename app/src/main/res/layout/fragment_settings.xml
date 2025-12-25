@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_primary">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Settings"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:layout_marginBottom="32dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="MUSIC_U Cookie"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <EditText
+            android:id="@+id/input_music_u"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Paste MUSIC_U cookie here"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary"
+            android:background="@drawable/search_background"
+            android:padding="12dp"
+            android:inputType="text"
+            android:layout_marginBottom="24dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Search Result Limit (Default 10)"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <EditText
+            android:id="@+id/input_search_limit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter limit (e.g. 10)"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary"
+            android:background="@drawable/search_background"
+            android:padding="12dp"
+            android:inputType="number"
+            android:layout_marginBottom="24dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Audio Quality"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp"/>
+
+        <RadioGroup
+            android:id="@+id/quality_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp">
+
+            <RadioButton
+                android:id="@+id/quality_standard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Standard"
+                android:textColor="@color/text_primary"
+                android:buttonTint="@color/brand_primary"
+                android:paddingVertical="8dp"/>
+
+            <RadioButton
+                android:id="@+id/quality_higher"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Higher"
+                android:textColor="@color/text_primary"
+                android:buttonTint="@color/brand_primary"
+                android:paddingVertical="8dp"/>
+
+            <RadioButton
+                android:id="@+id/quality_exhigh"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Extreme"
+                android:textColor="@color/text_primary"
+                android:buttonTint="@color/brand_primary"
+                android:paddingVertical="8dp"/>
+
+            <RadioButton
+                android:id="@+id/quality_lossless"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Lossless"
+                android:textColor="@color/text_primary"
+                android:buttonTint="@color/brand_primary"
+                android:paddingVertical="8dp"/>
+
+            <RadioButton
+                android:id="@+id/quality_hires"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Hi-Res"
+                android:textColor="@color/text_primary"
+                android:buttonTint="@color/brand_primary"
+                android:paddingVertical="8dp"/>
+
+            <RadioButton
+                android:id="@+id/quality_sky"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Sky (Immersive)"
+                android:textColor="@color/text_primary"
+                android:buttonTint="@color/brand_primary"
+                android:paddingVertical="8dp"/>
+        </RadioGroup>
+
+        <!-- Floating Window Settings -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Desktop Floating Lyrics"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold"/>
+
+            <Switch
+                android:id="@+id/switch_floating_lyrics"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layout_floating_settings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginBottom="24dp">
+
+             <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Lyric Highlight Color"
+                android:textColor="@color/text_primary"
+                android:layout_marginBottom="8dp"/>
+
+             <!-- Simple Color Selection for Main Settings -->
+             <LinearLayout
+                 android:layout_width="match_parent"
+                 android:layout_height="wrap_content"
+                 android:orientation="horizontal">
+
+                 <Button
+                     android:id="@+id/btn_color_red"
+                     android:layout_width="40dp"
+                     android:layout_height="40dp"
+                     android:backgroundTint="#F44336"
+                     android:layout_marginEnd="8dp"/>
+
+                 <Button
+                     android:id="@+id/btn_color_blue"
+                     android:layout_width="40dp"
+                     android:layout_height="40dp"
+                     android:backgroundTint="#2196F3"
+                     android:layout_marginEnd="8dp"/>
+
+                 <Button
+                     android:id="@+id/btn_color_green"
+                     android:layout_width="40dp"
+                     android:layout_height="40dp"
+                     android:backgroundTint="#4CAF50"
+                     android:layout_marginEnd="8dp"/>
+
+                 <Button
+                     android:id="@+id/btn_color_yellow"
+                     android:layout_width="40dp"
+                     android:layout_height="40dp"
+                     android:backgroundTint="#FFEB3B"
+                     android:layout_marginEnd="8dp"/>
+
+                 <Button
+                     android:id="@+id/btn_color_purple"
+                     android:layout_width="40dp"
+                     android:layout_height="40dp"
+                     android:backgroundTint="#9C27B0"
+                     android:layout_marginEnd="8dp"/>
+             </LinearLayout>
+
+             <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Font Size"
+                android:textColor="@color/text_primary"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="8dp"/>
+
+             <LinearLayout
+                 android:layout_width="match_parent"
+                 android:layout_height="wrap_content"
+                 android:gravity="center_vertical">
+                 <Button
+                     android:id="@+id/btn_size_minus"
+                     android:layout_width="50dp"
+                     android:layout_height="wrap_content"
+                     android:text="-"/>
+                 <TextView
+                     android:id="@+id/text_font_size"
+                     android:layout_width="wrap_content"
+                     android:layout_height="wrap_content"
+                     android:text="16"
+                     android:textColor="@color/text_primary"
+                     android:layout_marginHorizontal="16dp"/>
+                 <Button
+                     android:id="@+id/btn_size_plus"
+                     android:layout_width="50dp"
+                     android:layout_height="wrap_content"
+                     android:text="+"/>
+             </LinearLayout>
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btn_save_cookie"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:text="Save Settings"
+            android:textColor="@color/text_on_brand"
+            android:backgroundTint="@color/brand_primary"
+            android:layout_marginBottom="32dp"/>
+
+        <TextView
+            android:id="@+id/text_version_info"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="Version: v1.3.2\nAuthor: Midairlogn"
+            android:textColor="@color/text_secondary"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp"/>
+
+    </LinearLayout>
+</ScrollView>
