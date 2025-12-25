@@ -1,0 +1,25 @@
+.vscode
+ml_prompts.md
+benchmark
+
+*.iml
+.gradle
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+# Google Services keys
+google-services.json
+# Keystore files
+*.jks
+*.keystore
+*.pem
+*.p12
+
+# Build and Release directories
+/app/build
+/app/release
