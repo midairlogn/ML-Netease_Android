@@ -265,8 +265,8 @@ public class FloatingLyricsManager {
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
                 PixelFormat.TRANSLUCENT);
 
-        params.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL; // Center horizontally
-        params.x = 0;
+        params.gravity = Gravity.TOP | Gravity.LEFT;
+        params.x = (screenWidth - width) / 2;
         // Default position: Bottom area (approx 80% down)
         params.y = (int) (screenHeight * 0.8f);
 
