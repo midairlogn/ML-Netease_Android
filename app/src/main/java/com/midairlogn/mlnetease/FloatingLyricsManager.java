@@ -100,6 +100,7 @@ public class FloatingLyricsManager {
 
         rootLayout = floatingView.findViewById(R.id.floating_window_root);
         tvLyricsCurrent = floatingView.findViewById(R.id.tv_lyrics_current);
+        // Removed setSelected(true) to handle custom scrolling manually
         tvLyricsNext = floatingView.findViewById(R.id.tv_lyrics_next);
         tvSongTitle = floatingView.findViewById(R.id.tv_floating_song_title);
         tvSongArtist = floatingView.findViewById(R.id.tv_floating_song_artist);
@@ -402,6 +403,25 @@ public class FloatingLyricsManager {
 
     public void updateLyrics(String lyrics) {
         currentLyrics = LyricsUtils.parseLyrics(lyrics);
+
+        // Add song title and artist at 00:00.000 if not present
+        Song song = musicPlayerManager.getCurrentSong();
+        if (song != null) {
+            boolean hasStartLyric = false;
+            if (!currentLyrics.isEmpty()) {
+                LyricLine first = currentLyrics.get(0);
+                if (first.time == 0) {
+                    hasStartLyric = true;
+                }
+            }
+
+            if (!hasStartLyric) {
+                String text = song.name + "  " + song.artists;
+                // Add to the beginning of the list
+                currentLyrics.add(0, new LyricLine(0, text));
+            }
+        }
+
         currentLyricIndex = -1;
     }
 
@@ -418,7 +438,7 @@ public class FloatingLyricsManager {
             @Override
             public void run() {
                 updateCurrentLyricLine();
-                handler.postDelayed(this, 300);
+                handler.postDelayed(this, 50); // Update frequently for smooth scrolling
             }
         };
         handler.post(lyricUpdateTask);
@@ -433,13 +453,19 @@ public class FloatingLyricsManager {
 
     private void updateCurrentLyricLine() {
         if (musicPlayerManager.getCurrentSong() == null) {
-            if (tvLyricsCurrent != null) tvLyricsCurrent.setText("No Music");
+            if (tvLyricsCurrent != null) {
+                 tvLyricsCurrent.setText("No Music");
+                 tvLyricsCurrent.setScrollX(0);
+            }
             if (tvLyricsNext != null) tvLyricsNext.setText("");
             return;
         }
 
         if (currentLyrics == null || currentLyrics.isEmpty()) {
-            if (tvLyricsCurrent != null) tvLyricsCurrent.setText("No Lyrics");
+            if (tvLyricsCurrent != null) {
+                 tvLyricsCurrent.setText("No Lyrics");
+                 tvLyricsCurrent.setScrollX(0);
+            }
             if (tvLyricsNext != null) tvLyricsNext.setText("");
             return;
         }
@@ -454,26 +480,104 @@ public class FloatingLyricsManager {
             newIndex = i;
         }
 
-        if (newIndex != -1 && newIndex != currentLyricIndex) {
-            currentLyricIndex = newIndex;
-            String text = currentLyrics.get(currentLyricIndex).text;
-            if (tvLyricsCurrent != null) {
-                tvLyricsCurrent.setText(text);
+        if (newIndex != -1) {
+            // Update text if index changed
+            if (newIndex != currentLyricIndex) {
+                currentLyricIndex = newIndex;
+                String text = currentLyrics.get(currentLyricIndex).text;
+                if (tvLyricsCurrent != null) {
+                    tvLyricsCurrent.setText(text);
 
-                // Apply color highlight logic
-                // ...
+                    int highlightColor = settingsManager.getLyricColor();
+                    if (highlightColor == 0) highlightColor = Color.parseColor("#4CAF50"); // Default
 
-                int highlightColor = settingsManager.getLyricColor();
-                if (highlightColor == 0) highlightColor = Color.parseColor("#4CAF50"); // Default
+                    tvLyricsCurrent.setTextColor(highlightColor);
+                }
 
-                tvLyricsCurrent.setTextColor(highlightColor);
+                if (tvLyricsNext != null) {
+                    if (currentLyricIndex + 1 < currentLyrics.size()) {
+                        tvLyricsNext.setText(currentLyrics.get(currentLyricIndex + 1).text);
+                    } else {
+                        tvLyricsNext.setText("");
+                    }
+                }
             }
 
-            if (tvLyricsNext != null) {
-                if (currentLyricIndex + 1 < currentLyrics.size()) {
-                    tvLyricsNext.setText(currentLyrics.get(currentLyricIndex + 1).text);
+            // Calculate scrolling
+            if (tvLyricsCurrent != null) {
+                // Measure text width first to calculate max scroll
+                float textWidth = tvLyricsCurrent.getPaint().measureText(tvLyricsCurrent.getText().toString());
+                int viewWidth = tvLyricsCurrent.getWidth();
+                int contentWidth = 0;
+                float maxScroll = 0;
+
+                if (viewWidth > 0) {
+                    contentWidth = viewWidth - tvLyricsCurrent.getPaddingLeft() - tvLyricsCurrent.getPaddingRight();
+                    maxScroll = Math.max(0, textWidth - contentWidth);
+                }
+
+                if (maxScroll > 0) {
+                    long startTime = currentLyrics.get(currentLyricIndex).time;
+                    long endTime = (currentLyricIndex + 1 < currentLyrics.size()) ?
+                            currentLyrics.get(currentLyricIndex + 1).time :
+                            startTime + 5000; // Default 5s for last line
+
+                    long duration = endTime - startTime;
+                    if (duration > 0) {
+                        long defaultDelay = 1000; // 1 second
+                        long minDelay = 200;      // 0.2 second
+
+                        // Calculate comfortable scrolling speed
+                        // Assume a fast but readable speed: 0.4 px/ms (400 px/s)
+                        // This corresponds to roughly 10-15 characters per second on high density screens
+                        float speedThreshold = 0.4f;
+
+                        // Minimum time required to scroll the full distance at threshold speed
+                        long minScrollTime = (long) (maxScroll / speedThreshold);
+
+                        // Remaining time for delays
+                        long availableDelay = duration - minScrollTime;
+
+                        long startDelay, endDelay;
+
+                        if (availableDelay >= defaultDelay * 2) {
+                            // Plenty of time, use default delays
+                            startDelay = defaultDelay;
+                            endDelay = defaultDelay;
+                        } else if (availableDelay > minDelay * 2) {
+                            // Moderate time, split remaining time
+                            startDelay = availableDelay / 2;
+                            endDelay = availableDelay / 2;
+                        } else {
+                            // Tight time, use minimum delays and force faster scrolling
+                            startDelay = Math.min(minDelay, duration / 4);
+                            endDelay = startDelay;
+                        }
+
+                        long scrollDuration = duration - startDelay - endDelay;
+                        if (scrollDuration <= 0) scrollDuration = 1; // Prevent divide by zero
+
+                        long currentPosWithinLine = pos - startTime;
+                        float progress = 0f;
+
+                        if (currentPosWithinLine <= startDelay) {
+                            progress = 0f;
+                        } else if (currentPosWithinLine >= (duration - endDelay)) {
+                            progress = 1f;
+                        } else {
+                            progress = (float) (currentPosWithinLine - startDelay) / scrollDuration;
+                        }
+
+                        if (progress < 0) progress = 0;
+                        if (progress > 1) progress = 1;
+
+                        int scrollX = (int) (maxScroll * progress);
+                        tvLyricsCurrent.setScrollX(scrollX);
+                    } else {
+                        tvLyricsCurrent.setScrollX(0);
+                    }
                 } else {
-                    tvLyricsNext.setText("");
+                     tvLyricsCurrent.setScrollX(0);
                 }
             }
         }
