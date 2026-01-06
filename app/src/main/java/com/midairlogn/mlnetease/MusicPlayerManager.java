@@ -26,7 +26,7 @@ public class MusicPlayerManager {
     private int currentMode = MODE_ORDER;
     private Random random = new Random();
     private int retryCount = 0;
-    private static final int MAX_RETRY = 1;
+    private static final int MAX_RETRY = 3;
     private int resumePosition = 0;
     private boolean isCompletionListenerEnabled = false;
 
