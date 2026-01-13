@@ -73,9 +73,8 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         btnNext.setOnClickListener(v -> musicPlayerManager.playNext());
 
         btnMode.setOnClickListener(v -> {
-            int mode = musicPlayerManager.getPlaybackMode();
-            int newMode = (mode + 1) % 4; // 4 modes
-            musicPlayerManager.setPlaybackMode(newMode);
+            musicPlayerManager.togglePlaybackMode();
+            int newMode = musicPlayerManager.getPlaybackMode();
             updateModeIcon();
             showModeToast(newMode);
         });
