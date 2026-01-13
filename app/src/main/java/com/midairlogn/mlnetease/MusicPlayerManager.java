@@ -121,6 +121,19 @@ public class MusicPlayerManager {
         notifyPlaylistChanged();
     }
 
+    public void addOrPlaySong(Song song) {
+        // Check if song already exists in playlist
+        for (int i = 0; i < playlist.size(); i++) {
+            if (playlist.get(i).id.equals(song.id)) {
+                play(i);
+                return;
+            }
+        }
+        // If not found, add to end and play
+        addToPlaylist(song);
+        play(playlist.size() - 1);
+    }
+
     public void removeFromPlaylist(int index) {
         if (index < 0 || index >= playlist.size()) return;
 

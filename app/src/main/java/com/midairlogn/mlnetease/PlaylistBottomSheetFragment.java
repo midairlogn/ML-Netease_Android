@@ -39,6 +39,17 @@ public class PlaylistBottomSheetFragment extends BottomSheetDialogFragment {
         tvPlaylistTitle = view.findViewById(R.id.tv_playlist_title);
         updateTitle();
 
+        view.findViewById(R.id.btn_clear_playlist).setOnClickListener(v -> {
+            new android.app.AlertDialog.Builder(getContext())
+                    .setTitle("Clear Playlist")
+                    .setMessage("Are you sure you want to clear the playlist?")
+                    .setPositiveButton("Yes", (dialog, which) -> {
+                        musicPlayerManager.setPlaylist(new java.util.ArrayList<>());
+                    })
+                    .setNegativeButton("No", null)
+                    .show();
+        });
+
         recyclerView = view.findViewById(R.id.recycler_view_playlist);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 

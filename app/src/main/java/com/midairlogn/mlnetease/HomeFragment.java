@@ -68,10 +68,7 @@ public class HomeFragment extends Fragment {
         });
 
         adapter.setOnItemClickListener(song -> {
-            List<Song> songs = adapter.getSongs();
-            int index = songs.indexOf(song);
-            MusicPlayerManager.getInstance(getContext()).setPlaylist(songs);
-            MusicPlayerManager.getInstance(getContext()).play(index);
+            MusicPlayerManager.getInstance(getContext()).addOrPlaySong(song);
         });
 
         playerContainer.setOnClickListener(v -> {
@@ -112,17 +109,34 @@ public class HomeFragment extends Fragment {
 
         int checkedId = searchTypeGroup.getCheckedRadioButtonId();
         if (checkedId == R.id.radio_song) {
-            neteaseApi.search(input, new NeteaseApi.ApiCallback() {
-                @Override
-                public void onSuccess(String result) {
-                    parseSearchResult(result);
-                }
+            String extractedId = extractId(input);
+            boolean isIdOrUrl = input.contains("music.163.com") || input.matches("\\d+");
 
-                @Override
-                public void onError(String error) {
-                    Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
-                }
-            });
+            if (isIdOrUrl) {
+                neteaseApi.getSongFullInfo(extractedId, new NeteaseApi.ApiCallback() {
+                    @Override
+                    public void onSuccess(String result) {
+                        parseSongIdResult(result);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } else {
+                neteaseApi.search(input, new NeteaseApi.ApiCallback() {
+                    @Override
+                    public void onSuccess(String result) {
+                        parseSearchResult(result);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
         } else if (checkedId == R.id.radio_playlist) {
             String id = extractId(input);
             neteaseApi.playlistDetail(id, new NeteaseApi.ApiCallback() {
@@ -245,6 +259,37 @@ public class HomeFragment extends Fragment {
 
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private void parseSongIdResult(String json) {
+        try {
+            JSONObject root = new JSONObject(json);
+            if (root.optInt("status") != 200) {
+                getActivity().runOnUiThread(() ->
+                        Toast.makeText(getContext(), "Song not found", Toast.LENGTH_SHORT).show()
+                );
+                return;
+            }
+
+            String id = root.optString("id");
+            String name = root.optString("name");
+            String artists = root.optString("ar_name");
+            String album = root.optString("al_name");
+            String picUrl = root.optString("pic");
+
+            Song song = new Song(id, name, artists, album, picUrl);
+            List<Song> songs = new ArrayList<>();
+            songs.add(song);
+
+            adapter.setSongs(songs);
+            btnPlayAll.setVisibility(View.GONE);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            getActivity().runOnUiThread(() ->
+                    Toast.makeText(getContext(), "Parse error", Toast.LENGTH_SHORT).show()
+            );
         }
     }
 }

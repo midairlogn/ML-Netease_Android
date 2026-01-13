@@ -418,6 +418,10 @@ public class NeteaseApi {
                         }
                         result.put("ar_name", sb.toString());
                     }
+                } else {
+                    // No song details found, invalid ID
+                    postError(callback, "Song not found");
+                    return;
                 }
 
                 // Process Lyric
