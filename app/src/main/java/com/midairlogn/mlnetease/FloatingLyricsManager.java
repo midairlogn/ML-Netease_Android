@@ -86,7 +86,8 @@ public class FloatingLyricsManager {
 
     private void updateScreenSize() {
         DisplayMetrics metrics = new DisplayMetrics();
-        windowManager.getDefaultDisplay().getMetrics(metrics);
+        // Use getRealMetrics to get full screen size including navigation bar area
+        windowManager.getDefaultDisplay().getRealMetrics(metrics);
         screenWidth = metrics.widthPixels;
         screenHeight = metrics.heightPixels;
     }
@@ -229,6 +230,9 @@ public class FloatingLyricsManager {
                             // We need to measure view size to keep it inside
                             int width = floatingView.getWidth();
                             int height = floatingView.getHeight();
+
+                            // Dynamically get current screen size to handle orientation changes
+                            updateScreenSize();
 
                             // Ensure it doesn't go off screen
                             // Since gravity is TOP | LEFT, x/y is top-left corner
@@ -380,6 +384,9 @@ public class FloatingLyricsManager {
 
     private void checkBoundaries() {
         if (floatingView == null) return;
+
+        // Update screen size in case of orientation change
+        updateScreenSize();
 
         int width = floatingView.getWidth();
         int height = floatingView.getHeight();
