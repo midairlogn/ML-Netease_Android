@@ -299,7 +299,7 @@ public class FloatingLyricsManager {
     private void applySettings() {
         int color = settingsManager.getLyricColor();
         if (color == 0) {
-            color = Color.parseColor("#4CAF50"); // Default green
+            color = Color.parseColor("#2196F3"); // Default blue
         }
 
         // Font Size
@@ -496,7 +496,7 @@ public class FloatingLyricsManager {
                     tvLyricsCurrent.setText(text);
 
                     int highlightColor = settingsManager.getLyricColor();
-                    if (highlightColor == 0) highlightColor = Color.parseColor("#4CAF50"); // Default
+                    if (highlightColor == 0) highlightColor = Color.parseColor("#2196F3"); // Default
 
                     tvLyricsCurrent.setTextColor(highlightColor);
                 }
