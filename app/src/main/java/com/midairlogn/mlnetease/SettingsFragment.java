@@ -100,7 +100,7 @@ public class SettingsFragment extends Fragment {
         layoutFloatingSettings.setVisibility(isFloatingEnabled ? View.VISIBLE : View.GONE);
 
         tempColor = settingsManager.getLyricColor();
-        if (tempColor == 0) tempColor = Color.parseColor("#4CAF50");
+        if (tempColor == 0) tempColor = Color.parseColor("#2196F3");
         updateColorSelection();
 
         tempSize = settingsManager.getLyricSize();
@@ -249,7 +249,7 @@ public class SettingsFragment extends Fragment {
         layoutFloatingSettings.setVisibility(isFloatingEnabled ? View.VISIBLE : View.GONE);
 
         tempColor = settingsManager.getLyricColor();
-        if (tempColor == 0) tempColor = Color.parseColor("#4CAF50");
+        if (tempColor == 0) tempColor = Color.parseColor("#2196F3");
         updateColorSelection();
 
         tempSize = settingsManager.getLyricSize();
