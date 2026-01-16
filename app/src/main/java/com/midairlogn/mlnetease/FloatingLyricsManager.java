@@ -51,6 +51,7 @@ public class FloatingLyricsManager {
     private List<LyricLine> currentLyrics;
     private int currentLyricIndex = -1;
     private int screenWidth, screenHeight;
+    private int portraitWidth; // Fixed width based on portrait mode
 
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable lyricUpdateTask;
@@ -90,6 +91,10 @@ public class FloatingLyricsManager {
         windowManager.getDefaultDisplay().getRealMetrics(metrics);
         screenWidth = metrics.widthPixels;
         screenHeight = metrics.heightPixels;
+
+        // Calculate portrait width (use the smaller dimension to ensure consistent width)
+        int minDimension = Math.min(metrics.widthPixels, metrics.heightPixels);
+        portraitWidth = (int) (minDimension * 0.9f);
     }
 
     private void initView() {
@@ -262,16 +267,16 @@ public class FloatingLyricsManager {
             layoutType = WindowManager.LayoutParams.TYPE_PHONE;
         }
 
-        int width = (int) (screenWidth * 0.9f);
+        // Use portraitWidth to ensure consistent width regardless of orientation
         params = new WindowManager.LayoutParams(
-                width,
+                portraitWidth,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 layoutType,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
                 PixelFormat.TRANSLUCENT);
 
         params.gravity = Gravity.TOP | Gravity.LEFT;
-        params.x = (screenWidth - width) / 2;
+        params.x = (screenWidth - portraitWidth) / 2;
         // Default position: Bottom area (approx 80% down)
         params.y = (int) (screenHeight * 0.8f);
 
