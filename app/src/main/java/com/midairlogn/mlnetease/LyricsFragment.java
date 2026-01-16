@@ -63,6 +63,18 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
         adapter = new LyricsAdapter();
         recyclerView.setAdapter(adapter);
 
+        // Dynamically set vertical padding to half of the screen height
+        // This ensures first and last lyrics can scroll to center
+        recyclerView.post(() -> {
+            int halfHeight = recyclerView.getHeight() / 2;
+            recyclerView.setPadding(
+                recyclerView.getPaddingLeft(),
+                halfHeight,
+                recyclerView.getPaddingRight(),
+                halfHeight
+            );
+        });
+
         setupTimelineInteraction();
 
         MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
@@ -287,7 +299,6 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
 
     private void syncLyrics() {
         if (lyricLines.isEmpty()) return;
-        if (isUserScrolling) return; // Do not auto-scroll if user is interacting
 
         MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
         if (manager == null) return;
@@ -304,8 +315,12 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
 
         if (newIndex != -1 && newIndex != currentLineIndex) {
             currentLineIndex = newIndex;
+            // Always update highlight even when user is scrolling
             adapter.setActiveIndex(currentLineIndex);
-            scrollToPosition(currentLineIndex);
+            // Only auto-scroll if user is not interacting
+            if (!isUserScrolling) {
+                scrollToPosition(currentLineIndex);
+            }
         }
     }
 
