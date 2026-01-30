@@ -55,6 +55,8 @@ public class FloatingLyricsManager {
 
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable lyricUpdateTask;
+    private Runnable autoCollapseTask = this::collapse;
+    private static final long AUTO_COLLAPSE_DELAY = 5000; // 5 seconds
 
     private final MusicPlayerManager.OnPlaybackStateChangedListener playbackStateListener = new MusicPlayerManager.OnPlaybackStateChangedListener() {
         @Override
@@ -137,6 +139,7 @@ public class FloatingLyricsManager {
 
         // Listeners
         iconView.setOnClickListener(v -> {
+            resetAutoCollapseTimer();
             Intent intent = new Intent(context, PlayerActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(intent);
@@ -156,9 +159,20 @@ public class FloatingLyricsManager {
                 context.startService(intent);
             }
         });
-        btnLock.setOnClickListener(v -> toggleLock(btnLock));
-        btnPrev.setOnClickListener(v -> musicPlayerManager.playPrevious());
+        btnLock.setOnClickListener(v -> {
+            toggleLock(btnLock);
+            if (isLocked) {
+                collapse();
+            } else {
+                resetAutoCollapseTimer();
+            }
+        });
+        btnPrev.setOnClickListener(v -> {
+            resetAutoCollapseTimer();
+            musicPlayerManager.playPrevious();
+        });
         btnPlay.setOnClickListener(v -> {
+            resetAutoCollapseTimer();
             if (musicPlayerManager.isPlaying()) {
                 musicPlayerManager.pause();
                 btnPlay.setImageResource(android.R.drawable.ic_media_play);
@@ -167,19 +181,46 @@ public class FloatingLyricsManager {
                 btnPlay.setImageResource(android.R.drawable.ic_media_pause);
             }
         });
-        btnNext.setOnClickListener(v -> musicPlayerManager.playNext());
-        btnSettings.setOnClickListener(v -> toggleSettings());
+        btnNext.setOnClickListener(v -> {
+            resetAutoCollapseTimer();
+            musicPlayerManager.playNext();
+        });
+        btnSettings.setOnClickListener(v -> {
+            resetAutoCollapseTimer();
+            toggleSettings();
+        });
 
         // Color Listeners
-        colorRed.setOnClickListener(v -> updateColor(Color.parseColor("#F44336")));
-        colorBlue.setOnClickListener(v -> updateColor(Color.parseColor("#2196F3")));
-        colorGreen.setOnClickListener(v -> updateColor(Color.parseColor("#4CAF50")));
-        colorYellow.setOnClickListener(v -> updateColor(Color.parseColor("#FFEB3B")));
-        colorPurple.setOnClickListener(v -> updateColor(Color.parseColor("#9C27B0")));
+        colorRed.setOnClickListener(v -> {
+            resetAutoCollapseTimer();
+            updateColor(Color.parseColor("#F44336"));
+        });
+        colorBlue.setOnClickListener(v -> {
+            resetAutoCollapseTimer();
+            updateColor(Color.parseColor("#2196F3"));
+        });
+        colorGreen.setOnClickListener(v -> {
+            resetAutoCollapseTimer();
+            updateColor(Color.parseColor("#4CAF50"));
+        });
+        colorYellow.setOnClickListener(v -> {
+            resetAutoCollapseTimer();
+            updateColor(Color.parseColor("#FFEB3B"));
+        });
+        colorPurple.setOnClickListener(v -> {
+            resetAutoCollapseTimer();
+            updateColor(Color.parseColor("#9C27B0"));
+        });
 
         // Font Listeners
-        btnFontPlus.setOnClickListener(v -> updateFontSize(2f));
-        btnFontMinus.setOnClickListener(v -> updateFontSize(-2f));
+        btnFontPlus.setOnClickListener(v -> {
+            resetAutoCollapseTimer();
+            updateFontSize(2f);
+        });
+        btnFontMinus.setOnClickListener(v -> {
+            resetAutoCollapseTimer();
+            updateFontSize(-2f);
+        });
 
         // Initial play button state
         btnPlay.setImageResource(musicPlayerManager.isPlaying() ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
@@ -218,13 +259,17 @@ public class FloatingLyricsManager {
                         return true;
 
                     case MotionEvent.ACTION_MOVE:
-                        if (isLocked) return true;
+                        if (isLocked) {
+                            resetAutoCollapseTimer();
+                            return true;
+                        }
 
                         int dx = (int) (event.getRawX() - initialTouchX);
                         int dy = (int) (event.getRawY() - initialTouchY);
 
                         if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
                             isClick = false;
+                            resetAutoCollapseTimer();
                         }
 
                         if (!isClick) {
@@ -352,6 +397,7 @@ public class FloatingLyricsManager {
             }
         }
         stopLyricUpdates();
+        handler.removeCallbacks(autoCollapseTask);
         floatingView = null; // Clean up
         isExpanded = false;
         isSettingsExpanded = false;
@@ -367,6 +413,9 @@ public class FloatingLyricsManager {
 
         // Check boundaries
         rootLayout.post(() -> checkBoundaries());
+
+        // Start auto-collapse timer
+        resetAutoCollapseTimer();
     }
 
     private void collapse() {
@@ -378,6 +427,9 @@ public class FloatingLyricsManager {
 
         // Background transparent
         rootLayout.setBackgroundColor(Color.TRANSPARENT);
+
+        // Cancel auto-collapse timer
+        handler.removeCallbacks(autoCollapseTask);
     }
 
     private void toggleSettings() {
@@ -460,6 +512,13 @@ public class FloatingLyricsManager {
         if (lyricUpdateTask != null) {
             handler.removeCallbacks(lyricUpdateTask);
             lyricUpdateTask = null;
+        }
+    }
+
+    private void resetAutoCollapseTimer() {
+        handler.removeCallbacks(autoCollapseTask);
+        if (isExpanded) {
+            handler.postDelayed(autoCollapseTask, AUTO_COLLAPSE_DELAY);
         }
     }
 
