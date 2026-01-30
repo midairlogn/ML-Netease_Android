@@ -120,7 +120,9 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
 
         lyricsTimelinePlay.setOnClickListener(v -> {
             if (selectedTime != -1) {
-                MusicPlayerManager.getInstance(getContext()).seekTo((int) selectedTime);
+                MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
+                manager.seekTo((int) selectedTime);
+                manager.resume();
                 isUserScrolling = false;
                 lyricsTimelineOverlay.setVisibility(View.GONE);
                 lyricsHighlightBg.setVisibility(View.GONE);
