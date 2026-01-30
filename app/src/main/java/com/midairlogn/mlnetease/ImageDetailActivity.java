@@ -21,7 +21,7 @@ import java.net.URL;
 
 public class ImageDetailActivity extends AppCompatActivity {
 
-    private ImageView imageView;
+    private ZoomImageView imageView;
     private String imageUrl;
     private Bitmap currentBitmap;
 
