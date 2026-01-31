@@ -222,6 +222,7 @@ public class MusicPlayerManager {
 
         // Notify change immediately so UI updates (cover, title)
         notifySongChanged(song);
+        notifyPlaybackStateChanged(false);
         currentLyric = "Loading...";
 
         // Fetch full info
@@ -365,10 +366,12 @@ public class MusicPlayerManager {
                 if (currentIndex < playlist.size() - 1) {
                     nextIndex = currentIndex + 1;
                 } else {
-                    // Stop or stay at end? Typically stop or pause.
-                    // But here we might just not play.
-                    // For now, let's wrap or stop. "Order" usually implies stop at end.
-                    // If we just return, it stops.
+                    if (mediaPlayer.isPlaying()) {
+                        pause();
+                    } else {
+                        isPaused = true;
+                        notifyPlaybackStateChanged(false);
+                    }
                     return;
                 }
                 break;
@@ -405,6 +408,7 @@ public class MusicPlayerManager {
     public void seekTo(int msec) {
         try {
             mediaPlayer.seekTo(msec);
+            notifyPlaybackStateChanged(isPlaying());
         } catch (Exception e) {
             e.printStackTrace();
         }

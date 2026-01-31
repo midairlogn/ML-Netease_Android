@@ -155,7 +155,11 @@ public class MusicService extends Service {
     }
 
     private void updateMetadata(Song song) {
-        if (song == null) return;
+        if (song == null) {
+            Song placeholder = new Song("", "Music Player", "Ready to play", "", "");
+            showNotification(placeholder, false, BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo));
+            return;
+        }
 
         // Show immediate notification with default/current art to ensure responsiveness
         Bitmap currentArt = BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo);
@@ -255,7 +259,10 @@ public class MusicService extends Service {
     }
 
     private void showNotification(Song song, boolean isPlaying, Bitmap albumArt) {
-        if (song == null) return;
+        if (song == null) {
+            song = new Song("", "Music Player", "Ready to play", "", "");
+            isPlaying = false;
+        }
 
         // If albumArt is passed as null, try to retrieve from current metadata
         if (albumArt == null) {
