@@ -36,7 +36,7 @@
             android:textColorHint="@color/text_secondary"
             android:background="@drawable/search_background"
             android:padding="12dp"
-            android:inputType="text"
+            android:inputType="textPassword"
             android:layout_marginBottom="24dp"/>
 
         <TextView
