@@ -253,10 +253,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="Version: v1.3.2\nAuthor: Midairlogn"
+            android:text="Version: v0.0.0 | Author: Midairlogn\nML-Netease_Android © 2026 | GPLv3 LICENSE"
             android:textColor="@color/text_secondary"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="16dp"/>
+            android:textSize="12sp"
+            android:layout_marginTop="32dp"
+            android:layout_marginBottom="8dp"
+            android:lineSpacingExtra="4dp"/>
 
     </LinearLayout>
 </ScrollView>

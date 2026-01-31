@@ -75,7 +75,7 @@ public class SettingsFragment extends Fragment {
         } catch (Exception e) {
             // Use default
         }
-        String infoText = "Version: v" + versionName + "   Author: <a href=\"https://github.com/midairlogn\">Midairlogn</a><br>" +
+        String infoText = "Version: v" + versionName + " | Author: <a href=\"https://github.com/midairlogn\">Midairlogn</a><br>" +
                 "<a href=\"https://github.com/midairlogn/ML-Netease_Android\">ML-Netease_Android</a> © 2026 | GPLv3 LICENSE";
         versionInfo.setText(Html.fromHtml(infoText, Html.FROM_HTML_MODE_LEGACY));
 
