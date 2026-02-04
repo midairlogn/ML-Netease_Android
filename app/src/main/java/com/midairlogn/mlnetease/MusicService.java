@@ -132,8 +132,7 @@ public class MusicService extends Service {
                     if (floatingLyricsManager != null) {
                         floatingLyricsManager.onSettingChanged();
                     }
-                    showNotification(musicPlayerManager.getCurrentSong(), musicPlayerManager.isPlaying(), null);
-                    // Force update playback state to refresh icons in media control
+                    // Removed redundant showNotification, updatePlaybackState will handle it
                     updatePlaybackState(musicPlayerManager.isPlaying());
                 }
             }
@@ -199,12 +198,7 @@ public class MusicService extends Service {
         }
 
         // 2. Prevent duplicate downloads: If the same URL is currently being downloaded, skip
-        if (song.picUrl != null && song.picUrl.equals(fetchingPicUrl)) {
-            if (isNewSong) {
-                // If switching songs, update title immediately even if download is in progress, using a placeholder.
-                Bitmap placeholder = BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo);
-                showNotification(song, musicPlayerManager.isPlaying(), placeholder);
-            }
+        if (song.picUrl != null && !song.picUrl.isEmpty() && song.picUrl.equals(fetchingPicUrl)) {
             return;
         }
 
@@ -213,6 +207,11 @@ public class MusicService extends Service {
         if (isNewSong) {
             Bitmap placeholder = BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo);
             showNotification(song, musicPlayerManager.isPlaying(), placeholder);
+        }
+
+        // If picUrl is empty, no need to fetch
+        if (song.picUrl == null || song.picUrl.isEmpty()) {
+            return;
         }
 
         // Fetch album art async
@@ -318,29 +317,27 @@ public class MusicService extends Service {
         PlaybackStateCompat newState = builder.build();
         PlaybackStateCompat oldState = mediaSession.getController().getPlaybackState();
 
-        // Only update MediaSession if state changed significantly
-        mediaSession.setPlaybackState(newState);
+        // Check if state changed significantly
+        boolean stateChanged = oldState == null || oldState.getState() != newState.getState();
+        boolean actionsChanged = oldState == null || oldState.getActions() != newState.getActions();
+        boolean customActionsChanged = false;
 
-        // Logic to decide whether to rebuild the notification
-        boolean shouldUpdateNotification = false;
-        if (oldState == null || oldState.getState() != newState.getState()) {
-            shouldUpdateNotification = true;
-        } else {
-            // Check if custom actions icons changed (e.g. mode change or lyrics toggle)
-            // If the number of actions changed, we should definitely update.
-            if (oldState.getCustomActions().size() != newState.getCustomActions().size()) {
-                shouldUpdateNotification = true;
-            } else {
-                // To be even safer, we can check if any action icon changed.
-                // However, since we've already reduced other noise, we can set it to false
-                // and rely on specific triggers (like toggleFloating) to call showNotification.
-                shouldUpdateNotification = false;
+        if (oldState != null && oldState.getCustomActions().size() == newState.getCustomActions().size()) {
+            for (int i = 0; i < newState.getCustomActions().size(); i++) {
+                if (oldState.getCustomActions().get(i).getIcon() != newState.getCustomActions().get(i).getIcon()) {
+                    customActionsChanged = true;
+                    break;
+                }
             }
+        } else {
+            customActionsChanged = true;
         }
 
-        if (shouldUpdateNotification) {
+        if (stateChanged || actionsChanged || customActionsChanged) {
             showNotification(musicPlayerManager.getCurrentSong(), isPlaying, null);
         }
+        // Always update MediaSession to keep position/state in sync for system media controls
+        mediaSession.setPlaybackState(newState);
     }
 
     private void showNotification(Song song, boolean isPlaying, Bitmap albumArt) {
@@ -443,13 +440,11 @@ public class MusicService extends Service {
                 if (floatingLyricsManager != null) {
                     floatingLyricsManager.onSettingChanged();
                 }
-                showNotification(musicPlayerManager.getCurrentSong(), musicPlayerManager.isPlaying(), null);
                 updatePlaybackState(musicPlayerManager.isPlaying());
             } else if ("ACTION_UPDATE_SETTINGS".equals(action)) {
                 if (floatingLyricsManager != null) {
                     floatingLyricsManager.onSettingChanged();
                 }
-                showNotification(musicPlayerManager.getCurrentSong(), musicPlayerManager.isPlaying(), null);
                 updatePlaybackState(musicPlayerManager.isPlaying());
             }
         }
