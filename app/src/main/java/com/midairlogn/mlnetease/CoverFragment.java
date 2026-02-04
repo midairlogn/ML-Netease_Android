@@ -15,7 +15,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-public class CoverFragment extends Fragment implements MusicPlayerManager.OnSongChangedListener {
+public class CoverFragment extends Fragment implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnFullInfoAvailableListener {
 
     private ImageView albumCover;
     private String currentUrl;
@@ -41,6 +41,7 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
 
         MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
         manager.addOnSongChangedListener(this);
+        manager.addOnFullInfoAvailableListener(this);
         Song current = manager.getCurrentSong();
         if (current != null) {
             updateCover(current.picUrl);
@@ -51,10 +52,18 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
     public void onDestroyView() {
         super.onDestroyView();
         MusicPlayerManager.getInstance(getContext()).removeOnSongChangedListener(this);
+        MusicPlayerManager.getInstance(getContext()).removeOnFullInfoAvailableListener(this);
     }
 
     @Override
     public void onSongChanged(Song song) {
+        if (song != null) {
+            updateCover(song.picUrl);
+        }
+    }
+
+    @Override
+    public void onFullInfoAvailable(Song song) {
         if (song != null) {
             updateCover(song.picUrl);
         }

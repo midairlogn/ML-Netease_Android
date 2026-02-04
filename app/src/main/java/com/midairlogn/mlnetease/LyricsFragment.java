@@ -21,7 +21,7 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener {
+public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener, MusicPlayerManager.OnFullInfoAvailableListener {
 
     private RecyclerView recyclerView;
     private LyricsAdapter adapter;
@@ -79,6 +79,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
 
         MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
         manager.addOnSongChangedListener(this);
+        manager.addOnFullInfoAvailableListener(this);
         manager.addOnPlaybackStateChangedListener(this);
 
         updateLyrics(manager.getCurrentLyric());
@@ -248,11 +249,18 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
         stopUpdateTask();
         handler.removeCallbacks(hideOverlayRunnable);
         MusicPlayerManager.getInstance(getContext()).removeOnSongChangedListener(this);
+        MusicPlayerManager.getInstance(getContext()).removeOnFullInfoAvailableListener(this);
         MusicPlayerManager.getInstance(getContext()).removeOnPlaybackStateChangedListener(this);
     }
 
     @Override
     public void onSongChanged(Song song) {
+        // Reset lyrics when song changes
+        updateLyrics("Loading...");
+    }
+
+    @Override
+    public void onFullInfoAvailable(Song song) {
         updateLyrics(MusicPlayerManager.getInstance(getContext()).getCurrentLyric());
     }
 

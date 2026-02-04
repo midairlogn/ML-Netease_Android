@@ -11,15 +11,28 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
+import android.provider.Settings;
+import android.net.Uri;
+import android.content.pm.PackageManager;
+import android.Manifest;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener {
+
+    private static final int REQUEST_CODE_PERMISSIONS = 1001;
+    private static final int REQUEST_CODE_OVERLAY = 1002;
 
     private HomeFragment homeFragment;
     private SettingsFragment settingsFragment;
@@ -57,13 +70,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
                 .add(R.id.fragment_container, homeFragment, "home")
                 .commit();
 
-        // Start MusicService to handle background playback and media controls
-        Intent serviceIntent = new Intent(this, MusicService.class);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent);
-        } else {
-            startService(serviceIntent);
-        }
+        checkAndRequestPermissions();
 
         BottomNavigationView navView = findViewById(R.id.nav_view);
         navView.setOnItemSelectedListener(item -> {
@@ -81,6 +88,122 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         });
 
         initMiniPlayer();
+    }
+
+    private void checkAndRequestPermissions() {
+        List<String> permissionsNeeded = new ArrayList<>();
+
+        // Notification permission for Android 13+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS);
+            }
+        }
+
+        // Storage permissions
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.READ_MEDIA_AUDIO);
+            }
+        } else {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+            }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            }
+        }
+
+        if (!permissionsNeeded.isEmpty()) {
+            ActivityCompat.requestPermissions(this, permissionsNeeded.toArray(new String[0]), REQUEST_CODE_PERMISSIONS);
+        } else {
+            checkOverlayPermission();
+        }
+    }
+
+    private void checkOverlayPermission() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                new AlertDialog.Builder(this)
+                        .setTitle("Permission Required")
+                        .setMessage("Floating lyrics require overlay permission. Please enable it in the next screen.")
+                        .setPositiveButton("Go to Settings", (dialog, which) -> {
+                            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    Uri.parse("package:" + getPackageName()));
+                            startActivityForResult(intent, REQUEST_CODE_OVERLAY);
+                        })
+                        .setNegativeButton("Cancel", (dialog, which) -> startMusicService())
+                        .setCancelable(false)
+                        .show();
+            } else {
+                startMusicService();
+            }
+        } else {
+            startMusicService();
+        }
+    }
+
+    private void startMusicService() {
+        Intent serviceIntent = new Intent(this, MusicService.class);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent);
+        } else {
+            startService(serviceIntent);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_CODE_PERMISSIONS) {
+            boolean allGranted = true;
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    break;
+                }
+            }
+            if (!allGranted) {
+                new AlertDialog.Builder(this)
+                        .setTitle("Permissions Required")
+                        .setMessage("All requested permissions (Notifications and Storage) are mandatory for the app to function. Please grant them in Settings.")
+                        .setPositiveButton("Go to Settings", (dialog, which) -> {
+                            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    Uri.parse("package:" + getPackageName()));
+                            startActivity(intent);
+                            finish(); // Exit app
+                        })
+                        .setNegativeButton("Exit", (dialog, which) -> finish())
+                        .setCancelable(false)
+                        .show();
+            } else {
+                checkOverlayPermission();
+            }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_OVERLAY) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                if (Settings.canDrawOverlays(this)) {
+                    startMusicService();
+                } else {
+                    new AlertDialog.Builder(this)
+                            .setTitle("Permission Required")
+                            .setMessage("Overlay permission is mandatory for floating lyrics and background operation. Please enable it.")
+                            .setPositiveButton("Go to Settings", (dialog, which) -> {
+                                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                        Uri.parse("package:" + getPackageName()));
+                                startActivityForResult(intent, REQUEST_CODE_OVERLAY);
+                            })
+                            .setNegativeButton("Exit", (dialog, which) -> finish())
+                            .setCancelable(false)
+                            .show();
+                }
+            }
+        }
     }
 
     private void initMiniPlayer() {

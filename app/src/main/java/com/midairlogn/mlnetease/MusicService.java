@@ -19,6 +19,7 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.media.session.MediaButtonReceiver;
 
 import java.io.InputStream;
@@ -34,6 +35,10 @@ public class MusicService extends Service {
     private MusicPlayerManager musicPlayerManager;
     private NotificationManager notificationManager;
     private FloatingLyricsManager floatingLyricsManager;
+    private String lastSongId = "";
+    private String lastPicUrl = "";
+    private Bitmap lastBitmap = null;
+    private String fetchingPicUrl = null;
     private android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
 
     private final MainApplication.AppVisibilityListener appVisibilityListener = isForeground -> {
@@ -45,7 +50,21 @@ public class MusicService extends Service {
     private final MusicPlayerManager.OnSongChangedListener songChangedListener = new MusicPlayerManager.OnSongChangedListener() {
         @Override
         public void onSongChanged(Song song) {
+            // Only update basic metadata (title, artist) immediately when song changes.
+            // Album art and lyrics will be handled by fullInfoAvailableListener.
             updateMetadata(song);
+            if (floatingLyricsManager != null) {
+                floatingLyricsManager.updateSongInfo(song);
+            }
+        }
+    };
+
+    private final MusicPlayerManager.OnFullInfoAvailableListener fullInfoAvailableListener = new MusicPlayerManager.OnFullInfoAvailableListener() {
+        @Override
+        public void onFullInfoAvailable(Song song) {
+            // Update metadata with full info (high-res album art)
+            updateMetadata(song);
+            // Update lyrics for floating window
             if (floatingLyricsManager != null) {
                 floatingLyricsManager.updateLyrics(musicPlayerManager.getCurrentLyric());
                 floatingLyricsManager.updateSongInfo(song);
@@ -79,6 +98,7 @@ public class MusicService extends Service {
 
         // Listen to player changes
         musicPlayerManager.addOnSongChangedListener(songChangedListener);
+        musicPlayerManager.addOnFullInfoAvailableListener(fullInfoAvailableListener);
         musicPlayerManager.addOnPlaybackStateChangedListener(playbackStateChangedListener);
         musicPlayerManager.addOnPlaybackModeChangedListener(playbackModeChangedListener);
 
@@ -147,7 +167,8 @@ public class MusicService extends Service {
             @Override
             public void onSeekTo(long pos) {
                 musicPlayerManager.seekTo((int) pos);
-                updatePlaybackState(musicPlayerManager.isPlaying());
+                // Removed explicit updatePlaybackState(musicPlayerManager.isPlaying());
+                // musicPlayerManager.seekTo already triggers the listener which calls updatePlaybackState
             }
         });
 
@@ -156,23 +177,48 @@ public class MusicService extends Service {
 
     private void updateMetadata(Song song) {
         if (song == null) {
+            lastSongId = "";
+            lastPicUrl = "";
+            lastBitmap = null;
             Song placeholder = new Song("", "Music Player", "Ready to play", "", "");
             showNotification(placeholder, false, BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo));
             return;
         }
 
-        // Show immediate notification with default/current art to ensure responsiveness
-        Bitmap currentArt = BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo);
-        MediaMetadataCompat metadata = mediaSession.getController().getMetadata();
-        if (metadata != null) {
-            Bitmap existingArt = metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART);
-            if (existingArt != null) {
-                currentArt = existingArt;
+        boolean isNewSong = !song.id.equals(lastSongId);
+        lastSongId = song.id;
+
+        // 1. Optimization: If the image URL hasn't changed and a bitmap already exists, update Metadata directly and refresh notification as needed, skipping thread overhead
+        // Placing this at the beginning avoids placeholder flickering when switching to a cached song
+        if (song.picUrl != null && song.picUrl.equals(lastPicUrl) && lastBitmap != null) {
+            updateMediaSessionMetadata(song, lastBitmap);
+            if (isNewSong) {
+                showNotification(song, musicPlayerManager.isPlaying(), lastBitmap);
             }
+            return;
         }
-        showNotification(song, musicPlayerManager.isPlaying(), currentArt);
+
+        // 2. Prevent duplicate downloads: If the same URL is currently being downloaded, skip
+        if (song.picUrl != null && song.picUrl.equals(fetchingPicUrl)) {
+            if (isNewSong) {
+                // If switching songs, update title immediately even if download is in progress, using a placeholder.
+                Bitmap placeholder = BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo);
+                showNotification(song, musicPlayerManager.isPlaying(), placeholder);
+            }
+            return;
+        }
+
+        // 3. Update notification immediately (title/artist) using placeholder to prevent showing previous song's cover
+        // Only execute if song ID has actually changed to avoid repeated updates for the same song
+        if (isNewSong) {
+            Bitmap placeholder = BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo);
+            showNotification(song, musicPlayerManager.isPlaying(), placeholder);
+        }
 
         // Fetch album art async
+        final String targetSongId = song.id;
+        fetchingPicUrl = song.picUrl;
+
         new Thread(() -> {
             Bitmap albumArt = null;
             if (song.picUrl != null && !song.picUrl.isEmpty()) {
@@ -185,7 +231,6 @@ public class MusicService extends Service {
                     albumArt = BitmapFactory.decodeStream(input);
                 } catch (Exception e) {
                     Log.e(TAG, "Error fetching album art", e);
-                    // Fallback to app icon or null
                     albumArt = BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo);
                 }
             }
@@ -196,20 +241,37 @@ public class MusicService extends Service {
 
             Bitmap finalAlbumArt = albumArt;
 
-            // Get duration if available, else 0
-            long duration = musicPlayerManager.getDuration();
+            // 4. Check when thread ends: If song ID has changed (user switched songs again), discard the stale result to prevent notification spam
+            handler.post(() -> {
+                // Clear fetching flag regardless of result validity
+                if (song.picUrl != null && song.picUrl.equals(fetchingPicUrl)) {
+                    fetchingPicUrl = null;
+                }
 
-            MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder()
-                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.name)
-                    .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artists)
-                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, song.album)
-                    .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration > 0 ? duration : 0)
-                    .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, finalAlbumArt)
-                    .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, finalAlbumArt);
+                if (!targetSongId.equals(lastSongId)) {
+                    return;
+                }
 
-            mediaSession.setMetadata(builder.build());
-            showNotification(song, musicPlayerManager.isPlaying(), finalAlbumArt);
+                lastBitmap = finalAlbumArt;
+                lastPicUrl = song.picUrl;
+
+                updateMediaSessionMetadata(song, finalAlbumArt);
+                showNotification(song, musicPlayerManager.isPlaying(), finalAlbumArt);
+            });
         }).start();
+    }
+
+    private void updateMediaSessionMetadata(Song song, Bitmap albumArt) {
+        long duration = musicPlayerManager.getDuration();
+        MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.name)
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artists)
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, song.album)
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration > 0 ? duration : 0)
+                .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, albumArt)
+                .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, albumArt);
+
+        mediaSession.setMetadata(builder.build());
     }
 
     private void updatePlaybackState(boolean isPlaying) {
@@ -253,12 +315,41 @@ public class MusicService extends Service {
         int floatIcon = isFloatingEnabled ? R.drawable.ic_floating_active : R.drawable.ic_floating;
         builder.addCustomAction("ACTION_TOGGLE_FLOATING", "Lyrics", floatIcon);
 
-        mediaSession.setPlaybackState(builder.build());
+        PlaybackStateCompat newState = builder.build();
+        PlaybackStateCompat oldState = mediaSession.getController().getPlaybackState();
 
-        showNotification(musicPlayerManager.getCurrentSong(), isPlaying, null);
+        // Only update MediaSession if state changed significantly
+        mediaSession.setPlaybackState(newState);
+
+        // Logic to decide whether to rebuild the notification
+        boolean shouldUpdateNotification = false;
+        if (oldState == null || oldState.getState() != newState.getState()) {
+            shouldUpdateNotification = true;
+        } else {
+            // Check if custom actions icons changed (e.g. mode change or lyrics toggle)
+            // If the number of actions changed, we should definitely update.
+            if (oldState.getCustomActions().size() != newState.getCustomActions().size()) {
+                shouldUpdateNotification = true;
+            } else {
+                // To be even safer, we can check if any action icon changed.
+                // However, since we've already reduced other noise, we can set it to false
+                // and rely on specific triggers (like toggleFloating) to call showNotification.
+                shouldUpdateNotification = false;
+            }
+        }
+
+        if (shouldUpdateNotification) {
+            showNotification(musicPlayerManager.getCurrentSong(), isPlaying, null);
+        }
     }
 
     private void showNotification(Song song, boolean isPlaying, Bitmap albumArt) {
+        // Note: We MUST call startForeground even if notifications are disabled
+        // to avoid ForegroundServiceDidNotStartInTimeException on Android 8.0+
+        if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) {
+            Log.w(TAG, "Notifications are disabled, but calling startForeground anyway to satisfy system requirements.");
+        }
+
         if (song == null) {
             song = new Song("", "Music Player", "Ready to play", "", "");
             isPlaying = false;
@@ -330,6 +421,7 @@ public class MusicService extends Service {
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Use IMPORTANCE_LOW to avoid sound/pop-up, but ensure it's visible for the foreground service
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Music Playback", NotificationManager.IMPORTANCE_LOW);
             channel.setDescription("Music playback controls");
             channel.setShowBadge(false);
@@ -378,6 +470,7 @@ public class MusicService extends Service {
             app.removeAppVisibilityListener(appVisibilityListener);
         }
         musicPlayerManager.removeOnSongChangedListener(songChangedListener);
+        musicPlayerManager.removeOnFullInfoAvailableListener(fullInfoAvailableListener);
         musicPlayerManager.removeOnPlaybackStateChangedListener(playbackStateChangedListener);
         musicPlayerManager.removeOnPlaybackModeChangedListener(playbackModeChangedListener);
         if (floatingLyricsManager != null) {

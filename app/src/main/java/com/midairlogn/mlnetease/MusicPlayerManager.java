@@ -35,6 +35,7 @@ public class MusicPlayerManager {
     private List<OnPlaybackStateChangedListener> playbackStateChangedListeners = new ArrayList<>();
     private List<OnPlaylistChangedListener> playlistChangedListeners = new ArrayList<>();
     private List<OnPlaybackModeChangedListener> playbackModeChangedListeners = new ArrayList<>();
+    private List<OnFullInfoAvailableListener> fullInfoAvailableListeners = new ArrayList<>();
 
     // Current extended info
     private String currentLyric = "";
@@ -54,6 +55,10 @@ public class MusicPlayerManager {
 
     public interface OnPlaybackModeChangedListener {
         void onPlaybackModeChanged(int mode);
+    }
+
+    public interface OnFullInfoAvailableListener {
+        void onFullInfoAvailable(Song song);
     }
 
     private MusicPlayerManager(Context context) {
@@ -222,7 +227,7 @@ public class MusicPlayerManager {
 
         // Notify change immediately so UI updates (cover, title)
         notifySongChanged(song);
-        notifyPlaybackStateChanged(false);
+        // Removed: notifyPlaybackStateChanged(false); // redundant, playNext/Previous/play will eventually trigger it via playUrl -> onPrepared or via explicit pause
         currentLyric = "Loading...";
 
         // Fetch full info
@@ -245,14 +250,16 @@ public class MusicPlayerManager {
                         song.artists = root.optString("ar_name", song.artists);
                         song.album = root.optString("al_name", song.album);
 
-                        notifySongChanged(song); // Notify again with full info
+                        // Notify that full info (lyrics, picUrl, etc.) is now available.
+                        // UI components like LyricsFragment and FloatingLyricsManager use this
+                        // to refresh lyrics. MusicService uses this to update notification with album art.
+                        notifyFullInfoAvailable(song);
 
                         if (!url.isEmpty()) {
                             android.util.Log.d("MusicPlayerManager", "Playing URL: " + url);
                             playUrl(url);
                         } else {
                             android.util.Log.e("MusicPlayerManager", "Song URL is empty. Check VIP/Copyright status.");
-                            // Handle error (e.g. notify listeners of error)
                         }
                     }
                 } catch (Exception e) {
@@ -495,6 +502,22 @@ public class MusicPlayerManager {
 
     public void removeOnPlaybackModeChangedListener(OnPlaybackModeChangedListener listener) {
         playbackModeChangedListeners.remove(listener);
+    }
+
+    public void addOnFullInfoAvailableListener(OnFullInfoAvailableListener listener) {
+        fullInfoAvailableListeners.add(listener);
+    }
+
+    public void removeOnFullInfoAvailableListener(OnFullInfoAvailableListener listener) {
+        fullInfoAvailableListeners.remove(listener);
+    }
+
+    private void notifyFullInfoAvailable(Song song) {
+        new Handler(Looper.getMainLooper()).post(() -> {
+            for (OnFullInfoAvailableListener listener : fullInfoAvailableListeners) {
+                listener.onFullInfoAvailable(song);
+            }
+        });
     }
 
     private void notifyPlaybackModeChanged(int mode) {
