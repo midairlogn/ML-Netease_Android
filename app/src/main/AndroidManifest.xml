@@ -20,6 +20,7 @@
         android:roundIcon="@drawable/ic_app_logo"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
+        android:appCategory="audio"
         android:theme="@style/Theme.MLNetease">
         <activity
             android:name=".MainActivity"
@@ -28,6 +29,12 @@
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.APP_MUSIC" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.MUSIC_PLAYER" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
         <activity android:name=".PlayerActivity" />
