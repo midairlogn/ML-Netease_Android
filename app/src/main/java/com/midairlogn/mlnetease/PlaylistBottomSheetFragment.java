@@ -16,7 +16,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import java.util.Collections;
 import java.util.List;
 
-public class PlaylistBottomSheetFragment extends BottomSheetDialogFragment {
+public class PlaylistBottomSheetFragment extends BottomSheetDialogFragment implements MusicPlayerManager.OnPlaylistChangedListener, MusicPlayerManager.OnSongChangedListener {
 
     private RecyclerView recyclerView;
     private PlaylistAdapter adapter;
@@ -99,18 +99,32 @@ public class PlaylistBottomSheetFragment extends BottomSheetDialogFragment {
         });
         itemTouchHelper.attachToRecyclerView(recyclerView);
 
-        musicPlayerManager.addOnPlaylistChangedListener(playlist -> {
-            if (adapter != null && !isDragging) {
-                adapter.setSongs(playlist);
-            }
-            updateTitle();
-        });
+        musicPlayerManager.addOnPlaylistChangedListener(this);
+        musicPlayerManager.addOnSongChangedListener(this);
+    }
 
-        musicPlayerManager.addOnSongChangedListener(song -> {
-            if (adapter != null) {
-                adapter.notifyDataSetChanged();
-            }
-        });
+    @Override
+    public void onPlaylistChanged(List<Song> playlist) {
+        if (adapter != null && !isDragging) {
+            adapter.setSongs(playlist);
+        }
+        updateTitle();
+    }
+
+    @Override
+    public void onSongChanged(Song song) {
+        if (adapter != null) {
+            adapter.notifyDataSetChanged();
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (musicPlayerManager != null) {
+            musicPlayerManager.removeOnPlaylistChangedListener(this);
+            musicPlayerManager.removeOnSongChangedListener(this);
+        }
     }
 
     private void updateTitle() {

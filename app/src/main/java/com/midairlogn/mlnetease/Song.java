@@ -1,6 +1,9 @@
 package com.midairlogn.mlnetease;
 
-public class Song {
+import java.io.Serializable;
+
+public class Song implements Serializable {
+    private static final long serialVersionUID = 1L;
     public String id;
     public String name;
     public String artists;

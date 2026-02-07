@@ -296,7 +296,13 @@ public class FloatingLyricsManager {
 
                             params.x = newX;
                             params.y = newY;
-                            windowManager.updateViewLayout(floatingView, params);
+                            if (floatingView.getWindowToken() != null) {
+                                try {
+                                    windowManager.updateViewLayout(floatingView, params);
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
                         }
                         return true;
                 }
@@ -440,28 +446,53 @@ public class FloatingLyricsManager {
     }
 
     private void checkBoundaries() {
-        if (floatingView == null) return;
+        if (floatingView == null || floatingView.getWindowToken() == null) return;
 
         // Update screen size in case of orientation change
         updateScreenSize();
 
+        // Update params width to ensure it matches the current portraitWidth calculation
+        if (params.width != portraitWidth) {
+            params.width = portraitWidth;
+        }
+
         int width = floatingView.getWidth();
         int height = floatingView.getHeight();
+
+        // If width or height is 0, the view hasn't been laid out yet.
+        // Post again to check when it's ready.
+        if (width == 0 || height == 0) {
+            rootLayout.postDelayed(this::checkBoundaries, 50);
+            return;
+        }
+
         boolean changed = false;
 
         if (params.x + width > screenWidth) {
-            params.x = screenWidth - width;
+            params.x = Math.max(0, screenWidth - width);
             changed = true;
         }
         if (params.y + height > screenHeight) {
-            params.y = screenHeight - height;
+            params.y = Math.max(0, screenHeight - height);
             changed = true;
         }
         if (params.x < 0) { params.x = 0; changed = true; }
         if (params.y < 0) { params.y = 0; changed = true; }
 
-        if (changed) {
-            windowManager.updateViewLayout(floatingView, params);
+        if (changed || params.width != portraitWidth) {
+            try {
+                windowManager.updateViewLayout(floatingView, params);
+            } catch (Exception e) {
+                // Ignore errors if the view is already detached or something similar
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void onConfigurationChanged() {
+        if (floatingView != null && floatingView.getWindowToken() != null) {
+            updateScreenSize();
+            checkBoundaries();
         }
     }
 

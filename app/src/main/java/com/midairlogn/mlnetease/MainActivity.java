@@ -60,15 +60,28 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
 
         musicPlayerManager = MusicPlayerManager.getInstance(this);
 
-        homeFragment = new HomeFragment();
-        settingsFragment = new SettingsFragment();
-        activeFragment = homeFragment;
+        if (savedInstanceState == null) {
+            homeFragment = new HomeFragment();
+            settingsFragment = new SettingsFragment();
+            activeFragment = homeFragment;
 
-        getSupportFragmentManager().beginTransaction()
-                .add(R.id.fragment_container, settingsFragment, "settings")
-                .hide(settingsFragment)
-                .add(R.id.fragment_container, homeFragment, "home")
-                .commit();
+            getSupportFragmentManager().beginTransaction()
+                    .add(R.id.fragment_container, settingsFragment, "settings")
+                    .hide(settingsFragment)
+                    .add(R.id.fragment_container, homeFragment, "home")
+                    .commit();
+        } else {
+            homeFragment = (HomeFragment) getSupportFragmentManager().findFragmentByTag("home");
+            settingsFragment = (SettingsFragment) getSupportFragmentManager().findFragmentByTag("settings");
+
+            // Restore active fragment state
+            int selectedItemId = ((BottomNavigationView) findViewById(R.id.nav_view)).getSelectedItemId();
+            if (selectedItemId == R.id.navigation_home) {
+                activeFragment = homeFragment;
+            } else {
+                activeFragment = settingsFragment;
+            }
+        }
 
         checkAndRequestPermissions();
 

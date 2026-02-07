@@ -19,7 +19,7 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
-public class HomeFragment extends Fragment {
+public class HomeFragment extends Fragment implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener {
 
     private NeteaseApi neteaseApi;
     private EditText searchInput;
@@ -57,6 +57,14 @@ public class HomeFragment extends Fragment {
         adapter = new SongAdapter();
         recyclerView.setAdapter(adapter);
 
+        if (savedInstanceState != null) {
+            List<Song> savedSongs = (List<Song>) savedInstanceState.getSerializable("songs");
+            if (savedSongs != null) {
+                adapter.setSongs(savedSongs);
+                btnPlayAll.setVisibility(savedSongs.isEmpty() ? View.GONE : View.VISIBLE);
+            }
+        }
+
         searchButton.setOnClickListener(v -> performSearch());
 
         btnPlayAll.setOnClickListener(v -> {
@@ -79,12 +87,38 @@ public class HomeFragment extends Fragment {
             MusicPlayerManager.getInstance(getContext()).togglePlayPause();
         });
 
-        MusicPlayerManager.getInstance(getContext()).addOnSongChangedListener(this::updateMiniPlayer);
-        MusicPlayerManager.getInstance(getContext()).addOnPlaybackStateChangedListener(this::updatePlayPauseButton);
+        MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
+        manager.addOnSongChangedListener(this);
+        manager.addOnPlaybackStateChangedListener(this);
+
+        updateMiniPlayer(manager.getCurrentSong());
+        updatePlayPauseButton(manager.isPlaying());
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (adapter != null && adapter.getSongs() != null) {
+            outState.putSerializable("songs", new ArrayList<>(adapter.getSongs()));
+        }
+    }
+
+    @Override
+    public void onSongChanged(Song song) {
+        if (getActivity() != null) {
+            getActivity().runOnUiThread(() -> updateMiniPlayer(song));
+        }
+    }
+
+    @Override
+    public void onPlaybackStateChanged(boolean isPlaying) {
+        if (getActivity() != null) {
+            getActivity().runOnUiThread(() -> updatePlayPauseButton(isPlaying));
+        }
     }
 
     private void updateMiniPlayer(Song song) {
-        if (song == null) return;
+        if (song == null || playerContainer == null) return;
         playerContainer.setVisibility(View.VISIBLE);
         currentSongTitle.setText(song.name);
         currentSongArtist.setText(song.artists);
@@ -99,8 +133,9 @@ public class HomeFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        // Remove listeners? Need to keep reference or make anonymous inner class field
-        // But for simplicity, we skip removal or implement interface properly
+        MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
+        manager.removeOnSongChangedListener(this);
+        manager.removeOnPlaybackStateChangedListener(this);
     }
 
     private void performSearch() {

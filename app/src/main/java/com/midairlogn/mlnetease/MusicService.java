@@ -428,6 +428,14 @@ public class MusicService extends Service {
     }
 
     @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (floatingLyricsManager != null) {
+            floatingLyricsManager.onConfigurationChanged();
+        }
+    }
+
+    @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && intent.getAction() != null) {
             String action = intent.getAction();

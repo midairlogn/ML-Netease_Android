@@ -10,6 +10,8 @@ public class MainApplication extends Application implements Application.Activity
 
     private int activityCount = 0;
     private List<AppVisibilityListener> listeners = new ArrayList<>();
+    private android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private Runnable notifyRunnable;
 
     public interface AppVisibilityListener {
         void onAppVisibilityChanged(boolean isForeground);
@@ -34,10 +36,20 @@ public class MainApplication extends Application implements Application.Activity
     }
 
     private void notifyListeners() {
-        boolean isForeground = activityCount > 0;
-        for (AppVisibilityListener listener : listeners) {
-            listener.onAppVisibilityChanged(isForeground);
+        if (notifyRunnable != null) {
+            handler.removeCallbacks(notifyRunnable);
         }
+
+        notifyRunnable = () -> {
+            boolean isForeground = activityCount > 0;
+            for (AppVisibilityListener listener : listeners) {
+                listener.onAppVisibilityChanged(isForeground);
+            }
+            notifyRunnable = null;
+        };
+
+        // Small delay to debounce visibility changes during activity recreation/rotation
+        handler.postDelayed(notifyRunnable, 300);
     }
 
     @Override
@@ -46,9 +58,7 @@ public class MainApplication extends Application implements Application.Activity
     @Override
     public void onActivityStarted(Activity activity) {
         activityCount++;
-        if (activityCount == 1) {
-            notifyListeners();
-        }
+        notifyListeners();
     }
 
     @Override
@@ -60,7 +70,7 @@ public class MainApplication extends Application implements Application.Activity
     @Override
     public void onActivityStopped(Activity activity) {
         activityCount--;
-        if (activityCount == 0) {
+        if (!activity.isChangingConfigurations()) {
             notifyListeners();
         }
     }
