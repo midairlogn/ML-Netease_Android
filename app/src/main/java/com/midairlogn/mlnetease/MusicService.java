@@ -335,6 +335,10 @@ public class MusicService extends Service {
 
         if (stateChanged || actionsChanged || customActionsChanged) {
             showNotification(musicPlayerManager.getCurrentSong(), isPlaying, null);
+        } else {
+            // Even if state/actions haven't changed, we might need to force a notification refresh
+            // for custom icon updates from settings
+            showNotification(musicPlayerManager.getCurrentSong(), isPlaying, null);
         }
         // Always update MediaSession to keep position/state in sync for system media controls
         mediaSession.setPlaybackState(newState);

@@ -696,6 +696,7 @@ public class FloatingLyricsManager {
 
     // Call this when user toggles the feature in settings
     public void onSettingChanged() {
+        applySettings(); // Update colors/sizes if window is already showing
         if (settingsManager.isFloatingLyricsEnabled()) {
             show();
         } else {

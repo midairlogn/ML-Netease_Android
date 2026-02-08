@@ -26,6 +26,7 @@ import android.widget.RadioGroup;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.content.SharedPreferences;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -46,6 +47,10 @@ public class SettingsFragment extends Fragment {
     private Button btnColorRed, btnColorBlue, btnColorGreen, btnColorYellow, btnColorPurple;
     private TextView textFontSize;
     private Button btnSizePlus, btnSizeMinus;
+    private TextView textLyricPreviewCurrent;
+    private TextView textLyricPreviewNext;
+
+    private SharedPreferences.OnSharedPreferenceChangeListener preferenceChangeListener;
 
     private int tempColor = 0;
     private float tempSize = 16f;
@@ -100,6 +105,8 @@ public class SettingsFragment extends Fragment {
         textFontSize = view.findViewById(R.id.text_font_size);
         btnSizePlus = view.findViewById(R.id.btn_size_plus);
         btnSizeMinus = view.findViewById(R.id.btn_size_minus);
+        textLyricPreviewCurrent = view.findViewById(R.id.text_lyric_preview_current);
+        textLyricPreviewNext = view.findViewById(R.id.text_lyric_preview_next);
 
         TextView versionInfo = view.findViewById(R.id.text_version_info);
         versionInfo.setMovementMethod(LinkMovementMethod.getInstance());
@@ -116,6 +123,13 @@ public class SettingsFragment extends Fragment {
         // Init values
         inputMusicU.setText(settingsManager.getMusicU());
         inputSearchLimit.setText(String.valueOf(settingsManager.getSearchLimit()));
+
+        // Listen for preference changes (e.g. from notification)
+        preferenceChangeListener = (sharedPreferences, key) -> {
+            if (getActivity() == null) return;
+            getActivity().runOnUiThread(this::refreshSettingsUI);
+        };
+        settingsManager.getPrefs().registerOnSharedPreferenceChangeListener(preferenceChangeListener);
 
         // Input Listeners
         setupInputListeners();
@@ -154,6 +168,12 @@ public class SettingsFragment extends Fragment {
 
         tempSize = settingsManager.getLyricSize();
         textFontSize.setText(String.valueOf((int)tempSize));
+        if (textLyricPreviewCurrent != null) {
+            textLyricPreviewCurrent.setTextSize(tempSize);
+        }
+        if (textLyricPreviewNext != null) {
+            textLyricPreviewNext.setTextSize(Math.max(10f, tempSize - 2f));
+        }
 
         switchFloatingLyrics.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
@@ -207,15 +227,27 @@ public class SettingsFragment extends Fragment {
         btnSizePlus.setOnClickListener(v -> {
             tempSize = Math.min(30f, tempSize + 2);
             textFontSize.setText(String.valueOf((int)tempSize));
+            if (textLyricPreviewCurrent != null) textLyricPreviewCurrent.setTextSize(tempSize);
+            if (textLyricPreviewNext != null) textLyricPreviewNext.setTextSize(Math.max(10f, tempSize - 2f));
             settingsManager.setLyricSize(tempSize);
             notifySettingsChanged();
         });
         btnSizeMinus.setOnClickListener(v -> {
             tempSize = Math.max(10f, tempSize - 2);
             textFontSize.setText(String.valueOf((int)tempSize));
+            if (textLyricPreviewCurrent != null) textLyricPreviewCurrent.setTextSize(tempSize);
+            if (textLyricPreviewNext != null) textLyricPreviewNext.setTextSize(Math.max(10f, tempSize - 2f));
             settingsManager.setLyricSize(tempSize);
             notifySettingsChanged();
         });
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (settingsManager != null && preferenceChangeListener != null) {
+            settingsManager.getPrefs().unregisterOnSharedPreferenceChangeListener(preferenceChangeListener);
+        }
+        super.onDestroyView();
     }
 
     private void setupInputListeners() {
@@ -371,7 +403,9 @@ public class SettingsFragment extends Fragment {
                     return;
                 }
             }
+            settingsManager.setFloatingLyricsEnabled(isChecked);
             layoutFloatingSettings.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+            notifySettingsChanged();
         });
 
         layoutFloatingSettings.setVisibility(isFloatingEnabled ? View.VISIBLE : View.GONE);
@@ -396,6 +430,7 @@ public class SettingsFragment extends Fragment {
         btnColorYellow.setText("");
         btnColorPurple.setText("");
 
+        int finalColor = tempColor;
         if (tempColor == Color.parseColor("#F44336")) {
             btnColorRed.setAlpha(1.0f);
             btnColorRed.setText("✓");
@@ -416,6 +451,12 @@ public class SettingsFragment extends Fragment {
             btnColorPurple.setAlpha(1.0f);
             btnColorPurple.setText("✓");
             btnColorPurple.setTextColor(Color.WHITE);
+        } else {
+            finalColor = Color.parseColor("#2196F3"); // Fallback for preview
+        }
+
+        if (textLyricPreviewCurrent != null) {
+            textLyricPreviewCurrent.setTextColor(finalColor);
         }
     }
 

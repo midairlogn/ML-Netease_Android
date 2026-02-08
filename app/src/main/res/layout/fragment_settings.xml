@@ -241,6 +241,51 @@
                      android:layout_height="wrap_content"
                      android:text="+"/>
              </LinearLayout>
+
+             <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Preview"
+                android:textColor="@color/text_primary"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="8dp"/>
+
+             <FrameLayout
+                 android:layout_width="match_parent"
+                 android:layout_height="wrap_content"
+                 android:background="@drawable/bg_floating_window"
+                 android:padding="12dp">
+                 <LinearLayout
+                     android:layout_width="match_parent"
+                     android:layout_height="wrap_content"
+                     android:orientation="vertical"
+                     android:gravity="center">
+                     <TextView
+                         android:id="@+id/text_lyric_preview_current"
+                         android:layout_width="match_parent"
+                         android:layout_height="wrap_content"
+                         android:gravity="center"
+                         android:text="Current Lyric Preview"
+                         android:singleLine="true"
+                         android:shadowColor="#FF000000"
+                         android:shadowDx="2"
+                         android:shadowDy="2"
+                         android:shadowRadius="4"
+                         android:paddingBottom="4dp"/>
+                     <TextView
+                         android:id="@+id/text_lyric_preview_next"
+                         android:layout_width="match_parent"
+                         android:layout_height="wrap_content"
+                         android:gravity="center"
+                         android:text="Next Lyric Preview"
+                         android:textColor="#DDDDDD"
+                         android:singleLine="true"
+                         android:shadowColor="#FF000000"
+                         android:shadowDx="2"
+                         android:shadowDy="2"
+                         android:shadowRadius="4"/>
+                 </LinearLayout>
+             </FrameLayout>
         </LinearLayout>
 
         <TextView

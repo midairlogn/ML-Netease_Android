@@ -67,6 +67,10 @@ public class SettingsManager {
         return prefs.getFloat(KEY_LYRIC_SIZE, 16f); // Default 16sp
     }
 
+    public SharedPreferences getPrefs() {
+        return prefs;
+    }
+
     public static final String[] QUALITY_OPTIONS = {
         "standard", "exhigh", "lossless", "hires", "sky", "jyeffect", "jymaster"
     };
