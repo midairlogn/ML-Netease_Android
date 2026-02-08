@@ -86,8 +86,14 @@ public class HomeFragment extends Fragment implements MusicPlayerManager.OnSongC
         recyclerView.setAdapter(adapter);
 
         if (savedInstanceState != null) {
-            List<Song> savedSongs = (List<Song>) savedInstanceState.getSerializable("songs");
-            if (savedSongs != null) {
+            List<?> savedSongsRaw = (List<?>) savedInstanceState.getSerializable("songs");
+            if (savedSongsRaw != null) {
+                List<Song> savedSongs = new ArrayList<>();
+                for (Object item : savedSongsRaw) {
+                    if (item instanceof Song) {
+                        savedSongs.add((Song) item);
+                    }
+                }
                 adapter.setSongs(savedSongs);
                 btnPlayAll.setVisibility(savedSongs.isEmpty() ? View.GONE : View.VISIBLE);
             }
