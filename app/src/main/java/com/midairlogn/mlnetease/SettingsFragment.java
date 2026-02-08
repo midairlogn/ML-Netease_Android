@@ -1,5 +1,6 @@
 package com.midairlogn.mlnetease;
 
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
@@ -8,8 +9,10 @@ import android.provider.Settings;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -50,9 +53,34 @@ public class SettingsFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         settingsManager = new SettingsManager(requireContext());
 
+        // Make root layout focusable to intercept clicks for keyboard hiding
+        view.setFocusable(true);
+        view.setFocusableInTouchMode(true);
+
+        View.OnTouchListener hideKeyboardTouchListener = (v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                if (getActivity() != null && getActivity().getCurrentFocus() != null) {
+                    hideKeyboard(getActivity().getCurrentFocus());
+                    getActivity().getCurrentFocus().clearFocus();
+                }
+            }
+            return false;
+        };
+
+        view.setOnTouchListener(hideKeyboardTouchListener);
+
         inputMusicU = view.findViewById(R.id.input_music_u);
         inputSearchLimit = view.findViewById(R.id.input_search_limit);
+
+        // Also apply to the inner container to ensure it covers all areas
+        View innerContainer = view.findViewById(R.id.settings_inner_container);
+        if (innerContainer != null) {
+            innerContainer.setOnTouchListener(hideKeyboardTouchListener);
+        }
+
         qualityGroup = view.findViewById(R.id.quality_group);
+        qualityGroup.setOnTouchListener(hideKeyboardTouchListener);
+
         btnSave = view.findViewById(R.id.btn_save_cookie);
 
         // Floating Window Views
@@ -82,6 +110,15 @@ public class SettingsFragment extends Fragment {
         // Init values
         inputMusicU.setText(settingsManager.getMusicU());
         inputSearchLimit.setText(String.valueOf(settingsManager.getSearchLimit()));
+
+        View.OnFocusChangeListener focusChangeListener = (v, hasFocus) -> {
+            if (!hasFocus) {
+                hideKeyboard(v);
+            }
+        };
+        inputMusicU.setOnFocusChangeListener(focusChangeListener);
+        inputSearchLimit.setOnFocusChangeListener(focusChangeListener);
+
         String currentQuality = settingsManager.getQuality();
 
         switch (currentQuality) {
@@ -160,7 +197,13 @@ public class SettingsFragment extends Fragment {
             if (!limitStr.isEmpty()) {
                 try {
                     int limit = Integer.parseInt(limitStr);
+                    if (limit < 1) limit = 1;
+                    if (limit > 100) limit = 100;
                     settingsManager.setSearchLimit(limit);
+                    // Update UI to reflect capped value
+                    if (!limitStr.equals(String.valueOf(limit))) {
+                        inputSearchLimit.setText(String.valueOf(limit));
+                    }
                 } catch (NumberFormatException e) {
                     Toast.makeText(getContext(), "Invalid limit number", Toast.LENGTH_SHORT).show();
                 }
@@ -288,6 +331,15 @@ public class SettingsFragment extends Fragment {
             btnColorPurple.setAlpha(1.0f);
             btnColorPurple.setText("✓");
             btnColorPurple.setTextColor(Color.WHITE);
+        }
+    }
+
+    private void hideKeyboard(View view) {
+        if (view != null) {
+            InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+            }
         }
     }
 }

@@ -1,9 +1,13 @@
 package com.midairlogn.mlnetease;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioGroup;
@@ -32,6 +36,10 @@ public class HomeFragment extends Fragment implements MusicPlayerManager.OnSongC
     private Button btnPlayPause;
     private Button btnPlayAll;
 
+    private long lastSearchTime = 0;
+    private long lastPlayAllTime = 0;
+    private static final long CLICK_DEBOUNCE_DELAY = 1000; // 1 second
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -43,10 +51,30 @@ public class HomeFragment extends Fragment implements MusicPlayerManager.OnSongC
         super.onViewCreated(view, savedInstanceState);
         neteaseApi = new NeteaseApi(new SettingsManager(requireContext()));
 
+        // Make root layout focusable to intercept clicks for keyboard hiding
+        view.setFocusable(true);
+        view.setFocusableInTouchMode(true);
+
+        View.OnTouchListener hideKeyboardTouchListener = (v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                if (getActivity() != null && getActivity().getCurrentFocus() != null) {
+                    hideKeyboard(getActivity().getCurrentFocus());
+                    getActivity().getCurrentFocus().clearFocus();
+                }
+            }
+            return false;
+        };
+
+        view.setOnTouchListener(hideKeyboardTouchListener);
+
         searchInput = view.findViewById(R.id.search_input);
         searchButton = view.findViewById(R.id.search_button);
         searchTypeGroup = view.findViewById(R.id.search_type_group);
         recyclerView = view.findViewById(R.id.recycler_view);
+
+        recyclerView.setOnTouchListener(hideKeyboardTouchListener);
+        searchTypeGroup.setOnTouchListener(hideKeyboardTouchListener);
+
         playerContainer = view.findViewById(R.id.player_container);
         currentSongTitle = view.findViewById(R.id.current_song_title);
         currentSongArtist = view.findViewById(R.id.current_song_artist);
@@ -65,9 +93,57 @@ public class HomeFragment extends Fragment implements MusicPlayerManager.OnSongC
             }
         }
 
-        searchButton.setOnClickListener(v -> performSearch());
+        searchButton.setOnClickListener(v -> {
+            String input = searchInput.getText().toString().trim();
+            if (input.isEmpty()) {
+                Toast.makeText(getContext(), "Please enter keywords", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastSearchTime < CLICK_DEBOUNCE_DELAY) {
+                return;
+            }
+            lastSearchTime = currentTime;
+
+            hideKeyboard(v);
+            performSearch();
+        });
+
+        searchInput.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus) {
+                hideKeyboard(v);
+            }
+        });
+
+        searchInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                String input = searchInput.getText().toString().trim();
+                if (input.isEmpty()) {
+                    Toast.makeText(getContext(), "Please enter keywords", Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastSearchTime < CLICK_DEBOUNCE_DELAY) {
+                    return true;
+                }
+                lastSearchTime = currentTime;
+
+                hideKeyboard(v);
+                performSearch();
+                return true;
+            }
+            return false;
+        });
 
         btnPlayAll.setOnClickListener(v -> {
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastPlayAllTime < CLICK_DEBOUNCE_DELAY) {
+                return;
+            }
+            lastPlayAllTime = currentTime;
+
             List<Song> songs = adapter.getSongs();
             if (songs != null && !songs.isEmpty()) {
                 MusicPlayerManager.getInstance(getContext()).setPlaylist(songs);
@@ -325,6 +401,15 @@ public class HomeFragment extends Fragment implements MusicPlayerManager.OnSongC
             getActivity().runOnUiThread(() ->
                     Toast.makeText(getContext(), "Parse error", Toast.LENGTH_SHORT).show()
             );
+        }
+    }
+
+    private void hideKeyboard(View view) {
+        if (view != null) {
+            InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+            }
         }
     }
 }

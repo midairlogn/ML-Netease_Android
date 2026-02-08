@@ -4,7 +4,10 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/background_primary"
-    android:padding="16dp">
+    android:padding="16dp"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:clickable="true">
 
     <!-- Search Section -->
     <LinearLayout
@@ -27,7 +30,8 @@
             android:textColorHint="@color/text_secondary"
             android:background="@null"
             android:minHeight="40dp"
-            android:inputType="text"/>
+            android:inputType="text"
+            android:imeOptions="actionSearch"/>
 
         <Button
             android:id="@+id/search_button"
