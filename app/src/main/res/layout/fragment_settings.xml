@@ -243,15 +243,6 @@
              </LinearLayout>
         </LinearLayout>
 
-        <Button
-            android:id="@+id/btn_save_cookie"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:text="Save Settings"
-            android:textColor="@color/text_on_brand"
-            android:backgroundTint="@color/brand_primary"
-            android:layout_marginBottom="32dp"/>
-
         <TextView
             android:id="@+id/text_version_info"
             android:layout_width="match_parent"

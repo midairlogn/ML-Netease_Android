@@ -8,10 +8,16 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
@@ -30,7 +36,9 @@ public class SettingsFragment extends Fragment {
     private EditText inputMusicU;
     private EditText inputSearchLimit;
     private RadioGroup qualityGroup;
-    private Button btnSave;
+
+    private final Handler debounceHandler = new Handler(Looper.getMainLooper());
+    private Runnable saveRunnable;
 
     // Floating Window
     private Switch switchFloatingLyrics;
@@ -81,8 +89,6 @@ public class SettingsFragment extends Fragment {
         qualityGroup = view.findViewById(R.id.quality_group);
         qualityGroup.setOnTouchListener(hideKeyboardTouchListener);
 
-        btnSave = view.findViewById(R.id.btn_save_cookie);
-
         // Floating Window Views
         switchFloatingLyrics = view.findViewById(R.id.switch_floating_lyrics);
         layoutFloatingSettings = view.findViewById(R.id.layout_floating_settings);
@@ -111,13 +117,8 @@ public class SettingsFragment extends Fragment {
         inputMusicU.setText(settingsManager.getMusicU());
         inputSearchLimit.setText(String.valueOf(settingsManager.getSearchLimit()));
 
-        View.OnFocusChangeListener focusChangeListener = (v, hasFocus) -> {
-            if (!hasFocus) {
-                hideKeyboard(v);
-            }
-        };
-        inputMusicU.setOnFocusChangeListener(focusChangeListener);
-        inputSearchLimit.setOnFocusChangeListener(focusChangeListener);
+        // Input Listeners
+        setupInputListeners();
 
         String currentQuality = settingsManager.getQuality();
 
@@ -130,6 +131,17 @@ public class SettingsFragment extends Fragment {
             case "sky": qualityGroup.check(R.id.quality_sky); break;
             default: qualityGroup.check(R.id.quality_standard); break;
         }
+
+        qualityGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            String quality = "standard";
+            if (checkedId == R.id.quality_higher) quality = "higher";
+            else if (checkedId == R.id.quality_exhigh) quality = "exhigh";
+            else if (checkedId == R.id.quality_lossless) quality = "lossless";
+            else if (checkedId == R.id.quality_hires) quality = "hires";
+            else if (checkedId == R.id.quality_sky) quality = "sky";
+            settingsManager.setQuality(quality);
+            notifySettingsChanged();
+        });
 
         // Floating Window Init
         boolean isFloatingEnabled = settingsManager.isFloatingLyricsEnabled();
@@ -154,84 +166,157 @@ public class SettingsFragment extends Fragment {
                     return;
                 }
             }
+            settingsManager.setFloatingLyricsEnabled(isChecked);
             layoutFloatingSettings.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+            notifySettingsChanged();
         });
 
         // Color buttons
         btnColorRed.setOnClickListener(v -> {
             tempColor = Color.parseColor("#F44336");
             updateColorSelection();
+            settingsManager.setLyricColor(tempColor);
+            notifySettingsChanged();
         });
         btnColorBlue.setOnClickListener(v -> {
             tempColor = Color.parseColor("#2196F3");
             updateColorSelection();
+            settingsManager.setLyricColor(tempColor);
+            notifySettingsChanged();
         });
         btnColorGreen.setOnClickListener(v -> {
             tempColor = Color.parseColor("#4CAF50");
             updateColorSelection();
+            settingsManager.setLyricColor(tempColor);
+            notifySettingsChanged();
         });
         btnColorYellow.setOnClickListener(v -> {
             tempColor = Color.parseColor("#FFEB3B");
             updateColorSelection();
+            settingsManager.setLyricColor(tempColor);
+            notifySettingsChanged();
         });
         btnColorPurple.setOnClickListener(v -> {
             tempColor = Color.parseColor("#9C27B0");
             updateColorSelection();
+            settingsManager.setLyricColor(tempColor);
+            notifySettingsChanged();
         });
 
         // Size buttons
         btnSizePlus.setOnClickListener(v -> {
             tempSize = Math.min(30f, tempSize + 2);
             textFontSize.setText(String.valueOf((int)tempSize));
+            settingsManager.setLyricSize(tempSize);
+            notifySettingsChanged();
         });
         btnSizeMinus.setOnClickListener(v -> {
             tempSize = Math.max(10f, tempSize - 2);
             textFontSize.setText(String.valueOf((int)tempSize));
-        });
-
-        btnSave.setOnClickListener(v -> {
-            String cookie = inputMusicU.getText().toString().trim();
-            settingsManager.setMusicU(cookie);
-
-            String limitStr = inputSearchLimit.getText().toString().trim();
-            if (!limitStr.isEmpty()) {
-                try {
-                    int limit = Integer.parseInt(limitStr);
-                    if (limit < 1) limit = 1;
-                    if (limit > 100) limit = 100;
-                    settingsManager.setSearchLimit(limit);
-                    // Update UI to reflect capped value
-                    if (!limitStr.equals(String.valueOf(limit))) {
-                        inputSearchLimit.setText(String.valueOf(limit));
-                    }
-                } catch (NumberFormatException e) {
-                    Toast.makeText(getContext(), "Invalid limit number", Toast.LENGTH_SHORT).show();
-                }
-            }
-
-            int selectedId = qualityGroup.getCheckedRadioButtonId();
-            String quality = "standard";
-            if (selectedId == R.id.quality_higher) quality = "higher";
-            else if (selectedId == R.id.quality_exhigh) quality = "exhigh";
-            else if (selectedId == R.id.quality_lossless) quality = "lossless";
-            else if (selectedId == R.id.quality_hires) quality = "hires";
-            else if (selectedId == R.id.quality_sky) quality = "sky";
-
-            settingsManager.setQuality(quality);
-
-            // Floating Window Save
-            boolean enabled = switchFloatingLyrics.isChecked();
-            settingsManager.setFloatingLyricsEnabled(enabled);
-            settingsManager.setLyricColor(tempColor);
             settingsManager.setLyricSize(tempSize);
-
-            // Notify Service to update
-            Intent intent = new Intent(requireContext(), MusicService.class);
-            intent.setAction("ACTION_UPDATE_SETTINGS");
-            requireContext().startService(intent);
-
-            Toast.makeText(getContext(), "Settings Saved", Toast.LENGTH_SHORT).show();
+            notifySettingsChanged();
         });
+    }
+
+    private void setupInputListeners() {
+        // MUSIC_U Cookie
+        inputMusicU.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                scheduleSave(() -> settingsManager.setMusicU(s.toString().trim()));
+            }
+        });
+        inputMusicU.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+                saveAndClearFocus(inputMusicU);
+                return true;
+            }
+            return false;
+        });
+        inputMusicU.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus) {
+                saveAndClearFocus(inputMusicU);
+            }
+        });
+
+        // Search Result Limit
+        inputSearchLimit.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                scheduleSave(() -> validateAndSaveSearchLimit(s.toString().trim(), false));
+            }
+        });
+        inputSearchLimit.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+                saveAndClearFocus(inputSearchLimit);
+                return true;
+            }
+            return false;
+        });
+        inputSearchLimit.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus) {
+                saveAndClearFocus(inputSearchLimit);
+            }
+        });
+    }
+
+    private void scheduleSave(Runnable saveTask) {
+        if (saveRunnable != null) {
+            debounceHandler.removeCallbacks(saveRunnable);
+        }
+        saveRunnable = () -> {
+            saveTask.run();
+            notifySettingsChanged();
+        };
+        debounceHandler.postDelayed(saveRunnable, 300); // 300ms debounce
+    }
+
+    private void saveAndClearFocus(EditText editText) {
+        if (saveRunnable != null) {
+            debounceHandler.removeCallbacks(saveRunnable);
+            saveRunnable.run();
+            saveRunnable = null;
+        }
+        if (editText == inputSearchLimit) {
+            validateAndSaveSearchLimit(editText.getText().toString().trim(), true);
+        } else if (editText == inputMusicU) {
+            settingsManager.setMusicU(editText.getText().toString().trim());
+        }
+        notifySettingsChanged();
+        hideKeyboard(editText);
+        editText.clearFocus();
+    }
+
+    private void validateAndSaveSearchLimit(String limitStr, boolean updateUI) {
+        if (limitStr.isEmpty()) {
+            int defaultLimit = 10;
+            settingsManager.setSearchLimit(defaultLimit);
+            if (updateUI) {
+                inputSearchLimit.setText(String.valueOf(defaultLimit));
+            }
+            return;
+        }
+        try {
+            int limit = Integer.parseInt(limitStr);
+            boolean changed = false;
+            if (limit < 1) { limit = 1; changed = true; }
+            if (limit > 100) { limit = 100; changed = true; }
+            settingsManager.setSearchLimit(limit);
+            if (updateUI && changed) {
+                inputSearchLimit.setText(String.valueOf(limit));
+            }
+        } catch (NumberFormatException ignored) {}
+    }
+
+    private void notifySettingsChanged() {
+        if (getActivity() == null) return;
+        Intent intent = new Intent(requireContext(), MusicService.class);
+        intent.setAction("ACTION_UPDATE_SETTINGS");
+        requireContext().startService(intent);
     }
 
     @Override
