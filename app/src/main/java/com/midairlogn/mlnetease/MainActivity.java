@@ -273,6 +273,8 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         // Load Cover
         if (song.picUrl != null && !song.picUrl.equals(currentCoverUrl)) {
             currentCoverUrl = song.picUrl;
+            // Set placeholder first
+            miniPlayerThumb.setImageResource(R.drawable.ic_app_logo);
             new Thread(() -> {
                 try {
                     URL url = new URL(currentCoverUrl);
@@ -292,7 +294,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
                 }
             }).start();
         } else if (song.picUrl == null) {
-            miniPlayerThumb.setImageResource(R.drawable.ic_music_note);
+            miniPlayerThumb.setImageResource(R.drawable.ic_app_logo);
             currentCoverUrl = null;
         }
 

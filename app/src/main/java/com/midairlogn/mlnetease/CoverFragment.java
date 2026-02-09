@@ -19,6 +19,7 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
 
     private ImageView albumCover;
     private String currentUrl;
+    private boolean isPlaceholder = true;
 
     @Nullable
     @Override
@@ -32,7 +33,7 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
         albumCover = view.findViewById(R.id.album_cover);
 
         albumCover.setOnClickListener(v -> {
-            if (currentUrl != null && !currentUrl.isEmpty()) {
+            if (!isPlaceholder && currentUrl != null && !currentUrl.isEmpty()) {
                 Intent intent = new Intent(getContext(), ImageDetailActivity.class);
                 intent.putExtra("url", currentUrl);
                 startActivity(intent);
@@ -71,8 +72,10 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
 
     private void updateCover(String urlString) {
         currentUrl = urlString;
+        isPlaceholder = true;
+        albumCover.setImageResource(R.drawable.ic_app_logo); // Set placeholder immediately
+
         if (urlString == null || urlString.isEmpty()) {
-            albumCover.setImageResource(R.drawable.ic_home); // Fallback
             return;
         }
 
@@ -92,6 +95,7 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
                     getActivity().runOnUiThread(() -> {
                         if (urlString.equals(currentUrl)) {
                             albumCover.setImageBitmap(bitmap);
+                            isPlaceholder = false;
                         }
                     });
                 }
