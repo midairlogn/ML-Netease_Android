@@ -15,7 +15,7 @@ import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 import java.util.Locale;
 
-public class PlayerActivity extends AppCompatActivity implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener, MusicPlayerManager.OnFullInfoAvailableListener {
+public class PlayerActivity extends AppCompatActivity implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener, MusicPlayerManager.OnFullInfoAvailableListener, MusicPlayerManager.OnPlaybackModeChangedListener {
 
     private TextView songTitle, songArtist;
     private TextView currentTime, totalTime;
@@ -46,6 +46,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         musicPlayerManager.addOnSongChangedListener(this);
         musicPlayerManager.addOnFullInfoAvailableListener(this);
         musicPlayerManager.addOnPlaybackStateChangedListener(this);
+        musicPlayerManager.addOnPlaybackModeChangedListener(this);
 
         startProgressUpdater();
     }
@@ -196,6 +197,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         musicPlayerManager.removeOnSongChangedListener(this);
         musicPlayerManager.removeOnFullInfoAvailableListener(this);
         musicPlayerManager.removeOnPlaybackStateChangedListener(this);
+        musicPlayerManager.removeOnPlaybackModeChangedListener(this);
         handler.removeCallbacksAndMessages(null);
     }
 
@@ -212,6 +214,11 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
     @Override
     public void onPlaybackStateChanged(boolean isPlaying) {
         runOnUiThread(() -> updatePlaybackState(isPlaying));
+    }
+
+    @Override
+    public void onPlaybackModeChanged(int mode) {
+        runOnUiThread(this::updateModeIcon);
     }
 
     private static class PlayerPagerAdapter extends FragmentStateAdapter {
