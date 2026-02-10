@@ -114,7 +114,10 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         }
     }
 
+    private boolean lastIsPlaying = false;
     private void updatePlaybackState(boolean isPlaying) {
+        if (isPlaying == lastIsPlaying && btnPlayPause.getDrawable() != null) return;
+        lastIsPlaying = isPlaying;
         btnPlayPause.setImageResource(isPlaying ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
     }
 

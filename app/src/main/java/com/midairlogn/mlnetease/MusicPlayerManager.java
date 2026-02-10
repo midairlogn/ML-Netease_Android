@@ -21,7 +21,10 @@ public class MusicPlayerManager {
     private List<Song> playlist = new ArrayList<>();
     private int currentIndex = -1;
     private boolean isPaused = false;
+    private volatile boolean isSwitchingSong = false;
+    private boolean lastNotifiedState = false;
     private Context context;
+    private Handler mainHandler = new Handler(Looper.getMainLooper());
     private NeteaseApi neteaseApi;
     private int currentMode = MODE_ORDER;
     private Random random = new Random();
@@ -206,6 +209,7 @@ public class MusicPlayerManager {
 
         boolean isNewSong = (index != currentIndex);
         currentIndex = index;
+        isSwitchingSong = true; // Set switching flag
         // Temporarily disable completion listener to prevent race conditions during song loading/switching
         isCompletionListenerEnabled = false;
 
@@ -227,7 +231,7 @@ public class MusicPlayerManager {
 
         // Notify change immediately so UI updates (cover, title)
         notifySongChanged(song);
-        // Removed: notifyPlaybackStateChanged(false); // redundant, playNext/Previous/play will eventually trigger it via playUrl -> onPrepared or via explicit pause
+        // notifyPlaybackStateChanged(true); // Maintain playing state in UI
         currentLyric = "Loading...";
 
         // Fetch full info
@@ -291,6 +295,7 @@ public class MusicPlayerManager {
 
             mediaPlayer.prepareAsync();
             mediaPlayer.setOnPreparedListener(mp -> {
+                isSwitchingSong = false; // Reset switching flag
                 if (resumePosition > 0) {
                     mp.seekTo(resumePosition);
                     resumePosition = 0;
@@ -303,6 +308,7 @@ public class MusicPlayerManager {
             });
 
             mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+                isSwitchingSong = false; // Reset switching flag
                 android.util.Log.e("MusicPlayerManager", "MediaPlayer Error: what=" + what + ", extra=" + extra);
 
                 if (retryCount < MAX_RETRY) {
@@ -438,6 +444,7 @@ public class MusicPlayerManager {
     }
 
     public boolean isPlaying() {
+        if (isSwitchingSong) return true; // Report playing during switch to avoid UI jitter
         try {
             return mediaPlayer.isPlaying();
         } catch (Exception e) {
@@ -473,7 +480,7 @@ public class MusicPlayerManager {
     }
 
     private void notifyPlaylistChanged() {
-        new Handler(Looper.getMainLooper()).post(() -> {
+        mainHandler.post(() -> {
             for (OnPlaylistChangedListener listener : playlistChangedListeners) {
                 listener.onPlaylistChanged(playlist);
             }
@@ -481,7 +488,7 @@ public class MusicPlayerManager {
     }
 
     private void notifySongChanged(Song song) {
-        new Handler(Looper.getMainLooper()).post(() -> {
+        mainHandler.post(() -> {
             for (OnSongChangedListener listener : songChangedListeners) {
                 listener.onSongChanged(song);
             }
@@ -513,7 +520,7 @@ public class MusicPlayerManager {
     }
 
     private void notifyFullInfoAvailable(Song song) {
-        new Handler(Looper.getMainLooper()).post(() -> {
+        mainHandler.post(() -> {
             for (OnFullInfoAvailableListener listener : fullInfoAvailableListeners) {
                 listener.onFullInfoAvailable(song);
             }
@@ -521,7 +528,7 @@ public class MusicPlayerManager {
     }
 
     private void notifyPlaybackModeChanged(int mode) {
-        new Handler(Looper.getMainLooper()).post(() -> {
+        mainHandler.post(() -> {
             for (OnPlaybackModeChangedListener listener : playbackModeChangedListeners) {
                 listener.onPlaybackModeChanged(mode);
             }
@@ -529,7 +536,9 @@ public class MusicPlayerManager {
     }
 
     private void notifyPlaybackStateChanged(boolean isPlaying) {
-        new Handler(Looper.getMainLooper()).post(() -> {
+        if (isPlaying == lastNotifiedState) return;
+        lastNotifiedState = isPlaying;
+        mainHandler.post(() -> {
             for (OnPlaybackStateChangedListener listener : playbackStateChangedListeners) {
                 listener.onPlaybackStateChanged(isPlaying);
             }

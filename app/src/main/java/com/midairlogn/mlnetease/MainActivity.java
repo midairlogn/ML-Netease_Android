@@ -272,12 +272,19 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
 
         // Load Cover
         if (song.picUrl != null && !song.picUrl.equals(currentCoverUrl)) {
-            currentCoverUrl = song.picUrl;
-            // Set placeholder first
-            miniPlayerThumb.setImageResource(R.drawable.ic_app_logo);
+            final String targetUrl = song.picUrl;
+            currentCoverUrl = targetUrl;
+
+            // Only set placeholder if we don't have a valid cover already
+            // This prevents the "flash" when full info becomes available with the same URL
+            if (miniPlayerThumb.getDrawable() == null || miniPlayerThumb.getTag() == null || !targetUrl.equals(miniPlayerThumb.getTag())) {
+                miniPlayerThumb.setImageResource(R.drawable.ic_app_logo);
+                miniPlayerThumb.setTag(null); // Clear tag while loading
+            }
+
             new Thread(() -> {
                 try {
-                    URL url = new URL(currentCoverUrl);
+                    URL url = new URL(targetUrl);
                     HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                     connection.setDoInput(true);
                     connection.connect();
@@ -285,8 +292,10 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
                     Bitmap bitmap = BitmapFactory.decodeStream(input);
 
                     runOnUiThread(() -> {
-                        if (miniPlayerThumb != null) {
+                        // Only update if this is still the current song's URL
+                        if (targetUrl.equals(currentCoverUrl) && miniPlayerThumb != null) {
                             miniPlayerThumb.setImageBitmap(bitmap);
+                            miniPlayerThumb.setTag(targetUrl); // Mark as loaded
                         }
                     });
                 } catch (Exception e) {
@@ -295,13 +304,17 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
             }).start();
         } else if (song.picUrl == null) {
             miniPlayerThumb.setImageResource(R.drawable.ic_app_logo);
+            miniPlayerThumb.setTag(null);
             currentCoverUrl = null;
         }
 
         startProgressUpdater();
     }
 
+    private boolean lastIsPlaying = false;
     private void updatePlaybackState(boolean isPlaying) {
+        if (isPlaying == lastIsPlaying && miniPlayerPlayPause.getDrawable() != null) return;
+        lastIsPlaying = isPlaying;
         miniPlayerPlayPause.setImageResource(isPlaying ?
             android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
 

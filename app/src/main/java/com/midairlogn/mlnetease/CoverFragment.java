@@ -71,17 +71,27 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
     }
 
     private void updateCover(String urlString) {
+        if (urlString != null && urlString.equals(currentUrl) && !isPlaceholder) {
+            return;
+        }
+
         currentUrl = urlString;
-        isPlaceholder = true;
-        albumCover.setImageResource(R.drawable.ic_app_logo); // Set placeholder immediately
+
+        // Only set placeholder if we don't have a valid cover already
+        if (albumCover != null && (albumCover.getDrawable() == null || isPlaceholder || albumCover.getTag() == null || !urlString.equals(albumCover.getTag()))) {
+            isPlaceholder = true;
+            albumCover.setImageResource(R.drawable.ic_app_logo);
+            albumCover.setTag(null);
+        }
 
         if (urlString == null || urlString.isEmpty()) {
             return;
         }
 
+        final String targetUrl = urlString;
         new Thread(() -> {
             try {
-                URL url = new URL(urlString);
+                URL url = new URL(targetUrl);
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                 connection.setRequestMethod("GET");
                 connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/91.0.4472.164 NeteaseMusicDesktop/2.10.2.200154");
@@ -93,8 +103,9 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
 
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
-                        if (urlString.equals(currentUrl)) {
+                        if (targetUrl.equals(currentUrl)) {
                             albumCover.setImageBitmap(bitmap);
+                            albumCover.setTag(targetUrl);
                             isPlaceholder = false;
                         }
                     });
