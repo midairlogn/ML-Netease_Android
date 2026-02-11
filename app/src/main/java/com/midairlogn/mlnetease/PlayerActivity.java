@@ -15,7 +15,7 @@ import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 import java.util.Locale;
 
-public class PlayerActivity extends AppCompatActivity implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener, MusicPlayerManager.OnFullInfoAvailableListener, MusicPlayerManager.OnPlaybackModeChangedListener {
+public class PlayerActivity extends AppCompatActivity implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener, MusicPlayerManager.OnFullInfoAvailableListener, MusicPlayerManager.OnPlaybackModeChangedListener, MusicPlayerManager.OnSeekListener {
 
     private TextView songTitle, songArtist;
     private TextView currentTime, totalTime;
@@ -47,6 +47,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         musicPlayerManager.addOnFullInfoAvailableListener(this);
         musicPlayerManager.addOnPlaybackStateChangedListener(this);
         musicPlayerManager.addOnPlaybackModeChangedListener(this);
+        musicPlayerManager.addOnSeekListener(this);
 
         startProgressUpdater();
     }
@@ -206,6 +207,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         musicPlayerManager.removeOnFullInfoAvailableListener(this);
         musicPlayerManager.removeOnPlaybackStateChangedListener(this);
         musicPlayerManager.removeOnPlaybackModeChangedListener(this);
+        musicPlayerManager.removeOnSeekListener(this);
         handler.removeCallbacksAndMessages(null);
     }
 
@@ -227,6 +229,16 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
     @Override
     public void onPlaybackModeChanged(int mode) {
         runOnUiThread(this::updateModeIcon);
+    }
+
+    @Override
+    public void onSeek(int msec) {
+        runOnUiThread(() -> {
+            if (!isTracking) {
+                seekBar.setProgress(msec);
+                currentTime.setText(formatTime(msec));
+            }
+        });
     }
 
     private static class PlayerPagerAdapter extends FragmentStateAdapter {

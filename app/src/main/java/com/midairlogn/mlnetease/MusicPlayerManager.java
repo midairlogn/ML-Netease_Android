@@ -39,6 +39,7 @@ public class MusicPlayerManager {
     private List<OnPlaylistChangedListener> playlistChangedListeners = new ArrayList<>();
     private List<OnPlaybackModeChangedListener> playbackModeChangedListeners = new ArrayList<>();
     private List<OnFullInfoAvailableListener> fullInfoAvailableListeners = new ArrayList<>();
+    private List<OnSeekListener> seekListeners = new ArrayList<>();
 
     // Current extended info
     private String currentLyric = "";
@@ -62,6 +63,10 @@ public class MusicPlayerManager {
 
     public interface OnFullInfoAvailableListener {
         void onFullInfoAvailable(Song song);
+    }
+
+    public interface OnSeekListener {
+        void onSeek(int msec);
     }
 
     private MusicPlayerManager(Context context) {
@@ -424,6 +429,12 @@ public class MusicPlayerManager {
     public void seekTo(int msec) {
         try {
             mediaPlayer.seekTo(msec);
+            // Only notify listeners if we are not in the middle of switching songs.
+            // This prevents redundant notification updates during song transitions
+            // while still allowing synchronization for user-initiated seeks.
+            if (!isSwitchingSong) {
+                notifySeek(msec);
+            }
             notifyPlaybackStateChanged(isPlaying());
         } catch (Exception e) {
             e.printStackTrace();
@@ -527,6 +538,22 @@ public class MusicPlayerManager {
 
     public void removeOnFullInfoAvailableListener(OnFullInfoAvailableListener listener) {
         fullInfoAvailableListeners.remove(listener);
+    }
+
+    public void addOnSeekListener(OnSeekListener listener) {
+        seekListeners.add(listener);
+    }
+
+    public void removeOnSeekListener(OnSeekListener listener) {
+        seekListeners.remove(listener);
+    }
+
+    private void notifySeek(int msec) {
+        mainHandler.post(() -> {
+            for (OnSeekListener listener : seekListeners) {
+                listener.onSeek(msec);
+            }
+        });
     }
 
     private String lastFullInfoId = "";

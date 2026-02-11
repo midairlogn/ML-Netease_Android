@@ -81,6 +81,11 @@ public class MusicService extends Service {
 
     private final MusicPlayerManager.OnPlaybackStateChangedListener playbackStateChangedListener = this::updatePlaybackState;
 
+    private final MusicPlayerManager.OnSeekListener seekListener = msec -> {
+        // Ensure PlaybackState is updated with new position in MediaSession
+        updatePlaybackState(musicPlayerManager.isPlaying());
+    };
+
     private final MusicPlayerManager.OnPlaybackModeChangedListener playbackModeChangedListener = mode -> {
         // Ensure PlaybackState is updated with new Custom Action icon for mode
         updatePlaybackState(musicPlayerManager.isPlaying());
@@ -108,6 +113,7 @@ public class MusicService extends Service {
         musicPlayerManager.addOnFullInfoAvailableListener(fullInfoAvailableListener);
         musicPlayerManager.addOnPlaybackStateChangedListener(playbackStateChangedListener);
         musicPlayerManager.addOnPlaybackModeChangedListener(playbackModeChangedListener);
+        musicPlayerManager.addOnSeekListener(seekListener);
 
         // Initial notification to satisfy startForegroundService requirements
         Song currentSong = musicPlayerManager.getCurrentSong();
@@ -521,6 +527,7 @@ public class MusicService extends Service {
         musicPlayerManager.removeOnFullInfoAvailableListener(fullInfoAvailableListener);
         musicPlayerManager.removeOnPlaybackStateChangedListener(playbackStateChangedListener);
         musicPlayerManager.removeOnPlaybackModeChangedListener(playbackModeChangedListener);
+        musicPlayerManager.removeOnSeekListener(seekListener);
         if (floatingLyricsManager != null) {
             floatingLyricsManager.hide();
         }
