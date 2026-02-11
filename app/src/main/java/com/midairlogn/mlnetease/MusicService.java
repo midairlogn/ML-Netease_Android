@@ -213,6 +213,8 @@ public class MusicService extends Service {
         // 3. Initial update for new song with logo placeholder
         if (isNewSong) {
             // Update 1 for new song: Title/Artist change
+            // Optimization: If song.picUrl is null, use logo.
+            // If it's not null, we'll fetch it soon, so only show logo briefly IF we don't have it cached (handled above)
             Bitmap logo = BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo);
             updateMediaSessionMetadata(song, logo);
             showNotification(song, musicPlayerManager.isPlaying(), logo, false);

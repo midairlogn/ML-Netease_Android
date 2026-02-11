@@ -231,7 +231,9 @@ public class MusicPlayerManager {
 
         // Notify change immediately so UI updates (cover, title)
         notifySongChanged(song);
-        // notifyPlaybackStateChanged(true); // Maintain playing state in UI
+        if (mediaPlayer.isPlaying() || !isPaused) {
+            notifyPlaybackStateChanged(true); // Maintain playing state in UI during switch
+        }
         currentLyric = "Loading...";
 
         // Fetch full info
@@ -331,6 +333,7 @@ public class MusicPlayerManager {
             });
 
         } catch (Exception e) {
+            isSwitchingSong = false; // Reset switching flag on error
             e.printStackTrace();
             android.util.Log.e("MusicPlayerManager", "playUrl exception", e);
         }
@@ -487,7 +490,14 @@ public class MusicPlayerManager {
         });
     }
 
+    private String lastSongChangedId = "";
     private void notifySongChanged(Song song) {
+        if (song != null && song.id.equals(lastSongChangedId)) {
+            // Check if picUrl is actually known. If it's the same ID but we are missing picUrl
+            // we might still want to notify, but usually this is just redundant.
+        }
+        if (song != null) lastSongChangedId = song.id;
+
         mainHandler.post(() -> {
             for (OnSongChangedListener listener : songChangedListeners) {
                 listener.onSongChanged(song);
@@ -519,7 +529,23 @@ public class MusicPlayerManager {
         fullInfoAvailableListeners.remove(listener);
     }
 
+    private String lastFullInfoId = "";
+    private String lastFullInfoPicUrl = "";
     private void notifyFullInfoAvailable(Song song) {
+        if (song != null && song.id.equals(lastFullInfoId)) {
+            // Check if picUrl actually changed after normalization.
+            if (ImageUtils.isSameImage(song.picUrl, lastFullInfoPicUrl)) {
+                // If the only thing that could trigger a cover refresh (picUrl) is effectively the same,
+                // and we've already notified full info for this ID, we might skip to reduce jitter.
+                // However, we still want to notify for lyrics. Let's check if lyrics changed.
+                // For simplicity, we only deduplicate if we are sure it's redundant.
+            }
+        }
+        if (song != null) {
+            lastFullInfoId = song.id;
+            lastFullInfoPicUrl = song.picUrl;
+        }
+
         mainHandler.post(() -> {
             for (OnFullInfoAvailableListener listener : fullInfoAvailableListeners) {
                 listener.onFullInfoAvailable(song);

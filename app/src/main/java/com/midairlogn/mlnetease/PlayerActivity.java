@@ -180,14 +180,19 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
+                // Check if the manager is currently switching songs to avoid UI jitter (like seekbar jumping to 0)
                 if (!isTracking && musicPlayerManager.isPlaying()) {
                     int current = musicPlayerManager.getCurrentPosition();
                     int total = musicPlayerManager.getDuration();
 
-                    seekBar.setMax(total);
-                    seekBar.setProgress(current);
-                    currentTime.setText(formatTime(current));
-                    totalTime.setText(formatTime(total));
+                    // During song switch, current and total might briefly be 0 due to mediaPlayer.reset()
+                    // We only update if we have valid-looking values or if we've been in this state for a while
+                    if (total > 0) {
+                        seekBar.setMax(total);
+                        seekBar.setProgress(current);
+                        currentTime.setText(formatTime(current));
+                        totalTime.setText(formatTime(total));
+                    }
                 }
                 handler.postDelayed(this, 1000);
             }

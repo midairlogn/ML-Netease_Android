@@ -71,23 +71,32 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
     }
 
     private void updateCover(String urlString) {
-        if (urlString != null && urlString.equals(currentUrl) && !isPlaceholder) {
+        if (urlString != null && ImageUtils.isSameImage(urlString, currentUrl) && !isPlaceholder) {
             return;
         }
 
+        // If URL is the same but we are still loading, don't restart thread or reset UI
+        if (urlString != null && ImageUtils.isSameImage(urlString, currentUrl) && albumCover.getTag() != null && ImageUtils.isSameImage(urlString, (String) albumCover.getTag())) {
+            return;
+        }
+
+        boolean urlChanged = urlString == null || !ImageUtils.isSameImage(urlString, currentUrl);
         currentUrl = urlString;
 
-        // Only set placeholder if we don't have a valid cover already
-        if (albumCover != null && (albumCover.getDrawable() == null || isPlaceholder || albumCover.getTag() == null || !urlString.equals(albumCover.getTag()))) {
-            isPlaceholder = true;
-            albumCover.setImageResource(R.drawable.ic_app_logo);
-            albumCover.setTag(null);
+        // Only set placeholder if the URL actually changed or we have nothing
+        if (albumCover != null && (albumCover.getDrawable() == null || (urlChanged && isPlaceholder) || albumCover.getTag() == null || !ImageUtils.isSameImage(urlString, (String) albumCover.getTag()))) {
+            if (urlChanged) {
+                isPlaceholder = true;
+                albumCover.setImageResource(R.drawable.ic_app_logo);
+                albumCover.setTag(null);
+            }
         }
 
         if (urlString == null || urlString.isEmpty()) {
             return;
         }
 
+        // Use a final variable for the thread to check against the LATEST currentUrl
         final String targetUrl = urlString;
         new Thread(() -> {
             try {

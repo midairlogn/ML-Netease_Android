@@ -271,38 +271,42 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         miniPlayerArtist.setText(song.artists);
 
         // Load Cover
-        if (song.picUrl != null && !song.picUrl.equals(currentCoverUrl)) {
+        if (song.picUrl != null) {
+            boolean urlChanged = !ImageUtils.isSameImage(song.picUrl, currentCoverUrl);
             final String targetUrl = song.picUrl;
             currentCoverUrl = targetUrl;
 
-            // Only set placeholder if we don't have a valid cover already
-            // This prevents the "flash" when full info becomes available with the same URL
-            if (miniPlayerThumb.getDrawable() == null || miniPlayerThumb.getTag() == null || !targetUrl.equals(miniPlayerThumb.getTag())) {
-                miniPlayerThumb.setImageResource(R.drawable.ic_app_logo);
-                miniPlayerThumb.setTag(null); // Clear tag while loading
+            // Only set placeholder if the URL actually changed or we have nothing
+            if (miniPlayerThumb.getDrawable() == null || (urlChanged && miniPlayerThumb.getTag() == null) || !ImageUtils.isSameImage(targetUrl, (String) miniPlayerThumb.getTag())) {
+                if (urlChanged) {
+                    miniPlayerThumb.setImageResource(R.drawable.ic_app_logo);
+                    miniPlayerThumb.setTag(null); // Clear tag while loading
+                }
             }
 
-            new Thread(() -> {
-                try {
-                    URL url = new URL(targetUrl);
-                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                    connection.setDoInput(true);
-                    connection.connect();
-                    InputStream input = connection.getInputStream();
-                    Bitmap bitmap = BitmapFactory.decodeStream(input);
+            if (urlChanged || miniPlayerThumb.getTag() == null) {
+                new Thread(() -> {
+                    try {
+                        URL url = new URL(targetUrl);
+                        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                        connection.setDoInput(true);
+                        connection.connect();
+                        InputStream input = connection.getInputStream();
+                        Bitmap bitmap = BitmapFactory.decodeStream(input);
 
-                    runOnUiThread(() -> {
-                        // Only update if this is still the current song's URL
-                        if (targetUrl.equals(currentCoverUrl) && miniPlayerThumb != null) {
-                            miniPlayerThumb.setImageBitmap(bitmap);
-                            miniPlayerThumb.setTag(targetUrl); // Mark as loaded
-                        }
-                    });
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }).start();
-        } else if (song.picUrl == null) {
+                        runOnUiThread(() -> {
+                            // Only update if this is still the current song's URL
+                            if (targetUrl.equals(currentCoverUrl) && miniPlayerThumb != null) {
+                                miniPlayerThumb.setImageBitmap(bitmap);
+                                miniPlayerThumb.setTag(targetUrl); // Mark as loaded
+                            }
+                        });
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }).start();
+            }
+        } else {
             miniPlayerThumb.setImageResource(R.drawable.ic_app_logo);
             miniPlayerThumb.setTag(null);
             currentCoverUrl = null;
