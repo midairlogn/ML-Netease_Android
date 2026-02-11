@@ -26,7 +26,8 @@ public class MusicPlayerManager {
     private Context context;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private NeteaseApi neteaseApi;
-    private int currentMode = MODE_ORDER;
+    private SettingsManager settingsManager;
+    private int currentMode;
     private Random random = new Random();
     private int retryCount = 0;
     private static final int MAX_RETRY = 3;
@@ -71,7 +72,9 @@ public class MusicPlayerManager {
 
     private MusicPlayerManager(Context context) {
         this.context = context.getApplicationContext();
-        this.neteaseApi = new NeteaseApi(new SettingsManager(this.context));
+        this.settingsManager = new SettingsManager(this.context);
+        this.neteaseApi = new NeteaseApi(settingsManager);
+        this.currentMode = settingsManager.getPlayMode();
         mediaPlayer = new MediaPlayer();
 
         android.media.AudioAttributes audioAttributes = new android.media.AudioAttributes.Builder()
@@ -106,6 +109,7 @@ public class MusicPlayerManager {
 
     public void setPlaybackMode(int mode) {
         this.currentMode = mode;
+        settingsManager.setPlayMode(mode);
         notifyPlaybackModeChanged(mode);
     }
 

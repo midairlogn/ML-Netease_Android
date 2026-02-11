@@ -11,6 +11,7 @@ public class SettingsManager {
     private static final String KEY_FLOATING_LYRICS_ENABLED = "floating_lyrics_enabled";
     private static final String KEY_LYRIC_COLOR = "lyric_color";
     private static final String KEY_LYRIC_SIZE = "lyric_size";
+    private static final String KEY_PLAY_MODE = "play_mode";
 
     private SharedPreferences prefs;
 
@@ -65,6 +66,14 @@ public class SettingsManager {
 
     public float getLyricSize() {
         return prefs.getFloat(KEY_LYRIC_SIZE, 16f); // Default 16sp
+    }
+
+    public void setPlayMode(int mode) {
+        prefs.edit().putInt(KEY_PLAY_MODE, mode).apply();
+    }
+
+    public int getPlayMode() {
+        return prefs.getInt(KEY_PLAY_MODE, 0); // Default to MODE_ORDER (0)
     }
 
     public SharedPreferences getPrefs() {
