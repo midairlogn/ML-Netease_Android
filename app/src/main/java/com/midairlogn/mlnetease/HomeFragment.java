@@ -113,6 +113,7 @@ public class HomeFragment extends Fragment implements MusicPlayerManager.OnSongC
             lastSearchTime = currentTime;
 
             hideKeyboard(v);
+            searchInput.clearFocus();
             performSearch();
         });
 
@@ -137,6 +138,7 @@ public class HomeFragment extends Fragment implements MusicPlayerManager.OnSongC
                 lastSearchTime = currentTime;
 
                 hideKeyboard(v);
+                searchInput.clearFocus();
                 performSearch();
                 return true;
             }
