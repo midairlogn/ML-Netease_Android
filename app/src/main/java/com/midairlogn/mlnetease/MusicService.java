@@ -202,7 +202,7 @@ public class MusicService extends Service {
         lastSongId = song.id;
 
         // 1. Optimization: If the image URL hasn't changed and a bitmap already exists, update Metadata directly
-        if (song.picUrl != null && song.picUrl.equals(lastPicUrl) && lastBitmap != null) {
+        if (song.picUrl != null && ImageUtils.isSameImage(song.picUrl, lastPicUrl) && lastBitmap != null) {
             updateMediaSessionMetadata(song, lastBitmap);
             if (isNewSong) {
                 // Update 1 for cached song: Full info ready immediately
@@ -212,7 +212,7 @@ public class MusicService extends Service {
         }
 
         // 2. Prevent duplicate downloads
-        if (song.picUrl != null && !song.picUrl.isEmpty() && song.picUrl.equals(fetchingPicUrl)) {
+        if (song.picUrl != null && !song.picUrl.isEmpty() && ImageUtils.isSameImage(song.picUrl, fetchingPicUrl)) {
             return;
         }
 
@@ -255,7 +255,7 @@ public class MusicService extends Service {
             Bitmap finalAlbumArt = albumArt;
 
             handler.post(() -> {
-                if (song.picUrl != null && song.picUrl.equals(fetchingPicUrl)) {
+                if (song.picUrl != null && ImageUtils.isSameImage(song.picUrl, fetchingPicUrl)) {
                     fetchingPicUrl = null;
                 }
 
