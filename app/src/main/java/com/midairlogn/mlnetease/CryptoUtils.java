@@ -85,7 +85,6 @@ public class CryptoUtils {
     }
 
     public static String toHeaderJsonStr(String requestId) {
-        // {"os": "pc", "appver": "", "osver": "", "deviceId": "mlncm!", "requestId": "..."}
         return "{\"os\": \"pc\", \"appver\": \"\", \"osver\": \"\", \"deviceId\": \"mlncm!\", \"requestId\": \"" + requestId + "\"}";
     }
 
@@ -109,10 +108,6 @@ public class CryptoUtils {
             json.put("level", level);
             json.put("encodeType", "flac");
 
-            // headerConfig is already a JSON string, but the API expects it as a string value within the JSON object
-            // (i.e. double-encoded JSON if using JSONObject.put directly with a string that is JSON)
-            // Python: 'header': json.dumps(config) -> config is dict, json.dumps makes it string.
-            // Here headerConfig is already the string representation.
             json.put("header", headerConfig);
 
             if ("sky".equals(level)) {
