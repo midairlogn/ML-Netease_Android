@@ -35,7 +35,7 @@ public class HomeFragment extends Fragment {
 
     private long lastSearchTime = 0;
     private long lastPlayAllTime = 0;
-    private static final long CLICK_DEBOUNCE_DELAY = 1000; // 1 second
+    private static final long CLICK_DEBOUNCE_DELAY = 1000;
 
     @Nullable
     @Override
