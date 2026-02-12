@@ -139,42 +139,11 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
         View centerView = recyclerView.findChildViewUnder(recyclerView.getWidth() / 2f, centerY);
 
         if (centerView != null) {
-            // Check if center Y intersects with the content of the view (excluding large gaps if any)
-            // Our items touch each other (24dp total padding).
-            // Let's define "Between" as close to the top or bottom edge?
-            // Actually, usually "Highlight" means we are mostly over the item.
-            // Let's check if the center is within the view bounds.
-            // Since items touch, it's ALWAYS within SOME view bounds.
-            // The user request: "Only in 2 lyric boxes... show thin dashed line".
-            // This implies there's a space where we are NOT on a lyric box.
-            // But our layout has no margins.
-            // Maybe we should simulate this by checking if we are near the boundary?
-            // E.g. within 10% of top or bottom?
-
             int top = centerView.getTop();
             int bottom = centerView.getBottom();
             int height = bottom - top;
             int viewCenterY = (top + bottom) / 2;
-
-            // Simple logic: If we are over a view, show highlight.
-            // But to support "dashed line between", we need a "gap" logic.
-            // Let's assume if we are within e.g. 8dp of the edge, show dashed line?
-            // Or maybe just show highlight always if on view?
-            // User said: "only in 2 lyric boxes... show thin dashed line".
-            // This strongly suggests they want the dashed line ONLY when strictly between items.
-            // With 0 margin, "between" is a single pixel line.
-            // So we rarely see it.
-            // To make it visible, we can treat the "padding area" as "between".
-            // item_lyric has 12dp top and bottom padding.
-            // So text is from top+12 to bottom-12.
-            // If centerY is within [top, top+12] or [bottom-12, bottom], we are "between".
-
-            // padding is in dp, need to convert or guess. 12dp is approx 30-40px.
-            // Let's get padding from view if possible, or assume based on layout.
-            // item_lyric.xml paddingVertical="12dp".
-            // Let's just use a threshold, say 30px (approx 10-12dp).
-            // Actually, we can check centerView.getPaddingTop().
-
+            
             int paddingTop = centerView.getPaddingTop();
             int paddingBottom = centerView.getPaddingBottom();
 
@@ -186,19 +155,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
                 // Show Highlight
                 lyricsHighlightBg.setVisibility(View.VISIBLE);
                 lyricsTimelineLine.setVisibility(View.INVISIBLE); // Hide dashed line
-
-                // Adjust Highlight Height and Position
-                // We want highlight to cover the text area?
-                // Text area height = height - paddingVertical
-                // Top margin of highlight = top + paddingTop?
-                // But highlight is a sibling of RecyclerView (behind it).
-                // We need to set its Y translation or layout params.
-                // Since it's layout_gravity center_vertical, it stays in center.
-                // But the ITEM is moving.
-                // Wait, if the highlight is STATIONARY (center of screen),
-                // then we are selecting the item that is currently PASSING through the center.
-                // So the highlight doesn't move. The item moves.
-                // So we just need to set the highlight height to match the text height of the item.
+                
                 int textHeight = height - paddingTop - paddingBottom;
                 if (lyricsHighlightBg.getLayoutParams().height != textHeight) {
                     lyricsHighlightBg.getLayoutParams().height = textHeight;
@@ -217,15 +174,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
                 // In the gap
                 lyricsHighlightBg.setVisibility(View.INVISIBLE);
                 lyricsTimelineLine.setVisibility(View.VISIBLE);
-                // Keep time of the item we are "closest" to?
-                // Or maybe just keep selectedTime as is.
-                // If we are in top padding, we are closer to THIS item's text.
-                // If in bottom padding, still THIS item.
-                // Wait, if relativeY < paddingTop, we are above text -> "Between prev and this"
-                // If relativeY > height - paddingBottom, we are below text -> "Between this and next"
 
-                // Let's just update time based on the item we are technically "in",
-                // even if we show dashed line.
                 int pos = recyclerView.getChildAdapterPosition(centerView);
                 if (pos != RecyclerView.NO_POSITION && pos < lyricLines.size()) {
                     long time = lyricLines.get(pos).time;
@@ -286,15 +235,13 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
         });
     }
 
-    // Removed parseLyrics method as it is now in LyricsUtils
-
     private void startUpdateTask() {
         stopUpdateTask();
         updateTask = new Runnable() {
             @Override
             public void run() {
                 syncLyrics();
-                handler.postDelayed(this, 300); // Check every 300ms
+                handler.postDelayed(this, 300);
             }
         };
         handler.post(updateTask);
