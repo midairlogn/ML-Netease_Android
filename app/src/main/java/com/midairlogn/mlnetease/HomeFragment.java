@@ -23,7 +23,7 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
-public class HomeFragment extends Fragment implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener {
+public class HomeFragment extends Fragment {
 
     private NeteaseApi neteaseApi;
     private EditText searchInput;
@@ -31,9 +31,6 @@ public class HomeFragment extends Fragment implements MusicPlayerManager.OnSongC
     private RadioGroup searchTypeGroup;
     private RecyclerView recyclerView;
     private SongAdapter adapter;
-    private View playerContainer;
-    private TextView currentSongTitle, currentSongArtist;
-    private Button btnPlayPause;
     private Button btnPlayAll;
 
     private long lastSearchTime = 0;
@@ -75,10 +72,6 @@ public class HomeFragment extends Fragment implements MusicPlayerManager.OnSongC
         recyclerView.setOnTouchListener(hideKeyboardTouchListener);
         searchTypeGroup.setOnTouchListener(hideKeyboardTouchListener);
 
-        playerContainer = view.findViewById(R.id.player_container);
-        currentSongTitle = view.findViewById(R.id.current_song_title);
-        currentSongArtist = view.findViewById(R.id.current_song_artist);
-        btnPlayPause = view.findViewById(R.id.btn_play_pause);
         btnPlayAll = view.findViewById(R.id.btn_play_all);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -162,21 +155,6 @@ public class HomeFragment extends Fragment implements MusicPlayerManager.OnSongC
         adapter.setOnItemClickListener(song -> {
             MusicPlayerManager.getInstance(getContext()).addOrPlaySong(song);
         });
-
-        playerContainer.setOnClickListener(v -> {
-            startActivity(new android.content.Intent(getContext(), PlayerActivity.class));
-        });
-
-        btnPlayPause.setOnClickListener(v -> {
-            MusicPlayerManager.getInstance(getContext()).togglePlayPause();
-        });
-
-        MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
-        manager.addOnSongChangedListener(this);
-        manager.addOnPlaybackStateChangedListener(this);
-
-        updateMiniPlayer(manager.getCurrentSong());
-        updatePlayPauseButton(manager.isPlaying());
     }
 
     @Override
@@ -188,38 +166,8 @@ public class HomeFragment extends Fragment implements MusicPlayerManager.OnSongC
     }
 
     @Override
-    public void onSongChanged(Song song) {
-        if (getActivity() != null) {
-            getActivity().runOnUiThread(() -> updateMiniPlayer(song));
-        }
-    }
-
-    @Override
-    public void onPlaybackStateChanged(boolean isPlaying) {
-        if (getActivity() != null) {
-            getActivity().runOnUiThread(() -> updatePlayPauseButton(isPlaying));
-        }
-    }
-
-    private void updateMiniPlayer(Song song) {
-        if (song == null || playerContainer == null) return;
-        playerContainer.setVisibility(View.VISIBLE);
-        currentSongTitle.setText(song.name);
-        currentSongArtist.setText(song.artists);
-    }
-
-    private void updatePlayPauseButton(boolean isPlaying) {
-        if (btnPlayPause != null) {
-            btnPlayPause.setText(isPlaying ? "Pause" : "Play");
-        }
-    }
-
-    @Override
     public void onDestroyView() {
         super.onDestroyView();
-        MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
-        manager.removeOnSongChangedListener(this);
-        manager.removeOnPlaybackStateChangedListener(this);
     }
 
     private void performSearch() {

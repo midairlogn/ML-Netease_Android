@@ -88,56 +88,6 @@
         android:layout_marginBottom="8dp"
         android:visibility="gone"/>
 
-    <!-- Player Info (Mini Player) -->
-    <LinearLayout
-        android:id="@+id/player_container"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:background="@color/background_secondary"
-        android:padding="12dp"
-        android:visibility="gone"
-        android:layout_marginBottom="8dp">
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/current_song_title"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Song Title"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:maxLines="1"
-                android:ellipsize="end"/>
-
-            <TextView
-                android:id="@+id/current_song_artist"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Artist"
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp"
-                android:maxLines="1"
-                android:ellipsize="end"/>
-        </LinearLayout>
-
-        <Button
-            android:id="@+id/btn_play_pause"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Play"
-            android:textColor="@color/text_on_brand"
-            android:backgroundTint="@color/brand_primary"
-            android:layout_marginStart="12dp"/>
-    </LinearLayout>
-
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_view"
         android:layout_width="match_parent"
