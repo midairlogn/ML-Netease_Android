@@ -56,7 +56,7 @@ public class FloatingLyricsManager {
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable lyricUpdateTask;
     private Runnable autoCollapseTask = this::collapse;
-    private static final long AUTO_COLLAPSE_DELAY = 5000; // 5 seconds
+    private static final long AUTO_COLLAPSE_DELAY = 5000;
 
     private final MusicPlayerManager.OnPlaybackStateChangedListener playbackStateListener = new MusicPlayerManager.OnPlaybackStateChangedListener() {
         @Override
@@ -285,10 +285,6 @@ public class FloatingLyricsManager {
                             updateScreenSize();
 
                             // Ensure it doesn't go off screen
-                            // Since gravity is TOP | LEFT, x/y is top-left corner
-                            // But actually default gravity for window manager is often center or something if not specified.
-                            // I set Gravity.TOP | Gravity.START in LayoutParams.
-
                             if (newX < 0) newX = 0;
                             if (newY < 0) newY = 0;
                             if (newX + width > screenWidth) newX = screenWidth - width;
