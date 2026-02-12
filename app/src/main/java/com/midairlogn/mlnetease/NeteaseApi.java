@@ -103,8 +103,6 @@ public class NeteaseApi {
                     .add("c", jsonIds.toString())
                     .build();
 
-            // Use BrowserBuilder as per Python playlist_detail logic (although standalone songDetail might vary,
-            // but in playlist context it uses browser headers)
             Request request = getBrowserBuilder("https://interface3.music.163.com/api/v3/song/detail")
                     .post(body)
                     .build();
@@ -134,7 +132,7 @@ public class NeteaseApi {
 
             Request request = getDesktopBuilder(url)
                     .post(body)
-                    .header("Referer", "") // Match Python post() helper
+                    .header("Referer", "")
                     .build();
 
             execute(request, callback);
@@ -157,8 +155,6 @@ public class NeteaseApi {
                 .add("yrv", "0")
                 .build();
 
-        // Python lyric_v1 uses raw requests.post (no Desktop headers).
-        // Using BrowserBuilder (Mozilla) but removing Referer to be closer to "no referer".
         Request request = getBrowserBuilder("https://interface3.music.163.com/api/song/lyric")
                 .post(body)
                 .removeHeader("Referer")
@@ -266,7 +262,7 @@ public class NeteaseApi {
                     for (String tid : batch) {
                         JSONObject item = new JSONObject();
                         try {
-                            item.put("id", Long.parseLong(tid)); // Use number to match Python logic
+                            item.put("id", Long.parseLong(tid));
                         } catch (NumberFormatException e) {
                             item.put("id", tid);
                         }
@@ -288,7 +284,6 @@ public class NeteaseApi {
                     if (songJson.has("songs")) {
                         JSONArray songs = songJson.getJSONArray("songs");
                         for (int k = 0; k < songs.length(); k++) {
-                            // Construct song info similar to Python search_music/playlist_detail
                             JSONObject song = songs.getJSONObject(k);
                             JSONObject songInfo = new JSONObject();
                             songInfo.put("id", song.opt("id"));
@@ -342,7 +337,7 @@ public class NeteaseApi {
                 android.util.Log.d("NeteaseApi", "songUrl payload: " + payloadJson);
 
                 FormBody bodyUrl = new FormBody.Builder().add("params", params).build();
-                // Override Referer for songUrl as per Python 'post' function (Referer='')
+                // Override Referer for songUrl
                 Request reqUrl = getDesktopBuilder(url).post(bodyUrl).header("Referer", "").build();
                 Response resUrl = client.newCall(reqUrl).execute();
                 String resUrlStr = resUrl.body().string();
@@ -361,9 +356,6 @@ public class NeteaseApi {
                 objId.put("v", 0);
                 jsonIds.put(objId);
                 FormBody bodyDetail = new FormBody.Builder().add("c", jsonIds.toString()).build();
-                // Use BrowserBuilder for song/detail here to match playlistDetail logic?
-                // Wait, Python uses `name_v1` which uses basic `requests.post`.
-                // But let's stick to BrowserBuilder for consistency with playlistDetail
                 Request reqDetail = getBrowserBuilder("https://interface3.music.163.com/api/v3/song/detail").post(bodyDetail).build();
                 Response resDetail = client.newCall(reqDetail).execute();
                 JSONObject jsonDetail = new JSONObject(resDetail.body().string());
