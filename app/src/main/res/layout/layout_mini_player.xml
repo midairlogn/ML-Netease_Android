@@ -88,7 +88,7 @@
         <FrameLayout
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginEnd="16dp">
+            android:layout_marginEnd="12dp">
 
             <ProgressBar
                 android:id="@+id/mini_player_progress"
@@ -112,8 +112,9 @@
         <!-- Playlist Button -->
         <ImageButton
             android:id="@+id/mini_player_playlist"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:padding="4dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_playlist"
