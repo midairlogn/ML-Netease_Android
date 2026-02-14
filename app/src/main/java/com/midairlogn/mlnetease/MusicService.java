@@ -458,7 +458,7 @@ public class MusicService extends Service {
                 .addAction(floatAction)
                 .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
                         .setMediaSession(mediaSession.getSessionToken())
-                        .setShowActionsInCompactView(0, 1, 2, 3, 4)) // Show all actions in compact view if space permits, or prioritize play/pause
+                        .setShowActionsInCompactView(1, 2, 3)) // Show Previous, Play/Pause, and Next in compact view
                 .setOngoing(isPlaying)
                 .build();
 
