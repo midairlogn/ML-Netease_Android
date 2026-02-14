@@ -240,7 +240,9 @@ public class MusicPlayerManager {
 
         // Notify change immediately so UI updates (cover, title)
         notifySongChanged(song);
-
+        if (mediaPlayer.isPlaying() || !isPaused) {
+            notifyPlaybackStateChanged(true); // Maintain playing state in UI during switch
+        }
         currentLyric = "Loading...";
 
         // Fetch full info
