@@ -275,16 +275,26 @@ public class MusicPlayerManager {
                             playUrl(url);
                         } else {
                             android.util.Log.e("MusicPlayerManager", "Song URL is empty. Check VIP/Copyright status.");
+                            isSwitchingSong = false;
+                            notifyPlaybackStateChanged(false);
                         }
+                    } else {
+                        isSwitchingSong = false;
+                        notifyPlaybackStateChanged(false);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
+                    isSwitchingSong = false;
+                    notifyPlaybackStateChanged(false);
                 }
             }
 
             @Override
             public void onError(String error) {
-                // Handle error
+                if (currentIndex != index) return;
+                android.util.Log.e("MusicPlayerManager", "getSongFullInfo error: " + error);
+                isSwitchingSong = false;
+                notifyPlaybackStateChanged(false);
             }
         });
     }
@@ -292,6 +302,7 @@ public class MusicPlayerManager {
     private void playUrl(String url) {
         if (url == null || url.trim().isEmpty() || "null".equals(url)) {
             android.util.Log.e("MusicPlayerManager", "playUrl called with invalid url: " + url);
+            isSwitchingSong = false;
             return;
         }
         try {
