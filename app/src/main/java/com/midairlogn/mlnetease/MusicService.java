@@ -315,10 +315,9 @@ public class MusicService extends Service {
             }
         }
 
-        float playbackSpeed = isPlaying ? 1.0f : 0.0f;
         PlaybackStateCompat.Builder builder = new PlaybackStateCompat.Builder()
                 .setActions(actions)
-                .setState(state, musicPlayerManager.getCurrentPosition(), playbackSpeed);
+                .setState(state, musicPlayerManager.getCurrentPosition(), 1.0f);
 
         // Add Custom Actions
         int modeIcon = R.drawable.ic_mode_order;
@@ -337,6 +336,7 @@ public class MusicService extends Service {
         builder.addCustomAction("ACTION_TOGGLE_FLOATING", "Lyrics", floatIcon);
 
         PlaybackStateCompat newState = builder.build();
+        PlaybackStateCompat oldState = mediaSession.getController().getPlaybackState();
 
         // 3. Precise Notification Trigger Logic
         boolean playStateChanged = isPlaying != lastNotifiedPlayingState;
@@ -350,9 +350,7 @@ public class MusicService extends Service {
         // - If it's a "not playing" state (isPlaying=false), we only update if we were previously "playing".
         // - This prevents jitter if multiple "paused/idle/buffering" events fire.
         if (!songChanged && !isPlaying && !lastNotifiedPlayingState && !forceNotification && !modeChanged && !floatingStateChanged) {
-             // Already notified as Paused for this song. Keep MediaSession position/state synced
-             // (e.g. paused seeks), but skip redundant notification refreshes.
-             mediaSession.setPlaybackState(newState);
+             // Already notified as Paused for this song, skip redundant Paused/Buffering updates
              return;
         }
 
