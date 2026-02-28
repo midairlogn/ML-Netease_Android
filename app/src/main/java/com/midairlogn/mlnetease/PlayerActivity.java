@@ -25,7 +25,26 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
     private ViewPager2 viewPager;
     private MusicPlayerManager musicPlayerManager;
     private Handler handler = new Handler(Looper.getMainLooper());
+    private static final long PROGRESS_UPDATE_INTERVAL_MS = 1000L;
     private boolean isTracking = false;
+    private boolean isActivityVisible = false;
+    private boolean isProgressTickerRunning = false;
+    private final Runnable progressTickerRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isProgressTickerRunning) {
+                return;
+            }
+            if (!isTracking) {
+                syncProgressUi();
+            }
+            if (shouldRunProgressTicker()) {
+                handler.postDelayed(this, PROGRESS_UPDATE_INTERVAL_MS);
+            } else {
+                isProgressTickerRunning = false;
+            }
+        }
+    };
     private Toast currentToast;
 
     @Override
@@ -49,7 +68,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         musicPlayerManager.addOnPlaybackModeChangedListener(this);
         musicPlayerManager.addOnSeekListener(this);
 
-        startProgressUpdater();
+
     }
 
     private void initViews() {
@@ -188,24 +207,42 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         }
     }
 
-    private void startProgressUpdater() {
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                // Check if the manager is currently switching songs to avoid UI jitter (like seekbar jumping to 0)
-                if (!isTracking) {
-                    syncProgressUi();
-                }
-                handler.postDelayed(this, 1000);
-            }
-        }, 1000);
+
+    private boolean shouldRunProgressTicker() {
+        return isActivityVisible && musicPlayerManager.isPlaying();
+    }
+
+    private void startProgressTickerIfNeeded() {
+        if (!shouldRunProgressTicker() || isProgressTickerRunning) {
+            return;
+        }
+        isProgressTickerRunning = true;
+        handler.removeCallbacks(progressTickerRunnable);
+        handler.postDelayed(progressTickerRunnable, PROGRESS_UPDATE_INTERVAL_MS);
+    }
+
+    private void stopProgressTicker() {
+        if (!isProgressTickerRunning) {
+            return;
+        }
+        isProgressTickerRunning = false;
+        handler.removeCallbacks(progressTickerRunnable);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        isActivityVisible = true;
         updatePlaybackState(musicPlayerManager.isPlaying());
         syncProgressUi();
+        startProgressTickerIfNeeded();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        isActivityVisible = false;
+        stopProgressTicker();
     }
 
     @Override
@@ -238,7 +275,15 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
 
     @Override
     public void onPlaybackStateChanged(boolean isPlaying) {
-        runOnUiThread(() -> updatePlaybackState(isPlaying));
+        runOnUiThread(() -> {
+            updatePlaybackState(isPlaying);
+            syncProgressUi();
+            if (isPlaying) {
+                startProgressTickerIfNeeded();
+            } else {
+                stopProgressTicker();
+            }
+        });
     }
 
     @Override
