@@ -529,7 +529,7 @@ public class MusicService extends Service {
         musicPlayerManager.removeOnPlaybackModeChangedListener(playbackModeChangedListener);
         musicPlayerManager.removeOnSeekListener(seekListener);
         if (floatingLyricsManager != null) {
-            floatingLyricsManager.hide();
+            floatingLyricsManager.release();
         }
         mediaSession.release();
         super.onDestroy();

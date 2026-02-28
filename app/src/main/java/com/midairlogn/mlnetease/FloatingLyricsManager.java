@@ -699,4 +699,9 @@ public class FloatingLyricsManager {
             hide();
         }
     }
+
+    public void release() {
+        hide();
+        musicPlayerManager.removeOnPlaybackStateChangedListener(playbackStateListener);
+    }
 }
