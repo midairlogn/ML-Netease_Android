@@ -177,35 +177,27 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         return String.format(Locale.getDefault(), "%02d:%02d", minutes, secs);
     }
 
-    private void syncProgressUi() {
-        int current = musicPlayerManager.getCurrentPosition();
-        int total = musicPlayerManager.getDuration();
-        if (total > 0) {
-            seekBar.setMax(total);
-            seekBar.setProgress(current);
-            currentTime.setText(formatTime(current));
-            totalTime.setText(formatTime(total));
-        }
-    }
-
     private void startProgressUpdater() {
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
                 // Check if the manager is currently switching songs to avoid UI jitter (like seekbar jumping to 0)
-                if (!isTracking) {
-                    syncProgressUi();
+                if (!isTracking && musicPlayerManager.isPlaying()) {
+                    int current = musicPlayerManager.getCurrentPosition();
+                    int total = musicPlayerManager.getDuration();
+
+                    // During song switch, current and total might briefly be 0 due to mediaPlayer.reset()
+                    // We only update if we have valid-looking values or if we've been in this state for a while
+                    if (total > 0) {
+                        seekBar.setMax(total);
+                        seekBar.setProgress(current);
+                        currentTime.setText(formatTime(current));
+                        totalTime.setText(formatTime(total));
+                    }
                 }
                 handler.postDelayed(this, 1000);
             }
         }, 1000);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        updatePlaybackState(musicPlayerManager.isPlaying());
-        syncProgressUi();
     }
 
     @Override
@@ -221,14 +213,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
 
     @Override
     public void onSongChanged(Song song) {
-        runOnUiThread(() -> {
-            updateSongInfo(song);
-            seekBar.setProgress(0);
-            seekBar.setMax(0);
-            currentTime.setText("00:00");
-            totalTime.setText("--:--");
-            handler.post(this::syncProgressUi);
-        });
+        runOnUiThread(() -> updateSongInfo(song));
     }
 
     @Override
