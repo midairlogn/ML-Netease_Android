@@ -121,7 +121,7 @@ public class MusicService extends Service {
             updateMetadata(currentSong);
         } else {
             Song placeholder = new Song("", "Music Player", "Ready to play", "", "");
-            showNotification(placeholder, false, BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo), true, "service:init-placeholder");
+            showNotification(placeholder, false, BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo), true);
         }
 
         // Ensure PlaybackState is initialized with CustomActions
@@ -194,7 +194,7 @@ public class MusicService extends Service {
             lastPicUrl = "";
             lastBitmap = null;
             Song placeholder = new Song("", "Music Player", "Ready to play", "", "");
-            showNotification(placeholder, false, BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo), true, "metadata:null-song");
+            showNotification(placeholder, false, BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo), true);
             return;
         }
 
@@ -205,7 +205,8 @@ public class MusicService extends Service {
         if (song.picUrl != null && ImageUtils.isSameImage(song.picUrl, lastPicUrl) && lastBitmap != null) {
             updateMediaSessionMetadata(song, lastBitmap);
             if (isNewSong) {
-                showNotification(song, musicPlayerManager.isPlaying(), lastBitmap, false, "metadata:cached-art");
+                // Update 1 for cached song: Full info ready immediately
+                showNotification(song, musicPlayerManager.isPlaying(), lastBitmap, false);
             }
             return;
         }
@@ -217,9 +218,12 @@ public class MusicService extends Service {
 
         // 3. Initial update for new song with logo placeholder
         if (isNewSong) {
+            // Update 1 for new song: Title/Artist change
+            // Optimization: If song.picUrl is null, use logo.
+            // If it's not null, we'll fetch it soon, so only show logo briefly IF we don't have it cached (handled above)
             Bitmap logo = BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo);
             updateMediaSessionMetadata(song, logo);
-            showNotification(song, musicPlayerManager.isPlaying(), logo, false, "metadata:new-song");
+            showNotification(song, musicPlayerManager.isPlaying(), logo, false);
         }
 
         if (song.picUrl == null || song.picUrl.isEmpty()) {
@@ -263,7 +267,9 @@ public class MusicService extends Service {
                 lastPicUrl = song.picUrl;
 
                 updateMediaSessionMetadata(song, finalAlbumArt);
-                showNotification(song, musicPlayerManager.isPlaying(), finalAlbumArt, true, "metadata:art-ready");
+                // Update 2 for new song: Album art ready. We use forceUpdate=true here
+                // because ID and State might not have changed, but the Bitmap did.
+                showNotification(song, musicPlayerManager.isPlaying(), finalAlbumArt, true);
             });
         }).start();
     }
@@ -316,10 +322,9 @@ public class MusicService extends Service {
             }
         }
 
-        float playbackSpeed = isPlaying ? 1.0f : 0.0f;
         PlaybackStateCompat.Builder builder = new PlaybackStateCompat.Builder()
                 .setActions(actions)
-                .setState(state, musicPlayerManager.getCurrentPosition(), playbackSpeed);
+                .setState(state, musicPlayerManager.getCurrentPosition(), 1.0f);
 
         // Add Custom Actions
         int modeIcon = R.drawable.ic_mode_order;
@@ -338,6 +343,7 @@ public class MusicService extends Service {
         builder.addCustomAction("ACTION_TOGGLE_FLOATING", "Lyrics", floatIcon);
 
         PlaybackStateCompat newState = builder.build();
+        PlaybackStateCompat oldState = mediaSession.getController().getPlaybackState();
 
         // 3. Precise Notification Trigger Logic
         boolean playStateChanged = isPlaying != lastNotifiedPlayingState;
@@ -351,33 +357,19 @@ public class MusicService extends Service {
         // - If it's a "not playing" state (isPlaying=false), we only update if we were previously "playing".
         // - This prevents jitter if multiple "paused/idle/buffering" events fire.
         if (!songChanged && !isPlaying && !lastNotifiedPlayingState && !forceNotification && !modeChanged && !floatingStateChanged) {
-             // Already notified as Paused for this song. Keep MediaSession position/state synced
-             // (e.g. paused seeks), but skip redundant notification refreshes.
-             mediaSession.setPlaybackState(newState);
+             // Already notified as Paused for this song, skip redundant Paused/Buffering updates
              return;
         }
 
         if (songChanged || playStateChanged || modeChanged || floatingStateChanged || forceNotification) {
-            String reason;
-            if (forceNotification) {
-                reason = "playback:force";
-            } else if (songChanged) {
-                reason = "playback:song-changed";
-            } else if (playStateChanged) {
-                reason = "playback:state-changed";
-            } else if (modeChanged) {
-                reason = "playback:mode-changed";
-            } else {
-                reason = "playback:floating-changed";
-            }
-            showNotification(currentSong, isPlaying, null, false, reason);
+            showNotification(currentSong, isPlaying, null, false);
         }
 
         // Always update MediaSession
         mediaSession.setPlaybackState(newState);
     }
 
-    private void showNotification(Song song, boolean isPlaying, Bitmap albumArt, boolean forceUpdate, String reason) {
+    private void showNotification(Song song, boolean isPlaying, Bitmap albumArt, boolean forceUpdate) {
         String songId = (song != null) ? song.id : "";
         int mode = musicPlayerManager.getPlaybackMode();
         boolean floatingState = new SettingsManager(this).isFloatingLyricsEnabled();

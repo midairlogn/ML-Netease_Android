@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicLong;
 import org.json.JSONObject;
 
 public class MusicPlayerManager {
@@ -36,8 +35,6 @@ public class MusicPlayerManager {
     private static final long PROGRESS_UPDATE_INTERVAL_MS = 500L;
     private int resumePosition = 0;
     private boolean isCompletionListenerEnabled = false;
-    private final AtomicLong playRequestIdGenerator = new AtomicLong(0);
-    private volatile long activePlayRequestId = 0;
 
     // Callbacks
     private List<OnSongChangedListener> songChangedListeners = new ArrayList<>();
@@ -247,7 +244,6 @@ public class MusicPlayerManager {
             resumePosition = 0;
         }
 
-        boolean wasPlaying = isPlaying();
         boolean isNewSong = (index != currentIndex);
         currentIndex = index;
         isSwitchingSong = true;
@@ -284,8 +280,8 @@ public class MusicPlayerManager {
         neteaseApi.getSongFullInfo(song.id, new NeteaseApi.ApiCallback() {
             @Override
             public void onSuccess(String result) {
-                // Ignore stale callback from previous play request.
-                if (requestId != activePlayRequestId || currentIndex != index) return;
+                // Check if the current index is still what we expect
+                if (currentIndex != index) return;
 
                 try {
                     JSONObject root = new JSONObject(result);
@@ -307,7 +303,7 @@ public class MusicPlayerManager {
 
                         if (!url.isEmpty()) {
                             android.util.Log.d("MusicPlayerManager", "Playing URL: " + url);
-                            playUrl(url, index, requestId);
+                            playUrl(url);
                         } else {
                             android.util.Log.e("MusicPlayerManager", "Song URL is empty. Check VIP/Copyright status.");
                             isSwitchingSong = false;
@@ -326,7 +322,7 @@ public class MusicPlayerManager {
 
             @Override
             public void onError(String error) {
-                if (requestId != activePlayRequestId || currentIndex != index) return;
+                if (currentIndex != index) return;
                 android.util.Log.e("MusicPlayerManager", "getSongFullInfo error: " + error);
                 isSwitchingSong = false;
                 notifyPlaybackStateChanged(false);
@@ -334,12 +330,10 @@ public class MusicPlayerManager {
         });
     }
 
-    private void playUrl(String url, int expectedIndex, long requestId) {
+    private void playUrl(String url) {
         if (url == null || url.trim().isEmpty() || "null".equals(url)) {
             android.util.Log.e("MusicPlayerManager", "playUrl called with invalid url: " + url);
-            if (requestId == activePlayRequestId) {
-                isSwitchingSong = false;
-            }
+            isSwitchingSong = false;
             return;
         }
         try {
@@ -352,12 +346,9 @@ public class MusicPlayerManager {
             android.net.Uri uri = android.net.Uri.parse(url);
             mediaPlayer.setDataSource(context, uri, headers);
 
+            mediaPlayer.prepareAsync();
             mediaPlayer.setOnPreparedListener(mp -> {
-                if (requestId != activePlayRequestId || currentIndex != expectedIndex) {
-                    return;
-                }
-
-                isSwitchingSong = false;
+                isSwitchingSong = false; // Reset switching flag
                 if (resumePosition > 0) {
                     mp.seekTo(resumePosition);
                     resumePosition = 0;
@@ -370,11 +361,7 @@ public class MusicPlayerManager {
             });
 
             mediaPlayer.setOnErrorListener((mp, what, extra) -> {
-                if (requestId != activePlayRequestId || currentIndex != expectedIndex) {
-                    return true;
-                }
-
-                isSwitchingSong = false;
+                isSwitchingSong = false; // Reset switching flag
                 android.util.Log.e("MusicPlayerManager", "MediaPlayer Error: what=" + what + ", extra=" + extra);
 
                 if (retryCount < MAX_RETRY) {
@@ -386,7 +373,7 @@ public class MusicPlayerManager {
                     } catch (Exception e) {
                         resumePosition = 0;
                     }
-                    // Reload current song with a new request token
+                    // Reload current song
                     play(currentIndex, true);
                     return true;
                 }
@@ -396,12 +383,8 @@ public class MusicPlayerManager {
                 return true;
             });
 
-            mediaPlayer.prepareAsync();
-
         } catch (Exception e) {
-            if (requestId == activePlayRequestId) {
-                isSwitchingSong = false;
-            }
+            isSwitchingSong = false; // Reset switching flag on error
             e.printStackTrace();
             android.util.Log.e("MusicPlayerManager", "playUrl exception", e);
         }
@@ -529,6 +512,7 @@ public class MusicPlayerManager {
     }
 
     public boolean isPlaying() {
+        if (isSwitchingSong) return true; // Report playing during switch to avoid UI jitter
         try {
             return mediaPlayer.isPlaying();
         } catch (Exception e) {
