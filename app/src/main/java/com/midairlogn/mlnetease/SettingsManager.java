@@ -12,6 +12,7 @@ public class SettingsManager {
     private static final String KEY_LYRIC_COLOR = "lyric_color";
     private static final String KEY_LYRIC_SIZE = "lyric_size";
     private static final String KEY_PLAY_MODE = "play_mode";
+    private static final String KEY_TRANSLATION_INTEGRATION_ENABLED = "translation_integration_enabled";
 
     private SharedPreferences prefs;
 
@@ -74,6 +75,14 @@ public class SettingsManager {
 
     public int getPlayMode() {
         return prefs.getInt(KEY_PLAY_MODE, 0); // Default to MODE_ORDER (0)
+    }
+
+    public void setTranslationIntegrationEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_TRANSLATION_INTEGRATION_ENABLED, enabled).apply();
+    }
+
+    public boolean isTranslationIntegrationEnabled() {
+        return prefs.getBoolean(KEY_TRANSLATION_INTEGRATION_ENABLED, false);
     }
 
     public SharedPreferences getPrefs() {

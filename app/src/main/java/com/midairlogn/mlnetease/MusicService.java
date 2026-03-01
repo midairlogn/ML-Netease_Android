@@ -73,7 +73,7 @@ public class MusicService extends Service {
             updateMetadata(song);
             // Update lyrics for floating window
             if (floatingLyricsManager != null) {
-                floatingLyricsManager.updateLyrics(musicPlayerManager.getCurrentLyric());
+                floatingLyricsManager.updateLyrics(musicPlayerManager.getCurrentLyric(), musicPlayerManager.getCurrentTLyric());
                 floatingLyricsManager.updateSongInfo(song);
             }
         }

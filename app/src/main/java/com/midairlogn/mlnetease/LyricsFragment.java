@@ -15,11 +15,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener, MusicPlayerManager.OnFullInfoAvailableListener {
 
@@ -40,6 +37,8 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
     private boolean isUserScrolling = false;
     private Runnable hideOverlayRunnable;
     private long selectedTime = -1;
+    private SettingsManager settingsManager;
+    private android.content.SharedPreferences.OnSharedPreferenceChangeListener preferenceChangeListener;
 
     @Nullable
     @Override
@@ -78,11 +77,20 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
         setupTimelineInteraction();
 
         MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
+        settingsManager = new SettingsManager(requireContext());
         manager.addOnSongChangedListener(this);
         manager.addOnFullInfoAvailableListener(this);
         manager.addOnPlaybackStateChangedListener(this);
 
-        updateLyrics(manager.getCurrentLyric());
+        preferenceChangeListener = (sharedPreferences, key) -> {
+            if (settingsManager == null) return;
+            if (!"translation_integration_enabled".equals(key)) return;
+            MusicPlayerManager refreshedManager = MusicPlayerManager.getInstance(requireContext());
+            updateLyrics(refreshedManager.getCurrentLyric(), refreshedManager.getCurrentTLyric());
+        };
+        settingsManager.getPrefs().registerOnSharedPreferenceChangeListener(preferenceChangeListener);
+
+        updateLyrics(manager.getCurrentLyric(), manager.getCurrentTLyric());
 
         if (manager.isPlaying()) {
             startUpdateTask();
@@ -200,17 +208,21 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
         MusicPlayerManager.getInstance(getContext()).removeOnSongChangedListener(this);
         MusicPlayerManager.getInstance(getContext()).removeOnFullInfoAvailableListener(this);
         MusicPlayerManager.getInstance(getContext()).removeOnPlaybackStateChangedListener(this);
+        if (settingsManager != null && preferenceChangeListener != null) {
+            settingsManager.getPrefs().unregisterOnSharedPreferenceChangeListener(preferenceChangeListener);
+        }
     }
 
     @Override
     public void onSongChanged(Song song) {
         // Reset lyrics when song changes
-        updateLyrics("Loading...");
+        updateLyrics("Loading...", "");
     }
 
     @Override
     public void onFullInfoAvailable(Song song) {
-        updateLyrics(MusicPlayerManager.getInstance(getContext()).getCurrentLyric());
+        MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
+        updateLyrics(manager.getCurrentLyric(), manager.getCurrentTLyric());
     }
 
     @Override
@@ -222,11 +234,17 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
         }
     }
 
-    private void updateLyrics(String lyrics) {
-        if (getActivity() == null) return;
+    private void updateLyrics(String lyrics, String tlyrics) {
+        if (getActivity() == null || settingsManager == null) return;
 
         getActivity().runOnUiThread(() -> {
-            lyricLines = LyricsUtils.parseLyrics(lyrics);
+            boolean showTranslation = settingsManager.isTranslationIntegrationEnabled();
+            if (showTranslation) {
+                lyricLines = LyricsUtils.mergeLyricsWithTranslation(lyrics, tlyrics);
+            } else {
+                lyricLines = LyricsUtils.parseLyrics(lyrics);
+            }
+            adapter.setShowTranslation(showTranslation);
             adapter.setLyrics(lyricLines);
             currentLineIndex = -1;
             if (!lyricLines.isEmpty()) {

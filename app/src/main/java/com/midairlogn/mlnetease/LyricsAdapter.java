@@ -1,5 +1,6 @@
 package com.midairlogn.mlnetease;
 
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,9 +15,16 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewH
 
     private List<LyricLine> lyrics = new ArrayList<>();
     private int activeIndex = -1;
+    private boolean showTranslation = false;
 
     public void setLyrics(List<LyricLine> lyrics) {
         this.lyrics = lyrics;
+        notifyDataSetChanged();
+    }
+
+    public void setShowTranslation(boolean showTranslation) {
+        if (this.showTranslation == showTranslation) return;
+        this.showTranslation = showTranslation;
         notifyDataSetChanged();
     }
 
@@ -40,14 +48,31 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewH
         LyricLine line = lyrics.get(position);
         holder.text.setText(line.text);
 
+        boolean hasTranslation = !TextUtils.isEmpty(line.translation);
+        if (showTranslation && hasTranslation) {
+            holder.translation.setVisibility(View.VISIBLE);
+            holder.translation.setText(line.translation);
+        } else {
+            holder.translation.setVisibility(View.GONE);
+            holder.translation.setText("");
+        }
+
         if (position == activeIndex) {
             holder.text.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.text_primary));
             holder.text.setAlpha(1.0f);
             holder.text.setTextSize(16);
+
+            holder.translation.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.text_primary));
+            holder.translation.setAlpha(0.85f);
+            holder.translation.setTextSize(12);
         } else {
             holder.text.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.text_secondary));
             holder.text.setAlpha(0.6f);
             holder.text.setTextSize(13);
+
+            holder.translation.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.text_secondary));
+            holder.translation.setAlpha(0.5f);
+            holder.translation.setTextSize(11);
         }
     }
 
@@ -58,10 +83,12 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewH
 
     static class LyricViewHolder extends RecyclerView.ViewHolder {
         TextView text;
+        TextView translation;
 
         public LyricViewHolder(@NonNull View itemView) {
             super(itemView);
             text = itemView.findViewById(R.id.text_lyric_line);
+            translation = itemView.findViewById(R.id.text_lyric_translation);
         }
     }
 }

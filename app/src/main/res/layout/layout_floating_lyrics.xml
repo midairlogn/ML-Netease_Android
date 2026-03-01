@@ -67,45 +67,92 @@
     </RelativeLayout>
 
     <!-- Lyrics -->
-    <TextView
-        android:id="@+id/tv_lyrics_current"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:maxWidth="300dp"
-        android:text="Current Lyrics..."
-        android:textColor="#FFFFFF"
-        android:textSize="16sp"
-        android:singleLine="true"
-        android:ellipsize="none"
-        android:scrollHorizontally="true"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="4dp"
-        android:paddingBottom="4dp"
-        android:shadowColor="#FF000000"
-        android:shadowDx="2"
-        android:shadowDy="2"
-        android:shadowRadius="4"
-        android:layout_gravity="center_horizontal"/>
+        android:orientation="vertical"
+        android:layout_gravity="center_horizontal">
 
-    <TextView
-        android:id="@+id/tv_lyrics_next"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:maxWidth="300dp"
-        android:text=""
-        android:textColor="#DDDDDD"
-        android:textSize="14sp"
-        android:singleLine="true"
-        android:ellipsize="end"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingBottom="4dp"
-        android:shadowColor="#FF000000"
-        android:shadowDx="2"
-        android:shadowDy="2"
-        android:shadowRadius="4"
-        android:layout_gravity="center_horizontal"/>
+        <TextView
+            android:id="@+id/tv_lyrics_current"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxWidth="300dp"
+            android:text="Current Lyrics..."
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:singleLine="true"
+            android:ellipsize="none"
+            android:scrollHorizontally="true"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="2dp"
+            android:shadowColor="#FF000000"
+            android:shadowDx="2"
+            android:shadowDy="2"
+            android:shadowRadius="4"
+            android:layout_gravity="center_horizontal"/>
+
+        <TextView
+            android:id="@+id/tv_lyrics_current_translation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxWidth="300dp"
+            android:text=""
+            android:textColor="#CCDDDDDD"
+            android:textSize="12sp"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="4dp"
+            android:visibility="gone"
+            android:shadowColor="#FF000000"
+            android:shadowDx="2"
+            android:shadowDy="2"
+            android:shadowRadius="4"
+            android:layout_gravity="center_horizontal"/>
+
+        <TextView
+            android:id="@+id/tv_lyrics_next"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxWidth="300dp"
+            android:text=""
+            android:textColor="#DDDDDD"
+            android:textSize="14sp"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="2dp"
+            android:shadowColor="#FF000000"
+            android:shadowDx="2"
+            android:shadowDy="2"
+            android:shadowRadius="4"
+            android:layout_gravity="center_horizontal"/>
+
+        <TextView
+            android:id="@+id/tv_lyrics_next_translation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxWidth="300dp"
+            android:text=""
+            android:textColor="#BBDDDDDD"
+            android:textSize="11sp"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="4dp"
+            android:visibility="gone"
+            android:shadowColor="#FF000000"
+            android:shadowDx="2"
+            android:shadowDy="2"
+            android:shadowRadius="4"
+            android:layout_gravity="center_horizontal"/>
+    </LinearLayout>
 
     <!-- Controls (Expanded only) -->
     <LinearLayout

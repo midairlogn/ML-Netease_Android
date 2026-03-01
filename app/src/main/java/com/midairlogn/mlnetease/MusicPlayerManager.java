@@ -279,6 +279,7 @@ public class MusicPlayerManager {
             notifyPlaybackStateChanged(false);
         }
         currentLyric = "Loading...";
+        currentTLyric = "";
 
         // Fetch full info
         neteaseApi.getSongFullInfo(song.id, new NeteaseApi.ApiCallback() {
@@ -545,6 +546,10 @@ public class MusicPlayerManager {
 
     public String getCurrentLyric() {
         return currentLyric;
+    }
+
+    public String getCurrentTLyric() {
+        return currentTLyric;
     }
 
     public void addOnSongChangedListener(OnSongChangedListener listener) {

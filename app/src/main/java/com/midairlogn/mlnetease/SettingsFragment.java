@@ -43,6 +43,7 @@ public class SettingsFragment extends Fragment {
 
     // Floating Window
     private Switch switchFloatingLyrics;
+    private Switch switchTranslationIntegration;
     private LinearLayout layoutFloatingSettings;
     private Button btnColorRed, btnColorBlue, btnColorGreen, btnColorYellow, btnColorPurple;
     private TextView textFontSize;
@@ -96,6 +97,7 @@ public class SettingsFragment extends Fragment {
 
         // Floating Window Views
         switchFloatingLyrics = view.findViewById(R.id.switch_floating_lyrics);
+        switchTranslationIntegration = view.findViewById(R.id.switch_translation_integration);
         layoutFloatingSettings = view.findViewById(R.id.layout_floating_settings);
         btnColorRed = view.findViewById(R.id.btn_color_red);
         btnColorBlue = view.findViewById(R.id.btn_color_blue);
@@ -154,6 +156,12 @@ public class SettingsFragment extends Fragment {
             else if (checkedId == R.id.quality_hires) quality = "hires";
             else if (checkedId == R.id.quality_sky) quality = "sky";
             settingsManager.setQuality(quality);
+            notifySettingsChanged();
+        });
+
+        switchTranslationIntegration.setChecked(settingsManager.isTranslationIntegrationEnabled());
+        switchTranslationIntegration.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            settingsManager.setTranslationIntegrationEnabled(isChecked);
             notifySettingsChanged();
         });
 
@@ -389,7 +397,8 @@ public class SettingsFragment extends Fragment {
         }
 
         boolean isFloatingEnabled = settingsManager.isFloatingLyricsEnabled();
-        // Avoid triggering listener if value is same
+        boolean isTranslationEnabled = settingsManager.isTranslationIntegrationEnabled();
+        // Avoid triggering listeners if value is same
         switchFloatingLyrics.setOnCheckedChangeListener(null);
         switchFloatingLyrics.setChecked(isFloatingEnabled);
         switchFloatingLyrics.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -405,6 +414,13 @@ public class SettingsFragment extends Fragment {
             }
             settingsManager.setFloatingLyricsEnabled(isChecked);
             layoutFloatingSettings.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+            notifySettingsChanged();
+        });
+
+        switchTranslationIntegration.setOnCheckedChangeListener(null);
+        switchTranslationIntegration.setChecked(isTranslationEnabled);
+        switchTranslationIntegration.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            settingsManager.setTranslationIntegrationEnabled(isChecked);
             notifySettingsChanged();
         });
 
