@@ -32,6 +32,7 @@ public class MusicPlayerManager {
     private Random random = new Random();
     private int retryCount = 0;
     private static final int MAX_RETRY = 3;
+    private static final long PROGRESS_UPDATE_INTERVAL_MS = 500L;
     private int resumePosition = 0;
     private boolean isCompletionListenerEnabled = false;
     private final AtomicLong playRequestIdGenerator = new AtomicLong(0);
@@ -44,6 +45,24 @@ public class MusicPlayerManager {
     private List<OnPlaybackModeChangedListener> playbackModeChangedListeners = new ArrayList<>();
     private List<OnFullInfoAvailableListener> fullInfoAvailableListeners = new ArrayList<>();
     private List<OnSeekListener> seekListeners = new ArrayList<>();
+    private List<OnProgressUpdateListener> progressUpdateListeners = new ArrayList<>();
+    private boolean isProgressDispatcherRunning = false;
+    private final Runnable progressUpdateRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isProgressDispatcherRunning) {
+                return;
+            }
+
+            notifyProgressUpdate(getCurrentPosition(), getDuration());
+
+            if (shouldRunProgressDispatcher()) {
+                mainHandler.postDelayed(this, PROGRESS_UPDATE_INTERVAL_MS);
+            } else {
+                stopProgressDispatcher();
+            }
+        }
+    };
 
     // Current extended info
     private String currentLyric = "";
@@ -71,6 +90,10 @@ public class MusicPlayerManager {
 
     public interface OnSeekListener {
         void onSeek(int msec);
+    }
+
+    public interface OnProgressUpdateListener {
+        void onProgressUpdate(int current, int total);
     }
 
     private MusicPlayerManager(Context context) {
@@ -226,6 +249,7 @@ public class MusicPlayerManager {
         boolean isNewSong = (index != currentIndex);
         currentIndex = index;
         isSwitchingSong = true;
+        updateProgressDispatcherState();
         // Temporarily disable completion listener to prevent race conditions during song loading/switching
         isCompletionListenerEnabled = false;
 
@@ -247,6 +271,7 @@ public class MusicPlayerManager {
 
         // Notify change immediately so UI updates (cover, title)
         notifySongChanged(song);
+        notifyProgressUpdate(0, 0);
         if (wasPlaying) {
             // Emit one stable pause/loading transition at switch start.
             notifyPlaybackStateChanged(false);
@@ -386,6 +411,7 @@ public class MusicPlayerManager {
             isPaused = true;
             notifyPlaybackStateChanged(false);
         }
+        updateProgressDispatcherState();
     }
 
     public void resume() {
@@ -394,6 +420,7 @@ public class MusicPlayerManager {
             isPaused = false;
             notifyPlaybackStateChanged(true);
         }
+        updateProgressDispatcherState();
     }
 
     public void togglePlayPause() {
@@ -478,6 +505,9 @@ public class MusicPlayerManager {
     }
 
     public int getCurrentPosition() {
+        if (isSwitchingSong) {
+            return 0;
+        }
         try {
             return mediaPlayer.getCurrentPosition();
         } catch (Exception e) {
@@ -486,6 +516,9 @@ public class MusicPlayerManager {
     }
 
     public int getDuration() {
+        if (isSwitchingSong) {
+            return 0;
+        }
         try {
             return mediaPlayer.getDuration();
         } catch (Exception e) {
@@ -583,6 +616,19 @@ public class MusicPlayerManager {
         seekListeners.remove(listener);
     }
 
+    public void addOnProgressUpdateListener(OnProgressUpdateListener listener) {
+        if (!progressUpdateListeners.contains(listener)) {
+            progressUpdateListeners.add(listener);
+        }
+        notifyProgressUpdate(getCurrentPosition(), getDuration());
+        updateProgressDispatcherState();
+    }
+
+    public void removeOnProgressUpdateListener(OnProgressUpdateListener listener) {
+        progressUpdateListeners.remove(listener);
+        updateProgressDispatcherState();
+    }
+
     private void notifySeek(int msec) {
         mainHandler.post(() -> {
             for (OnSeekListener listener : seekListeners) {
@@ -624,11 +670,54 @@ public class MusicPlayerManager {
     }
 
     private void notifyPlaybackStateChanged(boolean isPlaying) {
-        if (isPlaying == lastNotifiedState) return;
+        if (isPlaying == lastNotifiedState) {
+            updateProgressDispatcherState();
+            return;
+        }
         lastNotifiedState = isPlaying;
         mainHandler.post(() -> {
             for (OnPlaybackStateChangedListener listener : playbackStateChangedListeners) {
                 listener.onPlaybackStateChanged(isPlaying);
+            }
+        });
+        updateProgressDispatcherState();
+    }
+
+    private boolean shouldRunProgressDispatcher() {
+        return !isSwitchingSong && isPlaying() && !progressUpdateListeners.isEmpty();
+    }
+
+    private void startProgressDispatcher() {
+        if (isProgressDispatcherRunning) {
+            return;
+        }
+        isProgressDispatcherRunning = true;
+        mainHandler.removeCallbacks(progressUpdateRunnable);
+        mainHandler.post(progressUpdateRunnable);
+    }
+
+    private void stopProgressDispatcher() {
+        if (!isProgressDispatcherRunning) {
+            return;
+        }
+        isProgressDispatcherRunning = false;
+        mainHandler.removeCallbacks(progressUpdateRunnable);
+    }
+
+    private void updateProgressDispatcherState() {
+        if (shouldRunProgressDispatcher()) {
+            startProgressDispatcher();
+        } else {
+            stopProgressDispatcher();
+        }
+    }
+
+    private void notifyProgressUpdate(int current, int total) {
+        final int safeCurrent = Math.max(0, current);
+        final int safeTotal = Math.max(0, total);
+        mainHandler.post(() -> {
+            for (OnProgressUpdateListener listener : progressUpdateListeners) {
+                listener.onProgressUpdate(safeCurrent, safeTotal);
             }
         });
     }

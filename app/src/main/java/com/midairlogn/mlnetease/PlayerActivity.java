@@ -1,13 +1,10 @@
 package com.midairlogn.mlnetease;
 
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
@@ -15,7 +12,7 @@ import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 import java.util.Locale;
 
-public class PlayerActivity extends AppCompatActivity implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener, MusicPlayerManager.OnFullInfoAvailableListener, MusicPlayerManager.OnPlaybackModeChangedListener, MusicPlayerManager.OnSeekListener {
+public class PlayerActivity extends AppCompatActivity implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener, MusicPlayerManager.OnFullInfoAvailableListener, MusicPlayerManager.OnPlaybackModeChangedListener, MusicPlayerManager.OnSeekListener, MusicPlayerManager.OnProgressUpdateListener {
 
     private TextView songTitle, songArtist;
     private TextView currentTime, totalTime;
@@ -24,28 +21,8 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
     private ImageButton btnMode, btnPlaylist;
     private ViewPager2 viewPager;
     private MusicPlayerManager musicPlayerManager;
-    private Handler handler = new Handler(Looper.getMainLooper());
-    private static final long PROGRESS_UPDATE_INTERVAL_MS = 1000L;
-    private boolean isTracking = false;
-    private boolean isActivityVisible = false;
-    private boolean isProgressTickerRunning = false;
-    private final Runnable progressTickerRunnable = new Runnable() {
-        @Override
-        public void run() {
-            if (!isProgressTickerRunning) {
-                return;
-            }
-            if (!isTracking) {
-                syncProgressUi();
-            }
-            if (shouldRunProgressTicker()) {
-                handler.postDelayed(this, PROGRESS_UPDATE_INTERVAL_MS);
-            } else {
-                isProgressTickerRunning = false;
-            }
-        }
-    };
     private Toast currentToast;
+    private boolean isTracking = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -196,53 +173,35 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         return String.format(Locale.getDefault(), "%02d:%02d", minutes, secs);
     }
 
-    private void syncProgressUi() {
-        int current = musicPlayerManager.getCurrentPosition();
-        int total = musicPlayerManager.getDuration();
-        if (total > 0) {
-            seekBar.setMax(total);
-            seekBar.setProgress(current);
-            currentTime.setText(formatTime(current));
-            totalTime.setText(formatTime(total));
-        }
-    }
-
-
-    private boolean shouldRunProgressTicker() {
-        return isActivityVisible && musicPlayerManager.isPlaying();
-    }
-
-    private void startProgressTickerIfNeeded() {
-        if (!shouldRunProgressTicker() || isProgressTickerRunning) {
+    private void renderProgress(int current, int total) {
+        if (total <= 0) {
+            seekBar.setMax(0);
+            seekBar.setProgress(0);
+            currentTime.setText("00:00");
+            totalTime.setText("--:--");
             return;
         }
-        isProgressTickerRunning = true;
-        handler.removeCallbacks(progressTickerRunnable);
-        handler.postDelayed(progressTickerRunnable, PROGRESS_UPDATE_INTERVAL_MS);
-    }
 
-    private void stopProgressTicker() {
-        if (!isProgressTickerRunning) {
-            return;
+        int safeCurrent = Math.max(0, Math.min(current, total));
+        seekBar.setMax(total);
+        if (!isTracking) {
+            seekBar.setProgress(safeCurrent);
+            currentTime.setText(formatTime(safeCurrent));
         }
-        isProgressTickerRunning = false;
-        handler.removeCallbacks(progressTickerRunnable);
+        totalTime.setText(formatTime(total));
     }
 
     @Override
-    protected void onResume() {
-        super.onResume();
-        isActivityVisible = true;
-        updatePlaybackState(musicPlayerManager.isPlaying());
-        syncProgressUi();
-        startProgressTickerIfNeeded();
+    protected void onStart() {
+        super.onStart();
+        musicPlayerManager.addOnProgressUpdateListener(this);
+        onProgressUpdate(musicPlayerManager.getCurrentPosition(), musicPlayerManager.getDuration());
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        isActivityVisible = false;
-        stopProgressTicker();
+    protected void onStop() {
+        musicPlayerManager.removeOnProgressUpdateListener(this);
+        super.onStop();
     }
 
     @Override
@@ -253,18 +212,14 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         musicPlayerManager.removeOnPlaybackStateChangedListener(this);
         musicPlayerManager.removeOnPlaybackModeChangedListener(this);
         musicPlayerManager.removeOnSeekListener(this);
-        handler.removeCallbacksAndMessages(null);
+        musicPlayerManager.removeOnProgressUpdateListener(this);
     }
 
     @Override
     public void onSongChanged(Song song) {
         runOnUiThread(() -> {
             updateSongInfo(song);
-            seekBar.setProgress(0);
-            seekBar.setMax(0);
-            currentTime.setText("00:00");
-            totalTime.setText("--:--");
-            handler.post(this::syncProgressUi);
+            renderProgress(0, 0);
         });
     }
 
@@ -275,20 +230,17 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
 
     @Override
     public void onPlaybackStateChanged(boolean isPlaying) {
-        runOnUiThread(() -> {
-            updatePlaybackState(isPlaying);
-            syncProgressUi();
-            if (isPlaying) {
-                startProgressTickerIfNeeded();
-            } else {
-                stopProgressTicker();
-            }
-        });
+        runOnUiThread(() -> updatePlaybackState(isPlaying));
     }
 
     @Override
     public void onPlaybackModeChanged(int mode) {
         runOnUiThread(this::updateModeIcon);
+    }
+
+    @Override
+    public void onProgressUpdate(int current, int total) {
+        runOnUiThread(() -> renderProgress(current, total));
     }
 
     @Override
