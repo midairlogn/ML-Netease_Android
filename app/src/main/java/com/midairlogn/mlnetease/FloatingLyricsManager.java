@@ -45,11 +45,11 @@ public class FloatingLyricsManager {
     // Settings Views
     private View colorRed, colorBlue, colorGreen, colorYellow, colorPurple;
     private Button btnFontPlus, btnFontMinus;
+    private ImageButton btnTranslation;
 
     // State
     private boolean isExpanded = false;
     private boolean isSettingsExpanded = false;
-    private boolean isLocked = false;
     private boolean isAppVisible = false;
     private List<LyricLine> currentLyrics;
     private int currentLyricIndex = -1;
@@ -124,7 +124,7 @@ public class FloatingLyricsManager {
         // Controls
         View iconView = floatingView.findViewById(R.id.iv_icon);
         ImageButton btnClose = floatingView.findViewById(R.id.btn_close);
-        ImageButton btnLock = floatingView.findViewById(R.id.btn_lock);
+        btnTranslation = floatingView.findViewById(R.id.btn_translation);
         ImageButton btnPrev = floatingView.findViewById(R.id.btn_prev);
         ImageButton btnPlay = floatingView.findViewById(R.id.btn_play);
         ImageButton btnNext = floatingView.findViewById(R.id.btn_next);
@@ -164,12 +164,18 @@ public class FloatingLyricsManager {
                 context.startService(intent);
             }
         });
-        btnLock.setOnClickListener(v -> {
-            toggleLock(btnLock);
-            if (isLocked) {
-                collapse();
+        btnTranslation.setOnClickListener(v -> {
+            resetAutoCollapseTimer();
+            boolean newState = !settingsManager.isTranslationIntegrationEnabled();
+            settingsManager.setTranslationIntegrationEnabled(newState);
+            updateTranslationButtonState();
+            onSettingChanged();
+            Intent intent = new Intent(context, MusicService.class);
+            intent.setAction("ACTION_UPDATE_SETTINGS");
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent);
             } else {
-                resetAutoCollapseTimer();
+                context.startService(intent);
             }
         });
         btnPrev.setOnClickListener(v -> {
@@ -229,6 +235,7 @@ public class FloatingLyricsManager {
 
         // Initial play button state
         btnPlay.setImageResource(musicPlayerManager.isPlaying() ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
+        updateTranslationButtonState();
 
         // Drag & Touch Listener
         rootLayout.setOnTouchListener(new View.OnTouchListener() {
@@ -264,11 +271,6 @@ public class FloatingLyricsManager {
                         return true;
 
                     case MotionEvent.ACTION_MOVE:
-                        if (isLocked) {
-                            resetAutoCollapseTimer();
-                            return true;
-                        }
-
                         int dx = (int) (event.getRawX() - initialTouchX);
                         int dy = (int) (event.getRawY() - initialTouchY);
 
@@ -336,9 +338,10 @@ public class FloatingLyricsManager {
         startLyricUpdates();
     }
 
-    private void toggleLock(ImageButton btn) {
-        isLocked = !isLocked;
-        btn.setImageResource(isLocked ? R.drawable.ic_lock : R.drawable.ic_lock_open);
+    private void updateTranslationButtonState() {
+        if (btnTranslation == null) return;
+        boolean isTranslationEnabled = settingsManager.isTranslationIntegrationEnabled();
+        btnTranslation.setAlpha(isTranslationEnabled ? 1.0f : 0.4f);
     }
 
     private void updateColor(int color) {
@@ -753,6 +756,7 @@ public class FloatingLyricsManager {
     // Call this when user toggles the feature in settings
     public void onSettingChanged() {
         applySettings(); // Update colors/sizes if window is already showing
+        updateTranslationButtonState();
         updateLyrics(musicPlayerManager.getCurrentLyric(), musicPlayerManager.getCurrentTLyric());
         if (settingsManager.isFloatingLyricsEnabled()) {
             show();

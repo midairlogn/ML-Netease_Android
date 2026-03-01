@@ -165,13 +165,13 @@
         android:layout_marginTop="8dp">
 
         <ImageButton
-            android:id="@+id/btn_lock"
+            android:id="@+id/btn_translation"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="32dp"
-            android:src="@drawable/ic_lock_open"
+            android:src="@drawable/ic_translate"
             android:background="@android:color/transparent"
-            android:contentDescription="Lock"/>
+            android:contentDescription="Toggle translation"/>
 
         <ImageButton
             android:id="@+id/btn_prev"
