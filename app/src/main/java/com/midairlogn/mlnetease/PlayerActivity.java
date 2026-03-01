@@ -1,13 +1,10 @@
 package com.midairlogn.mlnetease;
 
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
@@ -15,7 +12,7 @@ import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 import java.util.Locale;
 
-public class PlayerActivity extends AppCompatActivity implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener, MusicPlayerManager.OnFullInfoAvailableListener, MusicPlayerManager.OnPlaybackModeChangedListener, MusicPlayerManager.OnSeekListener {
+public class PlayerActivity extends AppCompatActivity implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener, MusicPlayerManager.OnFullInfoAvailableListener, MusicPlayerManager.OnPlaybackModeChangedListener, MusicPlayerManager.OnSeekListener, MusicPlayerManager.OnProgressUpdateListener {
 
     private TextView songTitle, songArtist;
     private TextView currentTime, totalTime;
@@ -24,9 +21,8 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
     private ImageButton btnMode, btnPlaylist;
     private ViewPager2 viewPager;
     private MusicPlayerManager musicPlayerManager;
-    private Handler handler = new Handler(Looper.getMainLooper());
-    private boolean isTracking = false;
     private Toast currentToast;
+    private boolean isTracking = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,7 +45,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         musicPlayerManager.addOnPlaybackModeChangedListener(this);
         musicPlayerManager.addOnSeekListener(this);
 
-        startProgressUpdater();
+
     }
 
     private void initViews() {
@@ -177,27 +173,35 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         return String.format(Locale.getDefault(), "%02d:%02d", minutes, secs);
     }
 
-    private void startProgressUpdater() {
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                // Check if the manager is currently switching songs to avoid UI jitter (like seekbar jumping to 0)
-                if (!isTracking && musicPlayerManager.isPlaying()) {
-                    int current = musicPlayerManager.getCurrentPosition();
-                    int total = musicPlayerManager.getDuration();
+    private void renderProgress(int current, int total) {
+        if (total <= 0) {
+            seekBar.setMax(0);
+            seekBar.setProgress(0);
+            currentTime.setText("00:00");
+            totalTime.setText("--:--");
+            return;
+        }
 
-                    // During song switch, current and total might briefly be 0 due to mediaPlayer.reset()
-                    // We only update if we have valid-looking values or if we've been in this state for a while
-                    if (total > 0) {
-                        seekBar.setMax(total);
-                        seekBar.setProgress(current);
-                        currentTime.setText(formatTime(current));
-                        totalTime.setText(formatTime(total));
-                    }
-                }
-                handler.postDelayed(this, 1000);
-            }
-        }, 1000);
+        int safeCurrent = Math.max(0, Math.min(current, total));
+        seekBar.setMax(total);
+        if (!isTracking) {
+            seekBar.setProgress(safeCurrent);
+            currentTime.setText(formatTime(safeCurrent));
+        }
+        totalTime.setText(formatTime(total));
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        musicPlayerManager.addOnProgressUpdateListener(this);
+        onProgressUpdate(musicPlayerManager.getCurrentPosition(), musicPlayerManager.getDuration());
+    }
+
+    @Override
+    protected void onStop() {
+        musicPlayerManager.removeOnProgressUpdateListener(this);
+        super.onStop();
     }
 
     @Override
@@ -208,12 +212,15 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         musicPlayerManager.removeOnPlaybackStateChangedListener(this);
         musicPlayerManager.removeOnPlaybackModeChangedListener(this);
         musicPlayerManager.removeOnSeekListener(this);
-        handler.removeCallbacksAndMessages(null);
+        musicPlayerManager.removeOnProgressUpdateListener(this);
     }
 
     @Override
     public void onSongChanged(Song song) {
-        runOnUiThread(() -> updateSongInfo(song));
+        runOnUiThread(() -> {
+            updateSongInfo(song);
+            renderProgress(0, 0);
+        });
     }
 
     @Override
@@ -229,6 +236,11 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
     @Override
     public void onPlaybackModeChanged(int mode) {
         runOnUiThread(this::updateModeIcon);
+    }
+
+    @Override
+    public void onProgressUpdate(int current, int total) {
+        runOnUiThread(() -> renderProgress(current, total));
     }
 
     @Override

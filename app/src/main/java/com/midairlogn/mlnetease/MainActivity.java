@@ -4,8 +4,6 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -29,7 +27,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener {
+public class MainActivity extends AppCompatActivity implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener, MusicPlayerManager.OnProgressUpdateListener {
 
     private static final int REQUEST_CODE_PERMISSIONS = 1001;
     private static final int REQUEST_CODE_OVERLAY = 1002;
@@ -49,8 +47,6 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     private View miniPlayerDivider;
 
     private MusicPlayerManager musicPlayerManager;
-    private Handler handler = new Handler(Looper.getMainLooper());
-    private Runnable progressRunnable;
     private String currentCoverUrl;
 
     @Override
@@ -262,7 +258,6 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     private void updateMiniPlayer(Song song) {
         if (song == null) {
             miniPlayerRoot.setVisibility(View.GONE);
-            stopProgressUpdater();
             return;
         }
 
@@ -311,8 +306,6 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
             miniPlayerThumb.setTag(null);
             currentCoverUrl = null;
         }
-
-        startProgressUpdater();
     }
 
     private boolean lastIsPlaying = false;
@@ -321,46 +314,19 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         lastIsPlaying = isPlaying;
         miniPlayerPlayPause.setImageResource(isPlaying ?
             android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
-
-        if (isPlaying) {
-            startProgressUpdater();
-        } else {
-            // We can keep updating if we want to show paused progress, but usually we can stop.
-            // However, keeping it running ensures if something changes externally (rare) we catch it.
-            // But better to save resources.
-            // stopProgressUpdater(); // Actually, let's keep it running or restart it?
-            // If paused, progress doesn't change.
-        }
     }
 
-    private void startProgressUpdater() {
-        if (progressRunnable == null) {
-            progressRunnable = new Runnable() {
-                @Override
-                public void run() {
-                    if (musicPlayerManager.getCurrentSong() != null) {
-                        int current = musicPlayerManager.getCurrentPosition();
-                        int total = musicPlayerManager.getDuration();
-
-                        if (total > 0) {
-                            miniPlayerProgress.setMax(total);
-                            miniPlayerProgress.setProgress(current);
-                        }
-                    }
-                    if (musicPlayerManager.isPlaying()) {
-                        handler.postDelayed(this, 500);
-                    }
-                }
-            };
-        }
-        handler.removeCallbacks(progressRunnable);
-        handler.post(progressRunnable);
+    @Override
+    protected void onStart() {
+        super.onStart();
+        musicPlayerManager.addOnProgressUpdateListener(this);
+        onProgressUpdate(musicPlayerManager.getCurrentPosition(), musicPlayerManager.getDuration());
     }
 
-    private void stopProgressUpdater() {
-        if (progressRunnable != null) {
-            handler.removeCallbacks(progressRunnable);
-        }
+    @Override
+    protected void onStop() {
+        musicPlayerManager.removeOnProgressUpdateListener(this);
+        super.onStop();
     }
 
     @Override
@@ -368,7 +334,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         super.onDestroy();
         musicPlayerManager.removeOnSongChangedListener(this);
         musicPlayerManager.removeOnPlaybackStateChangedListener(this);
-        stopProgressUpdater();
+        musicPlayerManager.removeOnProgressUpdateListener(this);
     }
 
     @Override
@@ -379,5 +345,15 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     @Override
     public void onPlaybackStateChanged(boolean isPlaying) {
         runOnUiThread(() -> updatePlaybackState(isPlaying));
+    }
+
+    @Override
+    public void onProgressUpdate(int current, int total) {
+        runOnUiThread(() -> {
+            int safeTotal = Math.max(0, total);
+            int safeCurrent = Math.max(0, Math.min(current, safeTotal));
+            miniPlayerProgress.setMax(safeTotal);
+            miniPlayerProgress.setProgress(safeCurrent);
+        });
     }
 }
