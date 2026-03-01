@@ -64,6 +64,7 @@ Alternatively, you can build from source:
 2. **Play**: Tap on a song to start playing.
 3. **Floating Lyrics**: Enable "Floating Lyrics" in Settings. A floating icon/window will appear; tap to expand for controls and settings.
 4. **Settings**: Configure audio quality and input your Netease `MUSIC_U` cookie for authenticated access.
+   > For detailed information on the obtainment of `MUSIC_U`, please refer to [Methods to Obtain `MUSIC_U`](https://github.com/midairlogn/ML-Netease_url/blob/main/MUSIC_U/get-MUSIC_U-EN.md).
 
 ## Disclaimer
 

@@ -64,6 +64,7 @@
 2.  **播放**: 点击歌曲即可开始播放。
 3.  **悬浮歌词**: 在“设置”中启用“悬浮歌词”功能。开启后将出现一个悬浮图标/窗口，点击即可展开查看控制选项和设置。
 4.  **设置**: 配置音频质量，并输入您的网易 `MUSIC_U` cookie 以进行认证访问。
+    > 关于 `MUSIC_U` 的获取，请参考 [获取 `MUSIC_U` 的方法](https://github.com/midairlogn/ML-Netease_url/blob/main/MUSIC_U/get-MUSIC_U.md).
 
 ## ⚠️ 免责声明
 
