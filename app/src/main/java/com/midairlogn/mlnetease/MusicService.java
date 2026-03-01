@@ -311,6 +311,7 @@ public class MusicService extends Service {
                      MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder(currentMeta);
                      builder.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration);
                      mediaSession.setMetadata(builder.build());
+                     showNotification(currentSong, isPlaying, null, true, "playback:duration-updated");
                 }
             }
         }

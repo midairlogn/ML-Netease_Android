@@ -24,6 +24,7 @@ public class MusicPlayerManager {
     private boolean isPaused = false;
     private volatile boolean isSwitchingSong = false;
     private boolean lastNotifiedState = false;
+    private volatile boolean forceNextPlaybackStateDispatch = false;
     private Context context;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private NeteaseApi neteaseApi;
@@ -238,6 +239,7 @@ public class MusicPlayerManager {
 
         final long requestId = playRequestIdGenerator.incrementAndGet();
         activePlayRequestId = requestId;
+        forceNextPlaybackStateDispatch = true;
 
         // If it is not a retry, reset retry count and resume position
         if (!isRetry) {
@@ -670,10 +672,12 @@ public class MusicPlayerManager {
     }
 
     private void notifyPlaybackStateChanged(boolean isPlaying) {
-        if (isPlaying == lastNotifiedState) {
+        boolean shouldForceDispatch = forceNextPlaybackStateDispatch;
+        if (isPlaying == lastNotifiedState && !shouldForceDispatch) {
             updateProgressDispatcherState();
             return;
         }
+        forceNextPlaybackStateDispatch = false;
         lastNotifiedState = isPlaying;
         mainHandler.post(() -> {
             for (OnPlaybackStateChangedListener listener : playbackStateChangedListeners) {
