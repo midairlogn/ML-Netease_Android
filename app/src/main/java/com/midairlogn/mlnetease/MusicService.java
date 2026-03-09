@@ -25,6 +25,8 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.media.session.MediaButtonReceiver;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -33,6 +35,7 @@ public class MusicService extends Service {
     private static final String TAG = "MusicService";
     private static final String CHANNEL_ID = "music_channel";
     private static final int NOTIFICATION_ID = 1;
+    private static final int MAX_NOTIFICATION_ART_SIZE_PX = 512;
 
     private MediaSessionCompat mediaSession;
     private MusicPlayerManager musicPlayerManager;
@@ -339,16 +342,28 @@ public class MusicService extends Service {
 
         new Thread(() -> {
             Bitmap albumArt;
+            HttpURLConnection connection = null;
+            InputStream input = null;
             try {
                 URL url = new URL(song.picUrl);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection = (HttpURLConnection) url.openConnection();
                 connection.setDoInput(true);
                 connection.connect();
-                InputStream input = connection.getInputStream();
-                albumArt = BitmapFactory.decodeStream(input);
+                input = connection.getInputStream();
+                albumArt = decodeBoundedBitmap(input, MAX_NOTIFICATION_ART_SIZE_PX, Bitmap.Config.RGB_565);
             } catch (Exception e) {
                 Log.e(TAG, "Error fetching album art", e);
                 albumArt = BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo);
+            } finally {
+                if (input != null) {
+                    try {
+                        input.close();
+                    } catch (IOException ignored) {
+                    }
+                }
+                if (connection != null) {
+                    connection.disconnect();
+                }
             }
 
             if (albumArt == null) {
@@ -382,10 +397,71 @@ public class MusicService extends Service {
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artists)
                 .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, song.album)
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration > 0 ? duration : 0)
-                .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, albumArt)
                 .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, albumArt);
 
         mediaSession.setMetadata(builder.build());
+    }
+
+    private Bitmap decodeBoundedBitmap(InputStream inputStream, int maxSizePx, Bitmap.Config preferredConfig) throws IOException {
+        byte[] imageBytes = readAllBytes(inputStream);
+
+        BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
+        boundsOptions.inJustDecodeBounds = true;
+        BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, boundsOptions);
+
+        BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
+        decodeOptions.inSampleSize = calculateInSampleSize(boundsOptions, maxSizePx, maxSizePx);
+        decodeOptions.inPreferredConfig = preferredConfig;
+        decodeOptions.inDither = true;
+
+        Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, decodeOptions);
+        if (bitmap == null) {
+            return null;
+        }
+
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
+        if (width <= maxSizePx && height <= maxSizePx) {
+            return bitmap;
+        }
+
+        float scale = Math.min((float) maxSizePx / width, (float) maxSizePx / height);
+        int targetWidth = Math.max(1, Math.round(width * scale));
+        int targetHeight = Math.max(1, Math.round(height * scale));
+
+        Bitmap scaled = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true);
+        if (scaled != bitmap) {
+            bitmap.recycle();
+        }
+        return scaled;
+    }
+
+    private byte[] readAllBytes(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int count;
+        while ((count = inputStream.read(buffer)) != -1) {
+            outputStream.write(buffer, 0, count);
+        }
+        return outputStream.toByteArray();
+    }
+
+    private int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
+        int height = options.outHeight;
+        int width = options.outWidth;
+        int inSampleSize = 1;
+
+        if (height > reqHeight || width > reqWidth) {
+            int halfHeight = height / 2;
+            int halfWidth = width / 2;
+
+            while ((halfHeight / inSampleSize) >= reqHeight
+                    && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2;
+            }
+        }
+
+        return Math.max(1, inSampleSize);
     }
 
     private void updatePlaybackState(boolean isPlaying) {
@@ -521,7 +597,7 @@ public class MusicService extends Service {
         if (albumArt == null) {
             MediaMetadataCompat metadata = mediaSession.getController().getMetadata();
             if (metadata != null) {
-                albumArt = metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART);
+                albumArt = metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON);
             }
             if (albumArt == null) {
                  albumArt = BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo);
