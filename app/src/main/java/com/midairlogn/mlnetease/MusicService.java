@@ -9,6 +9,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -35,6 +38,11 @@ public class MusicService extends Service {
     private MusicPlayerManager musicPlayerManager;
     private NotificationManager notificationManager;
     private FloatingLyricsManager floatingLyricsManager;
+    private AudioManager audioManager;
+    private AudioFocusRequest audioFocusRequest;
+    private boolean hasAudioFocus = false;
+    private boolean pausedByFocusLoss = false;
+    private boolean resumeOnFocusGain = false;
     private String lastSongId = "";
     private String lastPicUrl = "";
     private Bitmap lastBitmap = null;
@@ -79,7 +87,17 @@ public class MusicService extends Service {
         }
     };
 
-    private final MusicPlayerManager.OnPlaybackStateChangedListener playbackStateChangedListener = this::updatePlaybackState;
+    private final MusicPlayerManager.OnPlaybackStateChangedListener playbackStateChangedListener = isPlaying -> {
+        if (isPlaying) {
+            if (!hasAudioFocus && !requestAudioFocus()) {
+                musicPlayerManager.pause();
+                return;
+            }
+        } else if (!pausedByFocusLoss) {
+            abandonAudioFocus();
+        }
+        updatePlaybackState(isPlaying);
+    };
 
     private final MusicPlayerManager.OnSeekListener seekListener = msec -> {
         // Ensure PlaybackState is updated with new position in MediaSession
@@ -91,11 +109,52 @@ public class MusicService extends Service {
         updatePlaybackState(musicPlayerManager.isPlaying());
     };
 
+    private final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener = focusChange -> {
+        switch (focusChange) {
+            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                if (musicPlayerManager != null && musicPlayerManager.isPlaying()) {
+                    pausedByFocusLoss = true;
+                    resumeOnFocusGain = true;
+                    musicPlayerManager.pause();
+                }
+                break;
+            case AudioManager.AUDIOFOCUS_LOSS:
+                if (musicPlayerManager != null && musicPlayerManager.isPlaying()) {
+                    pausedByFocusLoss = true;
+                    musicPlayerManager.pause();
+                }
+                resumeOnFocusGain = false;
+                hasAudioFocus = false;
+                break;
+            case AudioManager.AUDIOFOCUS_GAIN:
+                hasAudioFocus = true;
+                if (pausedByFocusLoss && resumeOnFocusGain && musicPlayerManager != null && !musicPlayerManager.isPlaying()) {
+                    musicPlayerManager.resume();
+                }
+                pausedByFocusLoss = false;
+                resumeOnFocusGain = false;
+                break;
+            default:
+                break;
+        }
+    };
+
     @Override
     public void onCreate() {
         super.onCreate();
         musicPlayerManager = MusicPlayerManager.getInstance(this);
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(new AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .build())
+                    .setOnAudioFocusChangeListener(audioFocusChangeListener)
+                    .build();
+        }
         floatingLyricsManager = new FloatingLyricsManager(this);
 
         if (getApplication() instanceof MainApplication) {
@@ -153,27 +212,44 @@ public class MusicService extends Service {
 
             @Override
             public void onPlay() {
+                if (!requestAudioFocus()) {
+                    return;
+                }
+                pausedByFocusLoss = false;
+                resumeOnFocusGain = false;
                 musicPlayerManager.resume();
             }
 
             @Override
             public void onPause() {
+                pausedByFocusLoss = false;
+                resumeOnFocusGain = false;
                 musicPlayerManager.pause();
+                abandonAudioFocus();
             }
 
             @Override
             public void onSkipToNext() {
+                if (!requestAudioFocus()) {
+                    return;
+                }
                 musicPlayerManager.playNext();
             }
 
             @Override
             public void onSkipToPrevious() {
+                if (!requestAudioFocus()) {
+                    return;
+                }
                 musicPlayerManager.playPrevious();
             }
 
             @Override
             public void onStop() {
+                pausedByFocusLoss = false;
+                resumeOnFocusGain = false;
                 musicPlayerManager.pause();
+                abandonAudioFocus();
                 stopSelf();
             }
 
@@ -186,6 +262,37 @@ public class MusicService extends Service {
         });
 
         mediaSession.setActive(true);
+    }
+
+    private boolean requestAudioFocus() {
+        if (audioManager == null) {
+            return false;
+        }
+        int result;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (audioFocusRequest == null) {
+                return false;
+            }
+            result = audioManager.requestAudioFocus(audioFocusRequest);
+        } else {
+            result = audioManager.requestAudioFocus(audioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+        }
+        hasAudioFocus = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+        return hasAudioFocus;
+    }
+
+    private void abandonAudioFocus() {
+        if (!hasAudioFocus || audioManager == null) {
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (audioFocusRequest != null) {
+                audioManager.abandonAudioFocusRequest(audioFocusRequest);
+            }
+        } else {
+            audioManager.abandonAudioFocus(audioFocusChangeListener);
+        }
+        hasAudioFocus = false;
     }
 
     private void updateMetadata(Song song) {
@@ -532,6 +639,9 @@ public class MusicService extends Service {
             MainApplication app = (MainApplication) getApplication();
             app.removeAppVisibilityListener(appVisibilityListener);
         }
+        pausedByFocusLoss = false;
+        resumeOnFocusGain = false;
+        abandonAudioFocus();
         musicPlayerManager.removeOnSongChangedListener(songChangedListener);
         musicPlayerManager.removeOnFullInfoAvailableListener(fullInfoAvailableListener);
         musicPlayerManager.removeOnPlaybackStateChangedListener(playbackStateChangedListener);
