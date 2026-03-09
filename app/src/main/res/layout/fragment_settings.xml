@@ -227,40 +227,46 @@
 
              <!-- Simple Color Selection for Main Settings -->
              <LinearLayout
+                 style="?android:attr/buttonBarStyle"
                  android:layout_width="match_parent"
                  android:layout_height="wrap_content"
                  android:orientation="horizontal">
 
                  <Button
                      android:id="@+id/btn_color_red"
+                     style="?android:attr/buttonBarButtonStyle"
                      android:layout_width="40dp"
                      android:layout_height="40dp"
                      android:backgroundTint="#F44336"
-                     android:layout_marginEnd="8dp"/>
+                     android:layout_marginEnd="8dp" />
 
                  <Button
                      android:id="@+id/btn_color_blue"
+                     style="?android:attr/buttonBarButtonStyle"
                      android:layout_width="40dp"
                      android:layout_height="40dp"
                      android:backgroundTint="#2196F3"
-                     android:layout_marginEnd="8dp"/>
+                     android:layout_marginEnd="8dp" />
 
                  <Button
                      android:id="@+id/btn_color_green"
+                     style="?android:attr/buttonBarButtonStyle"
                      android:layout_width="40dp"
                      android:layout_height="40dp"
                      android:backgroundTint="#4CAF50"
-                     android:layout_marginEnd="8dp"/>
+                     android:layout_marginEnd="8dp" />
 
                  <Button
                      android:id="@+id/btn_color_yellow"
+                     style="?android:attr/buttonBarButtonStyle"
                      android:layout_width="40dp"
                      android:layout_height="40dp"
                      android:backgroundTint="#FFEB3B"
-                     android:layout_marginEnd="8dp"/>
+                     android:layout_marginEnd="8dp" />
 
                  <Button
                      android:id="@+id/btn_color_purple"
+                     style="?android:attr/buttonBarButtonStyle"
                      android:layout_width="40dp"
                      android:layout_height="40dp"
                      android:backgroundTint="#9C27B0"
