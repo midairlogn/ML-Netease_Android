@@ -109,6 +109,7 @@ public class MusicPlayerManager {
                 .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
                 .build();
         mediaPlayer.setAudioAttributes(audioAttributes);
+        setAppVolume(settingsManager.getAppVolume());
 
         mediaPlayer.setOnCompletionListener(mp -> {
             if (isCompletionListenerEnabled) {
@@ -345,6 +346,7 @@ public class MusicPlayerManager {
         }
         try {
             mediaPlayer.reset();
+            setAppVolume(settingsManager.getAppVolume());
             // Use headers to mimic browser/desktop client to avoid 403 Forbidden from CDN
             java.util.Map<String, String> headers = new java.util.HashMap<>();
             headers.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/91.0.4472.164 NeteaseMusicDesktop/2.10.2.200154");
@@ -629,6 +631,19 @@ public class MusicPlayerManager {
         }
         notifyProgressUpdate(getCurrentPosition(), getDuration());
         updateProgressDispatcherState();
+    }
+
+    private float volumePercentToScalar(int percent) {
+        int clamped = Math.max(0, Math.min(percent, 100));
+        return clamped / 100f;
+    }
+
+    public void setAppVolume(int percent) {
+        float volumeScalar = volumePercentToScalar(percent);
+        try {
+            mediaPlayer.setVolume(volumeScalar, volumeScalar);
+        } catch (IllegalStateException ignored) {
+        }
     }
 
     public void removeOnProgressUpdateListener(OnProgressUpdateListener listener) {

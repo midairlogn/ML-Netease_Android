@@ -615,6 +615,8 @@ public class MusicService extends Service {
                 }
                 updatePlaybackState(musicPlayerManager.isPlaying());
             } else if ("ACTION_UPDATE_SETTINGS".equals(action)) {
+                SettingsManager sm = new SettingsManager(this);
+                musicPlayerManager.setAppVolume(sm.getAppVolume());
                 if (floatingLyricsManager != null) {
                     floatingLyricsManager.onSettingChanged();
                 }

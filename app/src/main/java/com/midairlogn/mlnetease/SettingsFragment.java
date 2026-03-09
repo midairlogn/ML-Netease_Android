@@ -23,6 +23,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RadioGroup;
+import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -37,6 +38,8 @@ public class SettingsFragment extends Fragment {
     private EditText inputMusicU;
     private EditText inputSearchLimit;
     private RadioGroup qualityGroup;
+    private SeekBar seekbarAppVolume;
+    private TextView textAppVolumeValue;
 
     private final Handler debounceHandler = new Handler(Looper.getMainLooper());
     private Runnable saveRunnable;
@@ -93,6 +96,8 @@ public class SettingsFragment extends Fragment {
         }
 
         qualityGroup = view.findViewById(R.id.quality_group);
+        seekbarAppVolume = view.findViewById(R.id.seekbar_app_volume);
+        textAppVolumeValue = view.findViewById(R.id.text_app_volume_value);
         qualityGroup.setOnTouchListener(hideKeyboardTouchListener);
 
         // Floating Window Views
@@ -162,6 +167,37 @@ public class SettingsFragment extends Fragment {
         switchTranslationIntegration.setChecked(settingsManager.isTranslationIntegrationEnabled());
         switchTranslationIntegration.setOnCheckedChangeListener((buttonView, isChecked) -> {
             settingsManager.setTranslationIntegrationEnabled(isChecked);
+            notifySettingsChanged();
+        });
+
+        int initialVolume = settingsManager.getAppVolume();
+        seekbarAppVolume.setProgress(initialVolume);
+        textAppVolumeValue.setText(initialVolume + "%");
+        seekbarAppVolume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                textAppVolumeValue.setText(progress + "%");
+                if (!fromUser) {
+                    return;
+                }
+                settingsManager.setAppVolume(progress);
+                notifySettingsChanged();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+        textAppVolumeValue.setOnClickListener(v -> {
+            int defaultVolume = SettingsManager.DEFAULT_APP_VOLUME;
+            if (seekbarAppVolume.getProgress() == defaultVolume) {
+                return;
+            }
+            seekbarAppVolume.setProgress(defaultVolume);
+            textAppVolumeValue.setText(defaultVolume + "%");
+            settingsManager.setAppVolume(defaultVolume);
             notifySettingsChanged();
         });
 
@@ -384,6 +420,9 @@ public class SettingsFragment extends Fragment {
         // Refresh values from SharedPreferences in case they were changed elsewhere (e.g. Floating Window)
         inputMusicU.setText(settingsManager.getMusicU());
         inputSearchLimit.setText(String.valueOf(settingsManager.getSearchLimit()));
+        int appVolume = settingsManager.getAppVolume();
+        seekbarAppVolume.setProgress(appVolume);
+        textAppVolumeValue.setText(appVolume + "%");
 
         String currentQuality = settingsManager.getQuality();
         switch (currentQuality) {

@@ -1,6 +1,7 @@
 package com.midairlogn.mlnetease;
 
 import android.os.Bundle;
+import android.media.AudioManager;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -28,6 +29,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_player);
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         musicPlayerManager = MusicPlayerManager.getInstance(this);
 

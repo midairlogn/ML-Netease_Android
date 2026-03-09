@@ -13,6 +13,7 @@ import android.widget.Toast;
 import android.provider.Settings;
 import android.net.Uri;
 import android.content.pm.PackageManager;
+import android.media.AudioManager;
 import android.Manifest;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -53,6 +54,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         musicPlayerManager = MusicPlayerManager.getInstance(this);
 

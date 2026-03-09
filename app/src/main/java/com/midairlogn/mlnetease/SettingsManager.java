@@ -13,6 +13,8 @@ public class SettingsManager {
     private static final String KEY_LYRIC_SIZE = "lyric_size";
     private static final String KEY_PLAY_MODE = "play_mode";
     private static final String KEY_TRANSLATION_INTEGRATION_ENABLED = "translation_integration_enabled";
+    private static final String KEY_APP_VOLUME = "app_volume";
+    public static final int DEFAULT_APP_VOLUME = 80;
 
     private SharedPreferences prefs;
 
@@ -83,6 +85,15 @@ public class SettingsManager {
 
     public boolean isTranslationIntegrationEnabled() {
         return prefs.getBoolean(KEY_TRANSLATION_INTEGRATION_ENABLED, false);
+    }
+
+    public void setAppVolume(int volumePercent) {
+        int clamped = Math.max(0, Math.min(volumePercent, 100));
+        prefs.edit().putInt(KEY_APP_VOLUME, clamped).apply();
+    }
+
+    public int getAppVolume() {
+        return prefs.getInt(KEY_APP_VOLUME, DEFAULT_APP_VOLUME);
     }
 
     public SharedPreferences getPrefs() {
