@@ -30,7 +30,7 @@ An Android music player application that integrates with Netease Cloud Music.<br
 
 ## 📱 Requirements
 
-- **Android Version**: `Android 12.0 / API Level 24.0` or higher.
+- **Android Version**: `Android 12.0 / API Level 26.0` or higher.
 - **Required Permissions**:
   - "Display over other apps" for Floating Lyrics.
   - "Notifications", "Read device audio", and "Overlay" permissions for full functionality.
