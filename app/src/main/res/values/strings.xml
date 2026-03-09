@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">ML Netease</string>
+    <string name="app_description">An Android music player application that integrates with Netease Cloud Music.</string>
     <string name="search">Search</string>
     <string name="parse">Parse</string>
     <string name="settings">Settings</string>
