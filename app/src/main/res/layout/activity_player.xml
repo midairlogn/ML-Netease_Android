@@ -31,7 +31,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_marginBottom="24dp">
+        android:layout_marginBottom="16dp">
 
         <TextView
             android:id="@+id/player_song_title"
@@ -70,7 +70,10 @@
             android:paddingEnd="0dp"
             android:thumbTint="@color/text_primary"
             android:progressTint="@color/text_primary"
-            android:progressBackgroundTint="@color/text_secondary"/>
+            android:progressBackgroundTint="@color/text_secondary"
+            android:minHeight="32dp"
+            android:paddingVertical="4dp"
+            android:thumbOffset="8dp"/>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -107,7 +110,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp">
 
         <ImageButton
