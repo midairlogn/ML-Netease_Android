@@ -7,6 +7,17 @@
     android:background="@color/background_primary"
     android:padding="24dp">
 
+    <ImageButton
+        android:id="@+id/btn_back"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_back"
+        android:scaleType="fitCenter"
+        app:tint="@color/text_primary"
+        android:layout_marginBottom="16dp"
+        android:contentDescription="@string/back" />
+
     <!-- Cover/Lyrics Area -->
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/view_pager"

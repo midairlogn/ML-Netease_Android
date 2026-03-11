@@ -20,6 +20,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
     private SeekBar seekBar;
     private ImageButton btnPlayPause, btnPrev, btnNext;
     private ImageButton btnMode, btnPlaylist;
+    private ImageButton btnBack;
     private ViewPager2 viewPager;
     private MusicPlayerManager musicPlayerManager;
     private Toast currentToast;
@@ -61,6 +62,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         btnNext = findViewById(R.id.btn_next);
         btnMode = findViewById(R.id.btn_mode);
         btnPlaylist = findViewById(R.id.btn_playlist);
+        btnBack = findViewById(R.id.btn_back);
         viewPager = findViewById(R.id.view_pager);
     }
 
@@ -72,6 +74,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         btnPlayPause.setOnClickListener(v -> musicPlayerManager.togglePlayPause());
         btnPrev.setOnClickListener(v -> musicPlayerManager.playPrevious());
         btnNext.setOnClickListener(v -> musicPlayerManager.playNext());
+        btnBack.setOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
 
         btnMode.setOnClickListener(v -> {
             musicPlayerManager.togglePlaybackMode();
