@@ -88,7 +88,12 @@ public class HomeFragment extends Fragment {
                     }
                 }
                 adapter.setSongs(savedSongs);
-                btnPlayAll.setVisibility(savedSongs.isEmpty() ? View.GONE : View.VISIBLE);
+                int checkedId = searchTypeGroup.getCheckedRadioButtonId();
+                if (checkedId == R.id.radio_song) {
+                    btnPlayAll.setVisibility(View.GONE);
+                } else {
+                    btnPlayAll.setVisibility(savedSongs.isEmpty() ? View.GONE : View.VISIBLE);
+                }
             }
         }
 
@@ -147,8 +152,7 @@ public class HomeFragment extends Fragment {
 
             List<Song> songs = adapter.getSongs();
             if (songs != null && !songs.isEmpty()) {
-                MusicPlayerManager.getInstance(getContext()).setPlaylist(songs);
-                MusicPlayerManager.getInstance(getContext()).play(0);
+                MusicPlayerManager.getInstance(getContext()).addPlaylistAndPlayFirstNew(songs);
             }
         });
 
@@ -322,7 +326,7 @@ public class HomeFragment extends Fragment {
             }
 
             adapter.setSongs(songs);
-            btnPlayAll.setVisibility(songs.isEmpty() ? View.GONE : View.VISIBLE);
+            btnPlayAll.setVisibility(View.GONE);
 
         } catch (Exception e) {
             e.printStackTrace();

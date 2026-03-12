@@ -17,4 +17,17 @@ public class Song implements Serializable {
         this.album = album;
         this.picUrl = picUrl;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Song song = (Song) o;
+        return id != null ? id.equals(song.id) : song.id == null;
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
+    }
 }

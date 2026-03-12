@@ -6,7 +6,9 @@ import android.os.Handler;
 import android.os.Looper;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 import org.json.JSONObject;
@@ -164,6 +166,45 @@ public class MusicPlayerManager {
     public void addToPlaylist(Song song) {
         playlist.add(song);
         notifyPlaylistChanged();
+    }
+
+    public void addPlaylistAndPlayFirstNew(List<Song> songs) {
+        if (songs == null || songs.isEmpty()) return;
+
+        Map<String, Integer> idMap = new HashMap<>();
+        for (int i = 0; i < playlist.size(); i++) {
+            idMap.put(playlist.get(i).id, i);
+        }
+
+        int firstNewIndex = -1;
+        int fallbackIndex = -1;
+        boolean playlistChanged = false;
+
+        for (Song song : songs) {
+            Integer existingIndex = idMap.get(song.id);
+
+            if (existingIndex == null) {
+                playlist.add(song);
+                int newIndex = playlist.size() - 1;
+                idMap.put(song.id, newIndex);
+                playlistChanged = true;
+
+                if (firstNewIndex == -1) {
+                    firstNewIndex = newIndex;
+                }
+            } else if (fallbackIndex == -1) {
+                fallbackIndex = existingIndex;
+            }
+        }
+
+        if (playlistChanged) {
+            notifyPlaylistChanged();
+        }
+
+        int targetIndex = firstNewIndex != -1 ? firstNewIndex : fallbackIndex;
+        if (targetIndex != -1) {
+            play(targetIndex);
+        }
     }
 
     public void addOrPlaySong(Song song) {
