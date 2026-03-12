@@ -4,7 +4,9 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/background_primary"
-    android:padding="16dp"
+    android:paddingTop="16dp"
+    android:paddingBottom="0dp"
+    android:paddingHorizontal="16dp"
     android:focusable="true"
     android:focusableInTouchMode="true"
     android:clickable="true">
