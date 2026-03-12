@@ -176,11 +176,11 @@ public class MusicPlayerManager {
             idMap.put(playlist.get(i).id, i);
         }
 
-        int firstNewIndex = -1;
-        int fallbackIndex = -1;
+        int firstSongIndex = -1;
         boolean playlistChanged = false;
 
-        for (Song song : songs) {
+        for (int i = 0; i < songs.size(); i++) {
+            Song song = songs.get(i);
             Integer existingIndex = idMap.get(song.id);
 
             if (existingIndex == null) {
@@ -189,11 +189,11 @@ public class MusicPlayerManager {
                 idMap.put(song.id, newIndex);
                 playlistChanged = true;
 
-                if (firstNewIndex == -1) {
-                    firstNewIndex = newIndex;
+                if (i == 0) {
+                    firstSongIndex = newIndex;
                 }
-            } else if (fallbackIndex == -1) {
-                fallbackIndex = existingIndex;
+            } else if (i == 0) {
+                firstSongIndex = existingIndex;
             }
         }
 
@@ -201,9 +201,8 @@ public class MusicPlayerManager {
             notifyPlaylistChanged();
         }
 
-        int targetIndex = firstNewIndex != -1 ? firstNewIndex : fallbackIndex;
-        if (targetIndex != -1) {
-            play(targetIndex);
+        if (firstSongIndex != -1) {
+            play(firstSongIndex);
         }
     }
 
