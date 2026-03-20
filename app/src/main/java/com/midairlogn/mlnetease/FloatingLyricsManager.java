@@ -373,9 +373,11 @@ public class FloatingLyricsManager {
         }
         if (tvLyricsCurrentTranslation != null) {
             tvLyricsCurrentTranslation.setTextSize(Math.max(9f, size - 4f));
+            tvLyricsCurrentTranslation.setTextColor(color);
         }
         if (tvLyricsNextTranslation != null) {
             tvLyricsNextTranslation.setTextSize(Math.max(9f, size - 5f));
+            tvLyricsNextTranslation.setTextColor(Color.parseColor("#B0B0B0"));
         }
     }
 
@@ -619,19 +621,19 @@ public class FloatingLyricsManager {
                 LyricLine currentLine = currentLyrics.get(currentLyricIndex);
                 String text = currentLine.text;
                 boolean showTranslation = settingsManager.isTranslationIntegrationEnabled();
+                int highlightColor = settingsManager.getLyricColor();
+                if (highlightColor == 0) highlightColor = Color.parseColor("#2196F3"); // Default
+                int dimTranslationColor = Color.parseColor("#B0B0B0");
 
                 if (tvLyricsCurrent != null) {
                     tvLyricsCurrent.setText(text);
-
-                    int highlightColor = settingsManager.getLyricColor();
-                    if (highlightColor == 0) highlightColor = Color.parseColor("#2196F3"); // Default
-
                     tvLyricsCurrent.setTextColor(highlightColor);
                 }
 
                 if (tvLyricsCurrentTranslation != null) {
                     if (showTranslation && !TextUtils.isEmpty(currentLine.translation)) {
                         tvLyricsCurrentTranslation.setText(currentLine.translation);
+                        tvLyricsCurrentTranslation.setTextColor(highlightColor);
                         tvLyricsCurrentTranslation.setVisibility(View.VISIBLE);
                     } else {
                         tvLyricsCurrentTranslation.setText("");
@@ -648,6 +650,7 @@ public class FloatingLyricsManager {
                 }
 
                 if (tvLyricsNextTranslation != null) {
+                    tvLyricsNextTranslation.setTextColor(dimTranslationColor);
                     if (currentLyricIndex + 1 < currentLyrics.size()) {
                         LyricLine nextLine = currentLyrics.get(currentLyricIndex + 1);
                         if (showTranslation && !TextUtils.isEmpty(nextLine.translation)) {
