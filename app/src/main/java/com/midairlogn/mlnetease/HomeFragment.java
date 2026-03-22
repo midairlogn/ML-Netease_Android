@@ -139,6 +139,11 @@ public class HomeFragment extends Fragment {
         searchInput.setOnFocusChangeListener((v, hasFocus) -> {
             if (!hasFocus) {
                 hideKeyboard(v);
+                String input = searchInput.getText().toString().trim();
+                String extractedId = extractId(input);
+                if (extractedId != null && !extractedId.isEmpty() && !extractedId.equals(input)) {
+                    searchInput.setText(extractedId);
+                }
             }
         });
 
@@ -208,12 +213,55 @@ public class HomeFragment extends Fragment {
                 neteaseApi.getSongFullInfo(extractedId, new NeteaseApi.ApiCallback() {
                     @Override
                     public void onSuccess(String result) {
-                        parseSongIdResult(result);
+                        try {
+                            JSONObject root = new JSONObject(result);
+                            if (root.optInt("status") == 200) {
+                                parseSongIdResult(result);
+                            } else {
+                                // Fallback to keyword search
+                                neteaseApi.search(input, new NeteaseApi.ApiCallback() {
+                                    @Override
+                                    public void onSuccess(String result) {
+                                        parseSearchResult(result);
+                                    }
+
+                                    @Override
+                                    public void onError(String error) {
+                                        Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            // Fallback to keyword search
+                            neteaseApi.search(input, new NeteaseApi.ApiCallback() {
+                                @Override
+                                public void onSuccess(String result) {
+                                    parseSearchResult(result);
+                                }
+
+                                @Override
+                                public void onError(String error) {
+                                    Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
                     }
 
                     @Override
                     public void onError(String error) {
-                        Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
+                        // Fallback to keyword search
+                        neteaseApi.search(input, new NeteaseApi.ApiCallback() {
+                            @Override
+                            public void onSuccess(String result) {
+                                parseSearchResult(result);
+                            }
+
+                            @Override
+                            public void onError(String error) {
+                                Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
+                            }
+                        });
                     }
                 });
             } else {
