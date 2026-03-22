@@ -433,9 +433,9 @@ public class HomeFragment extends Fragment {
     }
 
     private void showManageShortcutsDialog() {
-        // Simple implementation for demonstration - ideally a DialogFragment or BottomSheet
-        // For brevity, just Toast placeholder - in a full implementation, you'd inflate dialog_manage_home_shortcuts.xml
-        Toast.makeText(getContext(), "Shortcut Management UI (Not fully implemented)", Toast.LENGTH_SHORT).show();
+        ManageShortcutsDialog dialog = new ManageShortcutsDialog();
+        dialog.setOnDismissListener(() -> loadShortcuts());
+        dialog.show(getParentFragmentManager(), "ManageShortcuts");
     }
 
     private void hideKeyboard(View view) {

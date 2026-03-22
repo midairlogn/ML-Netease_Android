@@ -56,13 +56,13 @@
             android:hint="Playlist or album ID / URL"
             android:inputType="text" />
 
-        <TextView
-            android:id="@+id/tv_shortcut_editor_hint"
+        <Button
+            android:id="@+id/btn_save_shortcut"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="URLs are normalized to a numeric ID before saving."
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp" />
+            android:layout_marginTop="24dp"
+            android:text="Save"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="@color/brand_primary" />
     </LinearLayout>
 </ScrollView>
