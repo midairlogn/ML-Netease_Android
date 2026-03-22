@@ -28,7 +28,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener, MusicPlayerManager.OnProgressUpdateListener {
+public class MainActivity extends AppCompatActivity implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener, MusicPlayerManager.OnProgressUpdateListener, MusicPlayerManager.OnFullInfoAvailableListener {
 
     private static final int REQUEST_CODE_PERMISSIONS = 1001;
     private static final int REQUEST_CODE_OVERLAY = 1002;
@@ -255,6 +255,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         // Listeners
         musicPlayerManager.addOnSongChangedListener(this);
         musicPlayerManager.addOnPlaybackStateChangedListener(this);
+        musicPlayerManager.addOnFullInfoAvailableListener(this);
     }
 
     private void updateMiniPlayer(Song song) {
@@ -336,11 +337,17 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         super.onDestroy();
         musicPlayerManager.removeOnSongChangedListener(this);
         musicPlayerManager.removeOnPlaybackStateChangedListener(this);
+        musicPlayerManager.removeOnFullInfoAvailableListener(this);
         musicPlayerManager.removeOnProgressUpdateListener(this);
     }
 
     @Override
     public void onSongChanged(Song song) {
+        runOnUiThread(() -> updateMiniPlayer(song));
+    }
+
+    @Override
+    public void onFullInfoAvailable(Song song) {
         runOnUiThread(() -> updateMiniPlayer(song));
     }
 
