@@ -63,7 +63,8 @@
             android:layout_height="wrap_content"
             android:text="+"
             android:textSize="24sp"
-            android:textColor="@color/brand_primary" />
+            android:textColor="@color/brand_primary"
+            android:gravity="center_vertical" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -71,6 +72,7 @@
             android:layout_marginStart="8dp"
             android:text="Add Shortcut"
             android:textColor="@color/brand_primary"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:gravity="center_vertical" />
     </LinearLayout>
 </RelativeLayout>
