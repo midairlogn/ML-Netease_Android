@@ -107,7 +107,8 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
     private void saveAndRender() {
         settingsManager.normalizeShortcutSequences(shortcuts);
         settingsManager.setHomeShortcuts(shortcuts);
-        shortcuts = new ArrayList<>(settingsManager.getHomeShortcuts());
+        shortcuts.clear();
+        shortcuts.addAll(settingsManager.getHomeShortcuts());
         updateEmptyView();
     }
 
