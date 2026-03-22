@@ -10,6 +10,9 @@ import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.view.MotionEvent;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
@@ -47,6 +50,18 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new ShortcutAdapter(shortcuts, this);
         recyclerView.setAdapter(adapter);
+
+        view.setFocusable(true);
+        view.setFocusableInTouchMode(true);
+        view.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                if (requireActivity().getCurrentFocus() != null) {
+                    hideKeyboard(requireActivity().getCurrentFocus());
+                    requireActivity().getCurrentFocus().clearFocus();
+                }
+            }
+            return false;
+        });
 
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
             @Override
@@ -105,6 +120,15 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
 
         EditText titleInput = editDialog.findViewById(R.id.input_shortcut_title);
         EditText idInput = editDialog.findViewById(R.id.input_shortcut_id);
+        idInput.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus) {
+                String input = idInput.getText().toString();
+                String normalized = HomeShortcutIdParser.normalizeId(input);
+                if (!normalized.equals(input)) {
+                    idInput.setText(normalized);
+                }
+            }
+        });
         RadioGroup typeGroup = editDialog.findViewById(R.id.group_shortcut_type);
         RadioButton playlistRadio = editDialog.findViewById(R.id.radio_shortcut_playlist);
         RadioButton albumRadio = editDialog.findViewById(R.id.radio_shortcut_album);
@@ -123,14 +147,21 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
 
             if (title.isEmpty() || id.isEmpty()) return;
 
+            for (HomeShortcut s : shortcuts) {
+                if (s != shortcut && s.type.equals(type) && s.id.equals(id)) {
+                    Toast.makeText(getContext(), "Shortcut already exists", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+
             if (shortcut == null) shortcuts.add(new HomeShortcut(title, id, type, shortcuts.size()));
             else {
                 shortcut.title = title;
                 shortcut.id = id;
                 shortcut.type = type;
             }
-            adapter.notifyDataSetChanged();
             saveAndRender();
+            adapter.notifyDataSetChanged();
             editDialog.dismiss();
         });
 
