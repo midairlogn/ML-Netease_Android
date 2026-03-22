@@ -11,7 +11,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioGroup;
-import android.widget.TextView;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -31,7 +31,12 @@ public class HomeFragment extends Fragment {
     private RadioGroup searchTypeGroup;
     private RecyclerView recyclerView;
     private SongAdapter adapter;
+    private HomeShortcutAdapter shortcutAdapter;
     private Button btnPlayAll;
+    private Button btnManageShortcuts;
+    private LinearLayout emptyShortcutLayout;
+    private List<HomeShortcut> currentShortcuts = new ArrayList<>();
+    private boolean isShortcutMode = true;
 
     private long lastSearchTime = 0;
     private long lastPlayAllTime = 0;
@@ -68,15 +73,27 @@ public class HomeFragment extends Fragment {
         searchButton = view.findViewById(R.id.search_button);
         searchTypeGroup = view.findViewById(R.id.search_type_group);
         recyclerView = view.findViewById(R.id.recycler_view);
+        btnManageShortcuts = view.findViewById(R.id.btn_manage_shortcuts);
+        emptyShortcutLayout = view.findViewById(R.id.home_shortcut_empty_state);
 
         recyclerView.setOnTouchListener(hideKeyboardTouchListener);
         searchTypeGroup.setOnTouchListener(hideKeyboardTouchListener);
 
         btnPlayAll = view.findViewById(R.id.btn_play_all);
+        view.findViewById(R.id.btn_manage_shortcuts_empty).setOnClickListener(v -> showManageShortcutsDialog());
+        btnManageShortcuts.setOnClickListener(v -> showManageShortcutsDialog());
 
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         adapter = new SongAdapter();
-        recyclerView.setAdapter(adapter);
+        shortcutAdapter = new HomeShortcutAdapter();
+
+        shortcutAdapter.setOnItemClickListener(shortcut -> {
+            executeShortcut(shortcut);
+        });
+
+        recyclerView.setAdapter(shortcutAdapter);
+        updateViewMode();
+        loadShortcuts();
 
         if (savedInstanceState != null) {
             List<?> savedSongsRaw = (List<?>) savedInstanceState.getSerializable("songs");
@@ -213,7 +230,7 @@ public class HomeFragment extends Fragment {
             neteaseApi.playlistDetail(id, new NeteaseApi.ApiCallback() {
                 @Override
                 public void onSuccess(String result) {
-                    parsePlaylistResult(result);
+                    parsePlaylistResult(result, false);
                 }
 
                 @Override
@@ -226,7 +243,7 @@ public class HomeFragment extends Fragment {
             neteaseApi.albumDetail(id, new NeteaseApi.ApiCallback() {
                 @Override
                 public void onSuccess(String result) {
-                    parseAlbumResult(result);
+                    parseAlbumResult(result, false);
                 }
 
                 @Override
@@ -238,21 +255,61 @@ public class HomeFragment extends Fragment {
     }
 
     private String extractId(String input) {
-        if (input.contains("music.163.com")) {
-            int index = input.indexOf("id=");
-            if (index != -1) {
-                String sub = input.substring(index + 3);
-                int end = sub.indexOf("&");
-                if (end != -1) {
-                    return sub.substring(0, end);
-                }
-                return sub;
-            }
-        }
-        return input;
+        return HomeShortcutIdParser.normalizeId(input);
     }
 
-    private void parsePlaylistResult(String json) {
+    private void updateViewMode() {
+        if (isShortcutMode) {
+            recyclerView.setAdapter(shortcutAdapter);
+            btnPlayAll.setVisibility(View.GONE);
+            btnManageShortcuts.setVisibility(currentShortcuts.isEmpty() ? View.GONE : View.VISIBLE);
+            emptyShortcutLayout.setVisibility(currentShortcuts.isEmpty() ? View.VISIBLE : View.GONE);
+        } else {
+            recyclerView.setAdapter(adapter);
+            btnManageShortcuts.setVisibility(View.GONE);
+            emptyShortcutLayout.setVisibility(View.GONE);
+            // btnPlayAll visibility managed by updateList() or search result callbacks
+        }
+    }
+
+    private void loadShortcuts() {
+        currentShortcuts = new SettingsManager(requireContext()).getHomeShortcuts();
+        shortcutAdapter.setShortcuts(currentShortcuts);
+        updateViewMode();
+    }
+
+    private void executeShortcut(HomeShortcut shortcut) {
+        hideKeyboard(getView());
+        searchInput.clearFocus();
+
+        if (shortcut.isPlaylist()) {
+            neteaseApi.playlistDetail(shortcut.id, new NeteaseApi.ApiCallback() {
+                @Override
+                public void onSuccess(String result) {
+                    parsePlaylistResult(result, true);
+                }
+
+                @Override
+                public void onError(String error) {
+                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show());
+                }
+            });
+        } else if (shortcut.isAlbum()) {
+            neteaseApi.albumDetail(shortcut.id, new NeteaseApi.ApiCallback() {
+                @Override
+                public void onSuccess(String result) {
+                    parseAlbumResult(result, true);
+                }
+
+                @Override
+                public void onError(String error) {
+                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show());
+                }
+            });
+        }
+    }
+
+    private void parsePlaylistResult(String json, boolean isShortcut) {
         try {
             JSONObject root = new JSONObject(json);
             if (!root.has("songs")) {
@@ -260,28 +317,28 @@ public class HomeFragment extends Fragment {
                 return;
             }
             JSONArray songsArray = root.getJSONArray("songs");
-            updateList(songsArray);
+            updateList(songsArray, isShortcut);
         } catch (Exception e) {
             e.printStackTrace();
             Toast.makeText(getContext(), "Parse error", Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void parseAlbumResult(String json) {
+    private void parseAlbumResult(String json, boolean isShortcut) {
         try {
             JSONObject root = new JSONObject(json);
             if (!root.has("album")) return;
             JSONObject album = root.getJSONObject("album");
             if (!album.has("songs")) return;
             JSONArray songsArray = album.getJSONArray("songs");
-            updateList(songsArray);
+            updateList(songsArray, isShortcut);
         } catch (Exception e) {
             e.printStackTrace();
             Toast.makeText(getContext(), "Parse error", Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void updateList(JSONArray songsArray) throws Exception {
+    private void updateList(JSONArray songsArray, boolean isShortcut) throws Exception {
         List<Song> songs = new ArrayList<>();
         for (int i = 0; i < songsArray.length(); i++) {
             JSONObject obj = songsArray.getJSONObject(i);
@@ -293,8 +350,19 @@ public class HomeFragment extends Fragment {
 
             songs.add(new Song(id, name, artists, album, picUrl));
         }
-        adapter.setSongs(songs);
-        btnPlayAll.setVisibility(songs.isEmpty() ? View.GONE : View.VISIBLE);
+
+        if (isShortcut) {
+            getActivity().runOnUiThread(() -> {
+                MusicPlayerManager.getInstance(getContext()).addPlaylistAndPlayFirstNew(songs);
+            });
+        } else {
+            getActivity().runOnUiThread(() -> {
+                isShortcutMode = false;
+                updateViewMode();
+                adapter.setSongs(songs);
+                btnPlayAll.setVisibility(songs.isEmpty() ? View.GONE : View.VISIBLE);
+            });
+        }
     }
 
     private void parseSearchResult(String json) {
@@ -362,6 +430,12 @@ public class HomeFragment extends Fragment {
                     Toast.makeText(getContext(), "Parse error", Toast.LENGTH_SHORT).show()
             );
         }
+    }
+
+    private void showManageShortcutsDialog() {
+        // Simple implementation for demonstration - ideally a DialogFragment or BottomSheet
+        // For brevity, just Toast placeholder - in a full implementation, you'd inflate dialog_manage_home_shortcuts.xml
+        Toast.makeText(getContext(), "Shortcut Management UI (Not fully implemented)", Toast.LENGTH_SHORT).show();
     }
 
     private void hideKeyboard(View view) {
