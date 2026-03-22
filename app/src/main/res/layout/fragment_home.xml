@@ -42,6 +42,16 @@
             android:textColor="#FFFFFF"
             android:backgroundTint="@color/brand_primary"
             android:layout_marginStart="8dp"/>
+
+        <Button
+            android:id="@+id/btn_reset_search"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Clear"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="@color/text_secondary"
+            android:layout_marginStart="8dp"
+            android:visibility="gone"/>
     </LinearLayout>
 
     <RadioGroup

@@ -28,6 +28,7 @@ public class HomeFragment extends Fragment {
     private NeteaseApi neteaseApi;
     private EditText searchInput;
     private Button searchButton;
+    private Button btnResetSearch;
     private RadioGroup searchTypeGroup;
     private RecyclerView recyclerView;
     private SongAdapter adapter;
@@ -71,6 +72,7 @@ public class HomeFragment extends Fragment {
 
         searchInput = view.findViewById(R.id.search_input);
         searchButton = view.findViewById(R.id.search_button);
+        btnResetSearch = view.findViewById(R.id.btn_reset_search);
         searchTypeGroup = view.findViewById(R.id.search_type_group);
         recyclerView = view.findViewById(R.id.recycler_view);
         btnManageShortcuts = view.findViewById(R.id.btn_manage_shortcuts);
@@ -113,6 +115,8 @@ public class HomeFragment extends Fragment {
                 }
             }
         }
+
+        btnResetSearch.setOnClickListener(v -> resetToShortcutMode());
 
         searchButton.setOnClickListener(v -> {
             String input = searchInput.getText().toString().trim();
@@ -258,14 +262,23 @@ public class HomeFragment extends Fragment {
         return HomeShortcutIdParser.normalizeId(input);
     }
 
+    private void resetToShortcutMode() {
+        isShortcutMode = true;
+        searchInput.setText("");
+        adapter.setSongs(new ArrayList<>());
+        updateViewMode();
+    }
+
     private void updateViewMode() {
         if (isShortcutMode) {
             recyclerView.setAdapter(shortcutAdapter);
             btnPlayAll.setVisibility(View.GONE);
+            btnResetSearch.setVisibility(View.GONE);
             btnManageShortcuts.setVisibility(currentShortcuts.isEmpty() ? View.GONE : View.VISIBLE);
             emptyShortcutLayout.setVisibility(currentShortcuts.isEmpty() ? View.VISIBLE : View.GONE);
         } else {
             recyclerView.setAdapter(adapter);
+            btnResetSearch.setVisibility(View.VISIBLE);
             btnManageShortcuts.setVisibility(View.GONE);
             emptyShortcutLayout.setVisibility(View.GONE);
             // btnPlayAll visibility managed by updateList() or search result callbacks
@@ -393,8 +406,12 @@ public class HomeFragment extends Fragment {
                 songs.add(new Song(id, name, artists.toString(), album, picUrl));
             }
 
-            adapter.setSongs(songs);
-            btnPlayAll.setVisibility(View.GONE);
+            getActivity().runOnUiThread(() -> {
+                isShortcutMode = false;
+                updateViewMode();
+                adapter.setSongs(songs);
+                btnPlayAll.setVisibility(View.GONE);
+            });
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -421,8 +438,12 @@ public class HomeFragment extends Fragment {
             List<Song> songs = new ArrayList<>();
             songs.add(song);
 
-            adapter.setSongs(songs);
-            btnPlayAll.setVisibility(View.GONE);
+            getActivity().runOnUiThread(() -> {
+                isShortcutMode = false;
+                updateViewMode();
+                adapter.setSongs(songs);
+                btnPlayAll.setVisibility(View.GONE);
+            });
 
         } catch (Exception e) {
             e.printStackTrace();
