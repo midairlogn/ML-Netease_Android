@@ -89,15 +89,31 @@
             android:buttonTint="@color/brand_primary"/>
     </RadioGroup>
 
-    <Button
-        android:id="@+id/btn_play_all"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Play All"
-        android:textColor="#FFFFFF"
-        android:backgroundTint="@color/brand_primary"
-        android:layout_marginBottom="8dp"
-        android:visibility="gone"/>
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
+
+        <Button
+            android:id="@+id/btn_play_all"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Play All"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="@color/brand_primary"
+            android:visibility="gone"
+            android:layout_marginEnd="8dp"/>
+
+        <Button
+            android:id="@+id/btn_add_to_shortcut"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Add to Shortcut"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="@color/brand_primary"
+            android:visibility="gone"/>
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/home_shortcut_empty_state"

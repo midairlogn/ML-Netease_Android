@@ -30,9 +30,14 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
     private RecyclerView recyclerView;
     private ShortcutAdapter adapter;
     private Runnable onDismissListener;
+    private HomeShortcut initialShortcut;
 
     public void setOnDismissListener(Runnable listener) {
         this.onDismissListener = listener;
+    }
+
+    public void setInitialShortcut(HomeShortcut shortcut) {
+        this.initialShortcut = shortcut;
     }
 
     @Nullable
@@ -50,6 +55,12 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new ShortcutAdapter(shortcuts, this);
         recyclerView.setAdapter(adapter);
+
+        if (initialShortcut != null) {
+            // Delay showing the edit dialog to ensure the main dialog is already visible
+            view.post(() -> showEditDialog(initialShortcut));
+            initialShortcut = null;
+        }
 
         view.setFocusable(true);
         view.setFocusableInTouchMode(true);

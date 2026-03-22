@@ -34,10 +34,13 @@ public class HomeFragment extends Fragment {
     private SongAdapter adapter;
     private HomeShortcutAdapter shortcutAdapter;
     private Button btnPlayAll;
+    private Button btnAddToShortcut;
     private Button btnManageShortcuts;
     private LinearLayout emptyShortcutLayout;
     private List<HomeShortcut> currentShortcuts = new ArrayList<>();
     private boolean isShortcutMode = true;
+    private String lastSearchedId = "";
+    private String lastSearchedType = "";
 
     private long lastSearchTime = 0;
     private long lastPlayAllTime = 0;
@@ -82,8 +85,18 @@ public class HomeFragment extends Fragment {
         searchTypeGroup.setOnTouchListener(hideKeyboardTouchListener);
 
         btnPlayAll = view.findViewById(R.id.btn_play_all);
+        btnAddToShortcut = view.findViewById(R.id.btn_add_to_shortcut);
         view.findViewById(R.id.btn_manage_shortcuts_empty).setOnClickListener(v -> showManageShortcutsDialog());
         btnManageShortcuts.setOnClickListener(v -> showManageShortcutsDialog());
+
+        btnAddToShortcut.setOnClickListener(v -> {
+            if (lastSearchedId.isEmpty()) return;
+
+            ManageShortcutsDialog dialog = new ManageShortcutsDialog();
+            dialog.setInitialShortcut(new HomeShortcut("", lastSearchedId, lastSearchedType.equals("playlist") ? HomeShortcut.TYPE_PLAYLIST : HomeShortcut.TYPE_ALBUM, 0));
+            dialog.setOnDismissListener(() -> loadShortcuts());
+            dialog.show(getParentFragmentManager(), "ManageShortcuts");
+        });
 
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         adapter = new SongAdapter();
@@ -279,6 +292,8 @@ public class HomeFragment extends Fragment {
             }
         } else if (checkedId == R.id.radio_playlist) {
             String id = extractId(input);
+            lastSearchedId = id;
+            lastSearchedType = "playlist";
             neteaseApi.playlistDetail(id, new NeteaseApi.ApiCallback() {
                 @Override
                 public void onSuccess(String result) {
@@ -292,6 +307,8 @@ public class HomeFragment extends Fragment {
             });
         } else if (checkedId == R.id.radio_album) {
             String id = extractId(input);
+            lastSearchedId = id;
+            lastSearchedType = "album";
             neteaseApi.albumDetail(id, new NeteaseApi.ApiCallback() {
                 @Override
                 public void onSuccess(String result) {
@@ -314,6 +331,7 @@ public class HomeFragment extends Fragment {
         isShortcutMode = true;
         searchInput.setText("");
         adapter.setSongs(new ArrayList<>());
+        btnAddToShortcut.setVisibility(View.GONE);
         updateViewMode();
     }
 
@@ -422,6 +440,18 @@ public class HomeFragment extends Fragment {
                 updateViewMode();
                 adapter.setSongs(songs);
                 btnPlayAll.setVisibility(songs.isEmpty() ? View.GONE : View.VISIBLE);
+                btnAddToShortcut.setVisibility(songs.isEmpty() ? View.GONE : View.VISIBLE);
+
+                boolean alreadyExists = false;
+                String currentType = lastSearchedType.equals("playlist") ? HomeShortcut.TYPE_PLAYLIST : HomeShortcut.TYPE_ALBUM;
+                for (HomeShortcut s : currentShortcuts) {
+                    if (s.type.equals(currentType) && s.id.equals(lastSearchedId)) {
+                        alreadyExists = true;
+                        break;
+                    }
+                }
+                btnAddToShortcut.setEnabled(!alreadyExists);
+                btnAddToShortcut.setAlpha(alreadyExists ? 0.3f : 1.0f);
             });
         }
     }
