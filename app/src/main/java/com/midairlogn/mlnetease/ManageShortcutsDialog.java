@@ -116,6 +116,23 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
         editDialog.setContentView(R.layout.dialog_edit_home_shortcut);
         editDialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT);
 
+        // Make root layout focusable to intercept clicks for keyboard hiding
+        View root = editDialog.findViewById(android.R.id.content);
+        if (root != null) {
+            root.setFocusable(true);
+            root.setFocusableInTouchMode(true);
+            root.setOnTouchListener((v, event) -> {
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    View currentFocus = editDialog.getCurrentFocus();
+                    if (currentFocus != null) {
+                        hideKeyboard(currentFocus);
+                        currentFocus.clearFocus();
+                    }
+                }
+                return false;
+            });
+        }
+
         editDialog.findViewById(R.id.btn_close_edit).setOnClickListener(v -> editDialog.dismiss());
 
         EditText titleInput = editDialog.findViewById(R.id.input_shortcut_title);
@@ -180,5 +197,14 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
     public void onDismiss(@NonNull android.content.DialogInterface dialog) {
         super.onDismiss(dialog);
         if (onDismissListener != null) onDismissListener.run();
+    }
+
+    private void hideKeyboard(View view) {
+        if (view != null) {
+            InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+            }
+        }
     }
 }
