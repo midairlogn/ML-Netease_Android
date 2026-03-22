@@ -92,10 +92,37 @@ public class HomeFragment extends Fragment {
         btnAddToShortcut.setOnClickListener(v -> {
             if (lastSearchedId.isEmpty()) return;
 
-            ManageShortcutsDialog dialog = new ManageShortcutsDialog();
-            dialog.setInitialShortcut(new HomeShortcut("", lastSearchedId, lastSearchedType.equals("playlist") ? HomeShortcut.TYPE_PLAYLIST : HomeShortcut.TYPE_ALBUM, 0));
-            dialog.setOnDismissListener(() -> loadShortcuts());
-            dialog.show(getParentFragmentManager(), "ManageShortcuts");
+            SettingsManager sm = new SettingsManager(requireContext());
+            List<HomeShortcut> shortcuts = new ArrayList<>(sm.getHomeShortcuts());
+            String type = lastSearchedType.equals("playlist") ? HomeShortcut.TYPE_PLAYLIST : HomeShortcut.TYPE_ALBUM;
+
+            // Check if already exists
+            HomeShortcut existing = null;
+            for (HomeShortcut s : shortcuts) {
+                if (s.type.equals(type) && s.id.equals(lastSearchedId)) {
+                    existing = s;
+                    break;
+                }
+            }
+
+            if (existing != null) {
+                // Open edit dialog for existing
+                ManageShortcutsDialog dialog = new ManageShortcutsDialog();
+                dialog.setInitialShortcut(existing);
+                dialog.setOnDismissListener(() -> loadShortcuts());
+                dialog.show(getParentFragmentManager(), "ManageShortcuts");
+            } else {
+                // Add new and open edit dialog
+                HomeShortcut newShortcut = new HomeShortcut(lastSearchedId, lastSearchedId, type, shortcuts.size());
+                shortcuts.add(newShortcut);
+                sm.setHomeShortcuts(shortcuts);
+                loadShortcuts();
+
+                ManageShortcutsDialog dialog = new ManageShortcutsDialog();
+                dialog.setInitialShortcut(newShortcut);
+                dialog.setOnDismissListener(() -> loadShortcuts());
+                dialog.show(getParentFragmentManager(), "ManageShortcuts");
+            }
         });
 
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
