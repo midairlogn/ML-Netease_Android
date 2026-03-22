@@ -3,8 +3,8 @@ package com.midairlogn.mlnetease;
 import java.io.Serializable;
 
 public class HomeShortcut implements Serializable {
-    public static final String TYPE_PLAYLIST = "playlist";
-    public static final String TYPE_ALBUM = "album";
+    public static final String TYPE_PLAYLIST = "Playlist";
+    public static final String TYPE_ALBUM = "Album";
 
     public String title;
     public String id;

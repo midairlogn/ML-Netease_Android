@@ -177,7 +177,7 @@ public class SettingsManager {
         prefs.edit().putString(KEY_HOME_SHORTCUTS, array.toString()).apply();
     }
 
-    private void normalizeShortcutSequences(List<HomeShortcut> shortcuts) {
+    public void normalizeShortcutSequences(List<HomeShortcut> shortcuts) {
         for (int i = 0; i < shortcuts.size(); i++) {
             shortcuts.get(i).sequence = i;
         }

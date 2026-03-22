@@ -1,63 +1,76 @@
-<?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:fillViewport="true">
+    android:layout_height="match_parent"
+    android:padding="20dp">
 
-    <LinearLayout
+    <TextView
+        android:id="@+id/tv_manage_shortcuts_title"
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:text="Homepage Shortcuts"
+        android:textColor="@color/text_primary"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true" />
+
+    <ImageButton
+        android:id="@+id/btn_close_shortcuts"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:src="@android:drawable/ic_menu_close_clear_cancel"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        app:tint="@color/text_primary"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:contentDescription="Close" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_manage_shortcuts"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/tv_manage_shortcuts_title"
+        android:layout_above="@id/btn_add_shortcut"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/tv_manage_shortcuts_empty"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:layout_below="@id/tv_manage_shortcuts_title"
+        android:layout_marginTop="16dp"
+        android:text="No shortcuts yet. Add a playlist or album shortcut."
+        android:textColor="@color/text_secondary"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/btn_add_shortcut"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:padding="8dp"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true">
 
         <TextView
-            android:id="@+id/tv_manage_shortcuts_title"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Homepage Shortcuts"
-            android:textColor="@color/text_primary"
-            android:textSize="20sp"
-            android:textStyle="bold" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="16dp">
-
-            <Button
-                android:id="@+id/btn_add_shortcut"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Add"
-                android:textColor="#FFFFFF"
-                android:backgroundTint="@color/brand_primary" />
-
-            <Button
-                android:id="@+id/btn_close_shortcuts"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:text="Close" />
-        </LinearLayout>
+            android:text="+"
+            android:textSize="24sp"
+            android:textColor="@color/brand_primary" />
 
         <TextView
-            android:id="@+id/tv_manage_shortcuts_empty"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="No shortcuts yet. Add a playlist or album shortcut."
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp"
-            android:visibility="gone" />
-
-        <LinearLayout
-            android:id="@+id/layout_manage_shortcuts_list"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:orientation="vertical" />
+            android:layout_marginStart="8dp"
+            android:text="Add Shortcut"
+            android:textColor="@color/brand_primary"
+            android:textSize="16sp" />
     </LinearLayout>
-</ScrollView>
+</RelativeLayout>
