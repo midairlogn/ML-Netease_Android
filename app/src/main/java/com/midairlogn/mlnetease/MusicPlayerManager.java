@@ -41,6 +41,12 @@ public class MusicPlayerManager {
     private final AtomicLong playRequestIdGenerator = new AtomicLong(0);
     private volatile long activePlayRequestId = 0;
 
+    private volatile boolean isAutoSkipping = false;
+    private int continuousSkipCount = 0;
+    private Runnable pendingSongNotifyRunnable;
+    private Runnable pendingFullInfoNotifyRunnable;
+    private static final int NOTIFY_DEBOUNCE_MS = 500;
+
     // Callbacks
     private List<OnSongChangedListener> songChangedListeners = new ArrayList<>();
     private List<OnPlaybackStateChangedListener> playbackStateChangedListeners = new ArrayList<>();
@@ -272,7 +278,55 @@ public class MusicPlayerManager {
 
 
     public void play(int index) {
+        isAutoSkipping = false;
+        continuousSkipCount = 0;
+        if (pendingSongNotifyRunnable != null) {
+            mainHandler.removeCallbacks(pendingSongNotifyRunnable);
+            pendingSongNotifyRunnable = null;
+        }
+        if (pendingFullInfoNotifyRunnable != null) {
+            mainHandler.removeCallbacks(pendingFullInfoNotifyRunnable);
+            pendingFullInfoNotifyRunnable = null;
+        }
         play(index, false);
+    }
+
+    private static final int RETRY_DELAY_MS = 2000;
+    private static final int AUTO_SKIP_DELAY_MS = 1000;
+
+    private void handlePlaybackFailure(int index, long requestId, String reason) {
+        if (requestId != activePlayRequestId || currentIndex != index) return;
+
+        android.util.Log.e("MusicPlayerManager", "Playback failure: " + reason + " for index " + index);
+
+        if (retryCount < MAX_RETRY) {
+            retryCount++;
+            android.util.Log.d("MusicPlayerManager", "Retrying playback in " + RETRY_DELAY_MS + "ms... Attempt " + retryCount);
+            // Delay retry to prevent rapid loops (especially when internet is down)
+            mainHandler.postDelayed(() -> {
+                if (requestId == activePlayRequestId && currentIndex == index) {
+                    play(currentIndex, true);
+                }
+            }, RETRY_DELAY_MS);
+        } else {
+            android.util.Log.e("MusicPlayerManager", "MAX_RETRY reached. Auto skipping in " + AUTO_SKIP_DELAY_MS + "ms...");
+            isAutoSkipping = true;
+            continuousSkipCount++;
+
+            if (continuousSkipCount < playlist.size()) {
+                mainHandler.postDelayed(() -> {
+                    if (requestId == activePlayRequestId && currentIndex == index) {
+                        playNext(true);
+                    }
+                }, AUTO_SKIP_DELAY_MS);
+            } else {
+                android.util.Log.e("MusicPlayerManager", "No playable songs found in the entire playlist.");
+                isAutoSkipping = false;
+                continuousSkipCount = 0;
+                isSwitchingSong = false;
+                notifyPlaybackStateChanged(false);
+            }
+        }
     }
 
     private void play(int index, boolean isRetry) {
@@ -282,7 +336,6 @@ public class MusicPlayerManager {
         activePlayRequestId = requestId;
         forceNextPlaybackStateDispatch = true;
 
-        // If it is not a retry, reset retry count and resume position
         if (!isRetry) {
             retryCount = 0;
             resumePosition = 0;
@@ -312,9 +365,13 @@ public class MusicPlayerManager {
 
         Song song = playlist.get(index);
 
-        // Notify change immediately so UI updates (cover, title)
-        notifySongChanged(song);
-        notifyProgressUpdate(0, 0);
+        // Notify change immediately ONLY if it's a new song and not a retry.
+        // During retries or auto-skips, we've already notified the change (or it's debounced).
+        if (!isRetry && !isAutoSkipping) {
+            notifySongChanged(song);
+            notifyProgressUpdate(0, 0);
+        }
+
         if (wasPlaying) {
             // Emit one stable pause/loading transition at switch start.
             notifyPlaybackStateChanged(false);
@@ -347,31 +404,24 @@ public class MusicPlayerManager {
                         // to refresh lyrics. MusicService uses this to update notification with album art.
                         notifyFullInfoAvailable(song);
 
-                        if (!url.isEmpty()) {
+                        if (!url.isEmpty() && !"null".equals(url)) {
                             android.util.Log.d("MusicPlayerManager", "Playing URL: " + url);
                             playUrl(url, index, requestId);
                         } else {
-                            android.util.Log.e("MusicPlayerManager", "Song URL is empty. Check VIP/Copyright status.");
-                            isSwitchingSong = false;
-                            notifyPlaybackStateChanged(false);
+                            handlePlaybackFailure(index, requestId, "Empty URL (Copyright/VIP/Deleted)");
                         }
                     } else {
-                        isSwitchingSong = false;
-                        notifyPlaybackStateChanged(false);
+                        handlePlaybackFailure(index, requestId, "API Status: " + root.getInt("status"));
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
-                    isSwitchingSong = false;
-                    notifyPlaybackStateChanged(false);
+                    handlePlaybackFailure(index, requestId, "JSON Parsing Exception: " + e.getMessage());
                 }
             }
 
             @Override
             public void onError(String error) {
-                if (requestId != activePlayRequestId || currentIndex != index) return;
-                android.util.Log.e("MusicPlayerManager", "getSongFullInfo error: " + error);
-                isSwitchingSong = false;
-                notifyPlaybackStateChanged(false);
+                handlePlaybackFailure(index, requestId, "API Network Error: " + error);
             }
         });
     }
@@ -400,6 +450,8 @@ public class MusicPlayerManager {
                     return;
                 }
 
+                isAutoSkipping = false;
+                continuousSkipCount = 0;
                 isSwitchingSong = false;
                 if (resumePosition > 0) {
                     mp.seekTo(resumePosition);
@@ -413,29 +465,7 @@ public class MusicPlayerManager {
             });
 
             mediaPlayer.setOnErrorListener((mp, what, extra) -> {
-                if (requestId != activePlayRequestId || currentIndex != expectedIndex) {
-                    return true;
-                }
-
-                isSwitchingSong = false;
-                android.util.Log.e("MusicPlayerManager", "MediaPlayer Error: what=" + what + ", extra=" + extra);
-
-                if (retryCount < MAX_RETRY) {
-                    retryCount++;
-                    android.util.Log.d("MusicPlayerManager", "Retrying playback... Attempt " + retryCount);
-                    // Save position
-                    try {
-                        resumePosition = mp.getCurrentPosition();
-                    } catch (Exception e) {
-                        resumePosition = 0;
-                    }
-                    // Reload current song with a new request token
-                    play(currentIndex, true);
-                    return true;
-                }
-
-                // Return true if we handled the error, false otherwise
-                notifyPlaybackStateChanged(false);
+                handlePlaybackFailure(expectedIndex, requestId, "MediaPlayer Error what=" + what + " extra=" + extra);
                 return true;
             });
 
@@ -477,10 +507,15 @@ public class MusicPlayerManager {
     }
 
     public void playNext() {
+        playNext(false);
+    }
+
+    public void playNext(boolean force) {
         if (playlist.isEmpty()) return;
 
         int nextIndex = currentIndex;
-        switch (currentMode) {
+        int effectiveMode = force ? MODE_LOOP_ALL : currentMode;
+        switch (effectiveMode) {
             case MODE_LOOP_ONE:
                 // Keep current index, just replay
                 break;
@@ -505,6 +540,13 @@ public class MusicPlayerManager {
                 }
                 break;
         }
+
+        // When auto-skipping, we trigger the song changed notification manually
+        // and let it be debounced, so that it's the last song we land on that shows up.
+        if (isAutoSkipping && nextIndex >= 0 && nextIndex < playlist.size()) {
+            notifySongChanged(playlist.get(nextIndex));
+        }
+
         play(nextIndex);
     }
 
@@ -626,11 +668,25 @@ public class MusicPlayerManager {
         }
         if (song != null) lastSongChangedId = song.id;
 
-        mainHandler.post(() -> {
-            for (OnSongChangedListener listener : songChangedListeners) {
-                listener.onSongChanged(song);
+        if (isAutoSkipping) {
+            if (pendingSongNotifyRunnable != null) {
+                mainHandler.removeCallbacks(pendingSongNotifyRunnable);
             }
-        });
+            pendingSongNotifyRunnable = () -> {
+                // Double check we are still auto skipping. If it ended,
+                // we'll send a final notification.
+                for (OnSongChangedListener listener : songChangedListeners) {
+                    listener.onSongChanged(song);
+                }
+            };
+            mainHandler.postDelayed(pendingSongNotifyRunnable, NOTIFY_DEBOUNCE_MS);
+        } else {
+            mainHandler.post(() -> {
+                for (OnSongChangedListener listener : songChangedListeners) {
+                    listener.onSongChanged(song);
+                }
+            });
+        }
     }
 
     public void addOnPlaybackStateChangedListener(OnPlaybackStateChangedListener listener) {
@@ -714,6 +770,12 @@ public class MusicPlayerManager {
         if (song != null) {
             lastFullInfoId = song.id;
             lastFullInfoPicUrl = song.picUrl;
+        }
+
+        // Only notify full info if we are not auto-skipping.
+        // During auto-skips, we don't care about lyrics or album art for intermediate songs.
+        if (isAutoSkipping) {
+            return;
         }
 
         mainHandler.post(() -> {
