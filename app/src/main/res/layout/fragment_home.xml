@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -120,13 +121,21 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:gravity="center_horizontal"
+        android:gravity="center"
         android:paddingVertical="24dp"
         android:visibility="gone">
+
+        <ImageView
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:src="@drawable/ic_music_note"
+            android:alpha="0.2"
+            app:tint="@color/text_secondary" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
             android:text="No homepage shortcuts yet"
             android:textColor="@color/text_primary"
             android:textSize="18sp"
@@ -136,16 +145,17 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Add playlist or album shortcuts for one-tap playback."
+            android:text="Add shortcuts for one-tap playback."
             android:textColor="@color/text_secondary"
-            android:textSize="14sp" />
+            android:textSize="14sp"
+            android:gravity="center" />
 
         <Button
             android:id="@+id/btn_manage_shortcuts_empty"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Manage Shortcuts"
+            android:text="Add Shortcuts"
             android:textColor="#FFFFFF"
             android:backgroundTint="@color/brand_primary" />
     </LinearLayout>
