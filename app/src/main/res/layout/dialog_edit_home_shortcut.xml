@@ -33,12 +33,29 @@
         android:layout_marginTop="16dp"
         android:orientation="vertical">
 
-        <EditText
-            android:id="@+id/input_shortcut_title"
+        <RelativeLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Shortcut Title"
-            android:inputType="text" />
+            android:layout_height="wrap_content">
+            <EditText
+                android:id="@+id/input_shortcut_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Shortcut Title"
+                android:inputType="text"
+                android:paddingEnd="40dp" />
+            <ImageButton
+                android:id="@+id/btn_clear_shortcut_title"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                app:tint="?android:attr/textColorHint"
+                android:contentDescription="Clear"
+                android:visibility="gone" />
+        </RelativeLayout>
 
         <RadioGroup
             android:id="@+id/group_shortcut_type"
@@ -62,13 +79,30 @@
                 android:text="Album" />
         </RadioGroup>
 
-        <EditText
-            android:id="@+id/input_shortcut_id"
+        <RelativeLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:hint="Playlist or Album ID / URL"
-            android:inputType="text" />
+            android:layout_height="wrap_content">
+            <EditText
+                android:id="@+id/input_shortcut_id"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="Playlist or Album ID / URL"
+                android:inputType="text"
+                android:paddingEnd="40dp" />
+            <ImageButton
+                android:id="@+id/btn_clear_shortcut_id"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                app:tint="?android:attr/textColorHint"
+                android:contentDescription="Clear"
+                android:visibility="gone" />
+        </RelativeLayout>
 
         <Button
             android:id="@+id/btn_save_shortcut"

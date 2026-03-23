@@ -11,6 +11,7 @@ import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
+import android.widget.ImageButton;
 import android.view.MotionEvent;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Toast;
@@ -168,7 +169,39 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
         editDialog.findViewById(R.id.btn_close_edit).setOnClickListener(v -> editDialog.dismiss());
 
         EditText titleInput = editDialog.findViewById(R.id.input_shortcut_title);
+        ImageButton clearTitleButton = editDialog.findViewById(R.id.btn_clear_shortcut_title);
         EditText idInput = editDialog.findViewById(R.id.input_shortcut_id);
+        ImageButton clearIdButton = editDialog.findViewById(R.id.btn_clear_shortcut_id);
+
+        clearTitleButton.setOnClickListener(v -> titleInput.setText(""));
+        clearIdButton.setOnClickListener(v -> idInput.setText(""));
+
+        titleInput.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                clearTitleButton.setVisibility(s.length() > 0 ? View.VISIBLE : View.GONE);
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable s) { }
+        });
+
+        idInput.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                clearIdButton.setVisibility(s.length() > 0 ? View.VISIBLE : View.GONE);
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable s) { }
+        });
+
         idInput.setOnFocusChangeListener((v, hasFocus) -> {
             if (!hasFocus) {
                 String input = idInput.getText().toString();
