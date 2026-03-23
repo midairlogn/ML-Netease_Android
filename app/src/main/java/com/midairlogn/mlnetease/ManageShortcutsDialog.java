@@ -129,19 +129,27 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
     }
 
     @Override
-    public void onDelete(int position) {
-        shortcuts.remove(position);
-        adapter.notifyItemRemoved(position);
-        adapter.notifyItemRangeChanged(position, shortcuts.size());
-        saveAndRender();
+    public synchronized void onDelete(int position) {
+        if (position >= 0 && position < shortcuts.size()) {
+            shortcuts.remove(position);
+            adapter.notifyItemRemoved(position);
+            // The saveAndRender method will handle the full data set change notification.
+            saveAndRender();
+        } else {
+            // Log this or show a toast, though with synchronization, this case should be rare for valid initial positions.
+            Toast.makeText(getContext(), "Error: Shortcut not found or list modified unexpectedly.", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void saveAndRender() {
-        settingsManager.normalizeShortcutSequences(shortcuts);
-        settingsManager.setHomeShortcuts(shortcuts);
-        shortcuts.clear();
-        shortcuts.addAll(settingsManager.getHomeShortcuts());
-        updateEmptyView();
+        synchronized (shortcuts) {
+            settingsManager.normalizeShortcutSequences(shortcuts);
+            settingsManager.setHomeShortcuts(shortcuts);
+            shortcuts.clear();
+            shortcuts.addAll(settingsManager.getHomeShortcuts());
+            updateEmptyView();
+            adapter.notifyDataSetChanged(); // Ensure UI is updated after save
+        }
     }
 
     private void showEditDialog(HomeShortcut shortcut) {
@@ -248,7 +256,6 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
                 shortcut.type = type;
             }
             saveAndRender();
-            adapter.notifyDataSetChanged();
             editDialog.dismiss();
         });
 
