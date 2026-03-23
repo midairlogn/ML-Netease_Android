@@ -113,7 +113,13 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
     }
 
     private void updateEmptyView() {
-        getView().findViewById(R.id.tv_manage_shortcuts_empty).setVisibility(shortcuts.isEmpty() ? View.VISIBLE : View.GONE);
+        View emptyView = getView().findViewById(R.id.tv_manage_shortcuts_empty);
+        if (emptyView != null) {
+            emptyView.setVisibility(shortcuts.isEmpty() ? View.VISIBLE : View.GONE);
+        }
+        if (recyclerView != null) {
+            recyclerView.setVisibility(shortcuts.isEmpty() ? View.GONE : View.VISIBLE);
+        }
     }
 
     @Override

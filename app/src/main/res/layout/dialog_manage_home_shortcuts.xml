@@ -35,16 +35,41 @@
         android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp" />
 
-    <TextView
+    <LinearLayout
         android:id="@+id/tv_manage_shortcuts_empty"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_below="@id/tv_manage_shortcuts_title"
-        android:layout_marginTop="16dp"
-        android:text="No shortcuts yet. Add a playlist or album shortcut."
-        android:textColor="@color/text_secondary"
-        android:textSize="14sp"
-        android:visibility="gone" />
+        android:layout_above="@id/btn_add_shortcut"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:src="@drawable/ic_music_note"
+            android:alpha="0.2"
+            app:tint="@color/text_secondary" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="No shortcuts yet"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Add shortcuts for faster access."
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp"
+            android:gravity="center" />
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/btn_add_shortcut"
