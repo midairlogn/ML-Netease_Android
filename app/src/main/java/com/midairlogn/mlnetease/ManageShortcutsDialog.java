@@ -91,10 +91,14 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
                 int to = target.getBindingAdapterPosition();
                 Collections.swap(shortcuts, from, to);
                 adapter.notifyItemMoved(from, to);
-                adapter.notifyItemChanged(from);
-                adapter.notifyItemChanged(to);
-                saveAndRender();
                 return true;
+            }
+
+            @Override
+            public void clearView(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
+                super.clearView(recyclerView, viewHolder);
+                saveAndRender();
+                adapter.notifyDataSetChanged();
             }
 
             @Override
