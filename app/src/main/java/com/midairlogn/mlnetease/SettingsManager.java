@@ -2,6 +2,12 @@ package com.midairlogn.mlnetease;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class SettingsManager {
     private static final String PREF_NAME = "ml_netease_prefs";
@@ -14,6 +20,7 @@ public class SettingsManager {
     private static final String KEY_PLAY_MODE = "play_mode";
     private static final String KEY_TRANSLATION_INTEGRATION_ENABLED = "translation_integration_enabled";
     private static final String KEY_APP_VOLUME = "app_volume";
+    private static final String KEY_HOME_SHORTCUTS = "home_shortcuts";
     public static final int DEFAULT_APP_VOLUME = 80;
 
     private SharedPreferences prefs;
@@ -94,6 +101,86 @@ public class SettingsManager {
 
     public int getAppVolume() {
         return prefs.getInt(KEY_APP_VOLUME, DEFAULT_APP_VOLUME);
+    }
+
+    public List<HomeShortcut> getHomeShortcuts() {
+        List<HomeShortcut> shortcuts = new ArrayList<>();
+        String raw = prefs.getString(KEY_HOME_SHORTCUTS, "[]");
+        try {
+            JSONArray array = new JSONArray(raw);
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject item = array.optJSONObject(i);
+                if (item == null) {
+                    continue;
+                }
+
+                String title = item.optString("title", "").trim();
+                String id = HomeShortcutIdParser.normalizeId(item.optString("id", ""));
+                String type = item.optString("type", "").trim();
+                int sequence = item.optInt("sequence", i);
+
+                if (title.isEmpty() || !id.matches("\\d+")) {
+                    continue;
+                }
+                if (!HomeShortcut.TYPE_PLAYLIST.equals(type) && !HomeShortcut.TYPE_ALBUM.equals(type)) {
+                    continue;
+                }
+
+                shortcuts.add(new HomeShortcut(title, id, type, sequence));
+            }
+        } catch (Exception ignored) {
+        }
+
+        Collections.sort(shortcuts, Comparator.comparingInt(shortcut -> shortcut.sequence));
+        normalizeShortcutSequences(shortcuts);
+        return shortcuts;
+    }
+
+    public void setHomeShortcuts(List<HomeShortcut> shortcuts) {
+        List<HomeShortcut> normalized = new ArrayList<>();
+        if (shortcuts != null) {
+            for (HomeShortcut shortcut : shortcuts) {
+                if (shortcut == null) {
+                    continue;
+                }
+                String title = shortcut.title == null ? "" : shortcut.title.trim();
+                String id = HomeShortcutIdParser.normalizeId(shortcut.id);
+                String type = shortcut.type == null ? "" : shortcut.type.trim();
+
+                if (title.isEmpty() || !id.matches("\\d+")) {
+                    continue;
+                }
+                if (!HomeShortcut.TYPE_PLAYLIST.equals(type) && !HomeShortcut.TYPE_ALBUM.equals(type)) {
+                    continue;
+                }
+
+                normalized.add(new HomeShortcut(title, id, type, shortcut.sequence));
+            }
+        }
+
+        Collections.sort(normalized, Comparator.comparingInt(shortcut -> shortcut.sequence));
+        normalizeShortcutSequences(normalized);
+
+        JSONArray array = new JSONArray();
+        for (HomeShortcut shortcut : normalized) {
+            JSONObject item = new JSONObject();
+            try {
+                item.put("title", shortcut.title);
+                item.put("id", shortcut.id);
+                item.put("type", shortcut.type);
+                item.put("sequence", shortcut.sequence);
+                array.put(item);
+            } catch (Exception ignored) {
+            }
+        }
+
+        prefs.edit().putString(KEY_HOME_SHORTCUTS, array.toString()).apply();
+    }
+
+    public void normalizeShortcutSequences(List<HomeShortcut> shortcuts) {
+        for (int i = 0; i < shortcuts.size(); i++) {
+            shortcuts.get(i).sequence = i;
+        }
     }
 
     public SharedPreferences getPrefs() {

@@ -21,9 +21,9 @@
         android:allowBackup="true"
         android:appCategory="audio"
         android:attributionTags="media_playback"
-        android:icon="@drawable/ic_app_logo"
+        android:icon="@mipmap/ic_ml_app_logo"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/ic_app_logo"
+        android:roundIcon="@mipmap/ic_ml_app_logo_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MLNetease"
         android:usesCleartextTraffic="true">

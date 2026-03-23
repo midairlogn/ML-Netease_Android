@@ -277,7 +277,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
             // Only set placeholder if the URL actually changed or we have nothing
             if (miniPlayerThumb.getDrawable() == null || (urlChanged && miniPlayerThumb.getTag() == null) || !ImageUtils.isSameImage(targetUrl, (String) miniPlayerThumb.getTag())) {
                 if (urlChanged) {
-                    miniPlayerThumb.setImageResource(R.drawable.ic_app_logo);
+                    miniPlayerThumb.setImageResource(R.drawable.ic_ml_app_logo_foreground);
                     miniPlayerThumb.setTag(null); // Clear tag while loading
                 }
             }
@@ -305,7 +305,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
                 }).start();
             }
         } else {
-            miniPlayerThumb.setImageResource(R.drawable.ic_app_logo);
+            miniPlayerThumb.setImageResource(R.drawable.ic_ml_app_logo_foreground);
             miniPlayerThumb.setTag(null);
             currentCoverUrl = null;
         }

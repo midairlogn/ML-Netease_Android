@@ -11,7 +11,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioGroup;
-import android.widget.TextView;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -28,10 +28,19 @@ public class HomeFragment extends Fragment {
     private NeteaseApi neteaseApi;
     private EditText searchInput;
     private Button searchButton;
+    private Button btnResetSearch;
     private RadioGroup searchTypeGroup;
     private RecyclerView recyclerView;
     private SongAdapter adapter;
+    private HomeShortcutAdapter shortcutAdapter;
     private Button btnPlayAll;
+    private Button btnAddToShortcut;
+    private Button btnManageShortcuts;
+    private LinearLayout emptyShortcutLayout;
+    private List<HomeShortcut> currentShortcuts = new ArrayList<>();
+    private boolean isShortcutMode = true;
+    private String lastSearchedId = "";
+    private String lastSearchedType = "";
 
     private long lastSearchTime = 0;
     private long lastPlayAllTime = 0;
@@ -66,17 +75,82 @@ public class HomeFragment extends Fragment {
 
         searchInput = view.findViewById(R.id.search_input);
         searchButton = view.findViewById(R.id.search_button);
+        btnResetSearch = view.findViewById(R.id.btn_reset_search);
         searchTypeGroup = view.findViewById(R.id.search_type_group);
         recyclerView = view.findViewById(R.id.recycler_view);
+        btnManageShortcuts = view.findViewById(R.id.btn_manage_shortcuts);
+        emptyShortcutLayout = view.findViewById(R.id.home_shortcut_empty_state);
 
         recyclerView.setOnTouchListener(hideKeyboardTouchListener);
         searchTypeGroup.setOnTouchListener(hideKeyboardTouchListener);
 
         btnPlayAll = view.findViewById(R.id.btn_play_all);
+        btnAddToShortcut = view.findViewById(R.id.btn_add_to_shortcut);
+        view.findViewById(R.id.btn_manage_shortcuts_empty).setOnClickListener(v -> showManageShortcutsDialog());
+        btnManageShortcuts.setOnClickListener(v -> showManageShortcutsDialog());
+
+        btnAddToShortcut.setOnClickListener(v -> {
+            if (lastSearchedId.isEmpty()) return;
+
+            SettingsManager sm = new SettingsManager(requireContext());
+            List<HomeShortcut> shortcuts = new ArrayList<>(sm.getHomeShortcuts());
+            String type = lastSearchedType.equals("playlist") ? HomeShortcut.TYPE_PLAYLIST : HomeShortcut.TYPE_ALBUM;
+
+            // Check if already exists
+            HomeShortcut existing = null;
+            for (HomeShortcut s : shortcuts) {
+                if (s.type.equals(type) && s.id.equals(lastSearchedId)) {
+                    existing = s;
+                    break;
+                }
+            }
+
+            if (existing != null) {
+                // Open edit dialog for existing
+                ManageShortcutsDialog dialog = new ManageShortcutsDialog();
+                dialog.setInitialShortcut(existing);
+                dialog.setOnDismissListener(() -> loadShortcuts());
+                dialog.show(getParentFragmentManager(), "ManageShortcuts");
+            } else {
+                // Add new and open edit dialog
+                HomeShortcut newShortcut = new HomeShortcut(lastSearchedId, lastSearchedId, type, shortcuts.size());
+                shortcuts.add(newShortcut);
+                sm.setHomeShortcuts(shortcuts);
+
+                // Important: reload currentShortcuts from settings to get the instance that was just saved
+                loadShortcuts();
+
+                // Find the just-added shortcut in the updated list to ensure we pass the correct object reference
+                HomeShortcut savedShortcut = null;
+                for (HomeShortcut s : currentShortcuts) {
+                    if (s.type.equals(type) && s.id.equals(lastSearchedId)) {
+                        savedShortcut = s;
+                        break;
+                    }
+                }
+
+                ManageShortcutsDialog dialog = new ManageShortcutsDialog();
+                dialog.setInitialShortcut(savedShortcut != null ? savedShortcut : newShortcut);
+                dialog.setOnDismissListener(() -> loadShortcuts());
+                dialog.show(getParentFragmentManager(), "ManageShortcuts");
+
+                // Disable button after adding
+                btnAddToShortcut.setEnabled(false);
+                btnAddToShortcut.setAlpha(0.3f);
+            }
+        });
 
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         adapter = new SongAdapter();
-        recyclerView.setAdapter(adapter);
+        shortcutAdapter = new HomeShortcutAdapter();
+
+        shortcutAdapter.setOnItemClickListener(shortcut -> {
+            executeShortcut(shortcut);
+        });
+
+        recyclerView.setAdapter(shortcutAdapter);
+        updateViewMode();
+        loadShortcuts();
 
         if (savedInstanceState != null) {
             List<?> savedSongsRaw = (List<?>) savedInstanceState.getSerializable("songs");
@@ -96,6 +170,8 @@ public class HomeFragment extends Fragment {
                 }
             }
         }
+
+        btnResetSearch.setOnClickListener(v -> resetToShortcutMode());
 
         searchButton.setOnClickListener(v -> {
             String input = searchInput.getText().toString().trim();
@@ -118,6 +194,11 @@ public class HomeFragment extends Fragment {
         searchInput.setOnFocusChangeListener((v, hasFocus) -> {
             if (!hasFocus) {
                 hideKeyboard(v);
+                String input = searchInput.getText().toString().trim();
+                String extractedId = extractId(input);
+                if (extractedId != null && !extractedId.isEmpty() && !extractedId.equals(input)) {
+                    searchInput.setText(extractedId);
+                }
             }
         });
 
@@ -187,12 +268,55 @@ public class HomeFragment extends Fragment {
                 neteaseApi.getSongFullInfo(extractedId, new NeteaseApi.ApiCallback() {
                     @Override
                     public void onSuccess(String result) {
-                        parseSongIdResult(result);
+                        try {
+                            JSONObject root = new JSONObject(result);
+                            if (root.optInt("status") == 200) {
+                                parseSongIdResult(result);
+                            } else {
+                                // Fallback to keyword search
+                                neteaseApi.search(input, new NeteaseApi.ApiCallback() {
+                                    @Override
+                                    public void onSuccess(String result) {
+                                        parseSearchResult(result);
+                                    }
+
+                                    @Override
+                                    public void onError(String error) {
+                                        Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            // Fallback to keyword search
+                            neteaseApi.search(input, new NeteaseApi.ApiCallback() {
+                                @Override
+                                public void onSuccess(String result) {
+                                    parseSearchResult(result);
+                                }
+
+                                @Override
+                                public void onError(String error) {
+                                    Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
                     }
 
                     @Override
                     public void onError(String error) {
-                        Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
+                        // Fallback to keyword search
+                        neteaseApi.search(input, new NeteaseApi.ApiCallback() {
+                            @Override
+                            public void onSuccess(String result) {
+                                parseSearchResult(result);
+                            }
+
+                            @Override
+                            public void onError(String error) {
+                                Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
+                            }
+                        });
                     }
                 });
             } else {
@@ -210,10 +334,12 @@ public class HomeFragment extends Fragment {
             }
         } else if (checkedId == R.id.radio_playlist) {
             String id = extractId(input);
+            lastSearchedId = id;
+            lastSearchedType = "playlist";
             neteaseApi.playlistDetail(id, new NeteaseApi.ApiCallback() {
                 @Override
                 public void onSuccess(String result) {
-                    parsePlaylistResult(result);
+                    parsePlaylistResult(result, false);
                 }
 
                 @Override
@@ -223,10 +349,12 @@ public class HomeFragment extends Fragment {
             });
         } else if (checkedId == R.id.radio_album) {
             String id = extractId(input);
+            lastSearchedId = id;
+            lastSearchedType = "album";
             neteaseApi.albumDetail(id, new NeteaseApi.ApiCallback() {
                 @Override
                 public void onSuccess(String result) {
-                    parseAlbumResult(result);
+                    parseAlbumResult(result, false);
                 }
 
                 @Override
@@ -238,21 +366,71 @@ public class HomeFragment extends Fragment {
     }
 
     private String extractId(String input) {
-        if (input.contains("music.163.com")) {
-            int index = input.indexOf("id=");
-            if (index != -1) {
-                String sub = input.substring(index + 3);
-                int end = sub.indexOf("&");
-                if (end != -1) {
-                    return sub.substring(0, end);
-                }
-                return sub;
-            }
-        }
-        return input;
+        return HomeShortcutIdParser.normalizeId(input);
     }
 
-    private void parsePlaylistResult(String json) {
+    private void resetToShortcutMode() {
+        isShortcutMode = true;
+        searchInput.setText("");
+        adapter.setSongs(new ArrayList<>());
+        btnAddToShortcut.setVisibility(View.GONE);
+        updateViewMode();
+    }
+
+    private void updateViewMode() {
+        if (isShortcutMode) {
+            recyclerView.setAdapter(shortcutAdapter);
+            btnPlayAll.setVisibility(View.GONE);
+            btnResetSearch.setVisibility(View.GONE);
+            btnManageShortcuts.setVisibility(currentShortcuts.isEmpty() ? View.GONE : View.VISIBLE);
+            emptyShortcutLayout.setVisibility(currentShortcuts.isEmpty() ? View.VISIBLE : View.GONE);
+        } else {
+            recyclerView.setAdapter(adapter);
+            btnResetSearch.setVisibility(View.VISIBLE);
+            btnManageShortcuts.setVisibility(View.GONE);
+            emptyShortcutLayout.setVisibility(View.GONE);
+            // btnPlayAll visibility managed by updateList() or search result callbacks
+        }
+    }
+
+    private void loadShortcuts() {
+        currentShortcuts = new SettingsManager(requireContext()).getHomeShortcuts();
+        shortcutAdapter.setShortcuts(currentShortcuts);
+        updateViewMode();
+    }
+
+    private void executeShortcut(HomeShortcut shortcut) {
+        hideKeyboard(getView());
+        searchInput.clearFocus();
+
+        if (shortcut.isPlaylist()) {
+            neteaseApi.playlistDetail(shortcut.id, new NeteaseApi.ApiCallback() {
+                @Override
+                public void onSuccess(String result) {
+                    parsePlaylistResult(result, true);
+                }
+
+                @Override
+                public void onError(String error) {
+                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show());
+                }
+            });
+        } else if (shortcut.isAlbum()) {
+            neteaseApi.albumDetail(shortcut.id, new NeteaseApi.ApiCallback() {
+                @Override
+                public void onSuccess(String result) {
+                    parseAlbumResult(result, true);
+                }
+
+                @Override
+                public void onError(String error) {
+                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show());
+                }
+            });
+        }
+    }
+
+    private void parsePlaylistResult(String json, boolean isShortcut) {
         try {
             JSONObject root = new JSONObject(json);
             if (!root.has("songs")) {
@@ -260,28 +438,28 @@ public class HomeFragment extends Fragment {
                 return;
             }
             JSONArray songsArray = root.getJSONArray("songs");
-            updateList(songsArray);
+            updateList(songsArray, isShortcut);
         } catch (Exception e) {
             e.printStackTrace();
             Toast.makeText(getContext(), "Parse error", Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void parseAlbumResult(String json) {
+    private void parseAlbumResult(String json, boolean isShortcut) {
         try {
             JSONObject root = new JSONObject(json);
             if (!root.has("album")) return;
             JSONObject album = root.getJSONObject("album");
             if (!album.has("songs")) return;
             JSONArray songsArray = album.getJSONArray("songs");
-            updateList(songsArray);
+            updateList(songsArray, isShortcut);
         } catch (Exception e) {
             e.printStackTrace();
             Toast.makeText(getContext(), "Parse error", Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void updateList(JSONArray songsArray) throws Exception {
+    private void updateList(JSONArray songsArray, boolean isShortcut) throws Exception {
         List<Song> songs = new ArrayList<>();
         for (int i = 0; i < songsArray.length(); i++) {
             JSONObject obj = songsArray.getJSONObject(i);
@@ -293,8 +471,31 @@ public class HomeFragment extends Fragment {
 
             songs.add(new Song(id, name, artists, album, picUrl));
         }
-        adapter.setSongs(songs);
-        btnPlayAll.setVisibility(songs.isEmpty() ? View.GONE : View.VISIBLE);
+
+        if (isShortcut) {
+            getActivity().runOnUiThread(() -> {
+                MusicPlayerManager.getInstance(getContext()).addPlaylistAndPlayFirstNew(songs);
+            });
+        } else {
+            getActivity().runOnUiThread(() -> {
+                isShortcutMode = false;
+                updateViewMode();
+                adapter.setSongs(songs);
+                btnPlayAll.setVisibility(songs.isEmpty() ? View.GONE : View.VISIBLE);
+                btnAddToShortcut.setVisibility(songs.isEmpty() ? View.GONE : View.VISIBLE);
+
+                boolean alreadyExists = false;
+                String currentType = lastSearchedType.equals("playlist") ? HomeShortcut.TYPE_PLAYLIST : HomeShortcut.TYPE_ALBUM;
+                for (HomeShortcut s : currentShortcuts) {
+                    if (s.type.equals(currentType) && s.id.equals(lastSearchedId)) {
+                        alreadyExists = true;
+                        break;
+                    }
+                }
+                btnAddToShortcut.setEnabled(!alreadyExists);
+                btnAddToShortcut.setAlpha(alreadyExists ? 0.3f : 1.0f);
+            });
+        }
     }
 
     private void parseSearchResult(String json) {
@@ -325,8 +526,12 @@ public class HomeFragment extends Fragment {
                 songs.add(new Song(id, name, artists.toString(), album, picUrl));
             }
 
-            adapter.setSongs(songs);
-            btnPlayAll.setVisibility(View.GONE);
+            getActivity().runOnUiThread(() -> {
+                isShortcutMode = false;
+                updateViewMode();
+                adapter.setSongs(songs);
+                btnPlayAll.setVisibility(View.GONE);
+            });
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -353,8 +558,12 @@ public class HomeFragment extends Fragment {
             List<Song> songs = new ArrayList<>();
             songs.add(song);
 
-            adapter.setSongs(songs);
-            btnPlayAll.setVisibility(View.GONE);
+            getActivity().runOnUiThread(() -> {
+                isShortcutMode = false;
+                updateViewMode();
+                adapter.setSongs(songs);
+                btnPlayAll.setVisibility(View.GONE);
+            });
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -362,6 +571,12 @@ public class HomeFragment extends Fragment {
                     Toast.makeText(getContext(), "Parse error", Toast.LENGTH_SHORT).show()
             );
         }
+    }
+
+    private void showManageShortcutsDialog() {
+        ManageShortcutsDialog dialog = new ManageShortcutsDialog();
+        dialog.setOnDismissListener(() -> loadShortcuts());
+        dialog.show(getParentFragmentManager(), "ManageShortcuts");
     }
 
     private void hideKeyboard(View view) {
