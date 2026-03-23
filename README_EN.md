@@ -10,7 +10,7 @@ An Android music player application that integrates with Netease Cloud Music.<br
 ### 🎵 Netease Cloud Music Integration
 
 - **Song Search**: Search by song name or directly parse by song ID.
-- **Playlists & Details**: View song details, album info, and playlists.
+- **Playlists & Details**: View song details, album info, and playlists. Supports adding shortcuts and one-click playback.
 - **Account Support**: Support for `Music_U` Cookie login to unlock higher audio quality.
 
 ### 🎧 Music Player
