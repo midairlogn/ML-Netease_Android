@@ -94,7 +94,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginBottom="8dp">
+        android:layout_marginBottom="0dp">
 
         <Button
             android:id="@+id/btn_play_all"
@@ -160,15 +160,22 @@
             android:backgroundTint="@color/brand_primary" />
     </LinearLayout>
 
-    <Button
-        android:id="@+id/btn_manage_shortcuts"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Manage Shortcuts"
-        android:textColor="#FFFFFF"
-        android:backgroundTint="@color/brand_primary"
+        android:gravity="center_horizontal"
         android:layout_marginBottom="8dp"
-        android:visibility="gone" />
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btn_manage_shortcuts"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Manage Shortcuts"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="@color/brand_primary"
+            android:visibility="gone" />
+    </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_view"
