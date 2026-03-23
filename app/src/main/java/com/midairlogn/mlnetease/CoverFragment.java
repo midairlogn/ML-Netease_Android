@@ -87,7 +87,7 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
         if (albumCover != null && (albumCover.getDrawable() == null || (urlChanged && isPlaceholder) || albumCover.getTag() == null || !ImageUtils.isSameImage(urlString, (String) albumCover.getTag()))) {
             if (urlChanged) {
                 isPlaceholder = true;
-                albumCover.setImageResource(R.drawable.ic_app_logo);
+                albumCover.setImageResource(R.drawable.ic_ml_app_logo_foreground);
                 albumCover.setTag(null);
             }
         }

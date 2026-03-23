@@ -183,7 +183,7 @@ public class MusicService extends Service {
             updateMetadata(currentSong);
         } else {
             Song placeholder = new Song("", "Music Player", "Ready to play", "", "");
-            showNotification(placeholder, false, BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo), true, "service:init-placeholder");
+            showNotification(placeholder, false, BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground), true, "service:init-placeholder");
         }
 
         // Ensure PlaybackState is initialized with CustomActions
@@ -304,7 +304,7 @@ public class MusicService extends Service {
             lastPicUrl = "";
             lastBitmap = null;
             Song placeholder = new Song("", "Music Player", "Ready to play", "", "");
-            showNotification(placeholder, false, BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo), true, "metadata:null-song");
+            showNotification(placeholder, false, BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground), true, "metadata:null-song");
             return;
         }
 
@@ -327,7 +327,7 @@ public class MusicService extends Service {
 
         // 3. Initial update for new song with logo placeholder
         if (isNewSong) {
-            Bitmap logo = BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo);
+            Bitmap logo = BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground);
             updateMediaSessionMetadata(song, logo);
             showNotification(song, musicPlayerManager.isPlaying(), logo, false, "metadata:new-song");
         }
@@ -353,7 +353,7 @@ public class MusicService extends Service {
                 albumArt = decodeBoundedBitmap(input, MAX_NOTIFICATION_ART_SIZE_PX, Bitmap.Config.RGB_565);
             } catch (Exception e) {
                 Log.e(TAG, "Error fetching album art", e);
-                albumArt = BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo);
+                albumArt = BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground);
             } finally {
                 if (input != null) {
                     try {
@@ -367,7 +367,7 @@ public class MusicService extends Service {
             }
 
             if (albumArt == null) {
-                albumArt = BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo);
+                albumArt = BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground);
             }
 
             Bitmap finalAlbumArt = albumArt;
@@ -600,7 +600,7 @@ public class MusicService extends Service {
                 albumArt = metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON);
             }
             if (albumArt == null) {
-                 albumArt = BitmapFactory.decodeResource(getResources(), R.drawable.ic_app_logo);
+                 albumArt = BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground);
             }
         }
 
@@ -638,7 +638,7 @@ public class MusicService extends Service {
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(song.name)
                 .setContentText(song.artists)
-                .setSmallIcon(R.drawable.ic_app_logo)
+                .setSmallIcon(R.drawable.ic_ml_app_logo_foreground)
                 .setLargeIcon(albumArt)
                 .setContentIntent(pendingIntent)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
