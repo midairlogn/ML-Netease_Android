@@ -116,12 +116,27 @@ public class HomeFragment extends Fragment {
                 HomeShortcut newShortcut = new HomeShortcut(lastSearchedId, lastSearchedId, type, shortcuts.size());
                 shortcuts.add(newShortcut);
                 sm.setHomeShortcuts(shortcuts);
+
+                // Important: reload currentShortcuts from settings to get the instance that was just saved
                 loadShortcuts();
 
+                // Find the just-added shortcut in the updated list to ensure we pass the correct object reference
+                HomeShortcut savedShortcut = null;
+                for (HomeShortcut s : currentShortcuts) {
+                    if (s.type.equals(type) && s.id.equals(lastSearchedId)) {
+                        savedShortcut = s;
+                        break;
+                    }
+                }
+
                 ManageShortcutsDialog dialog = new ManageShortcutsDialog();
-                dialog.setInitialShortcut(newShortcut);
+                dialog.setInitialShortcut(savedShortcut != null ? savedShortcut : newShortcut);
                 dialog.setOnDismissListener(() -> loadShortcuts());
                 dialog.show(getParentFragmentManager(), "ManageShortcuts");
+
+                // Disable button after adding
+                btnAddToShortcut.setEnabled(false);
+                btnAddToShortcut.setAlpha(0.3f);
             }
         });
 

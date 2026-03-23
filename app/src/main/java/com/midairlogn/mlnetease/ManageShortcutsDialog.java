@@ -10,6 +10,7 @@ import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.TextView;
 import android.view.MotionEvent;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Toast;
@@ -57,8 +58,17 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
         recyclerView.setAdapter(adapter);
 
         if (initialShortcut != null) {
+            // Find the actual shortcut object in the local list to ensure reference equality
+            HomeShortcut target = null;
+            for (HomeShortcut s : shortcuts) {
+                if (s.type.equals(initialShortcut.type) && s.id.equals(initialShortcut.id)) {
+                    target = s;
+                    break;
+                }
+            }
             // Delay showing the edit dialog to ensure the main dialog is already visible
-            view.post(() -> showEditDialog(initialShortcut));
+            final HomeShortcut finalTarget = target != null ? target : initialShortcut;
+            view.post(() -> showEditDialog(finalTarget));
             initialShortcut = null;
         }
 
@@ -163,10 +173,15 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
         RadioButton albumRadio = editDialog.findViewById(R.id.radio_shortcut_album);
 
         if (shortcut != null) {
+            TextView editorTitle = editDialog.findViewById(R.id.tv_shortcut_editor_title);
+            if (editorTitle != null) editorTitle.setText("Edit Shortcut");
             titleInput.setText(shortcut.title);
             idInput.setText(shortcut.id);
             if (shortcut.isPlaylist()) playlistRadio.setChecked(true);
             else albumRadio.setChecked(true);
+        } else {
+            TextView editorTitle = editDialog.findViewById(R.id.tv_shortcut_editor_title);
+            if (editorTitle != null) editorTitle.setText("Add Shortcut");
         }
 
         editDialog.findViewById(R.id.btn_save_shortcut).setOnClickListener(v -> {
