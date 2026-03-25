@@ -24,7 +24,7 @@
     <string name="title_lyric_highlight_color">悬浮窗歌词颜色</string>
     <string name="title_font_size">悬浮窗歌词字体</string>
     <string name="preview">预览</string>
-    <string name="lyrics_preview_line_one">当期歌词预览</string>
+    <string name="lyrics_preview_line_one">当前歌词预览</string>
     <string name="lyrics_preview_line_two">下一句歌词预览</string>
     <string name="download">下载</string>
     <string name="song_title">歌名</string>
