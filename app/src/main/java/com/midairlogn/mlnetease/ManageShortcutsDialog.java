@@ -137,7 +137,7 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
             saveAndRender();
         } else {
             // Log this or show a toast, though with synchronization, this case should be rare for valid initial positions.
-            Toast.makeText(getContext(), "Error: Shortcut not found or list modified unexpectedly.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), R.string.hint_error_title + R.string.hint_shortcut_not_found, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -225,14 +225,14 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
 
         if (shortcut != null) {
             TextView editorTitle = editDialog.findViewById(R.id.tv_shortcut_editor_title);
-            if (editorTitle != null) editorTitle.setText("Edit Shortcut");
+            if (editorTitle != null) editorTitle.setText(R.string.edit_shortcut);
             titleInput.setText(shortcut.title);
             idInput.setText(shortcut.id);
             if (shortcut.isPlaylist()) playlistRadio.setChecked(true);
             else albumRadio.setChecked(true);
         } else {
             TextView editorTitle = editDialog.findViewById(R.id.tv_shortcut_editor_title);
-            if (editorTitle != null) editorTitle.setText("Add Shortcut");
+            if (editorTitle != null) editorTitle.setText(R.string.add_shortcut);
         }
 
         editDialog.findViewById(R.id.btn_save_shortcut).setOnClickListener(v -> {
@@ -244,7 +244,7 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
 
             for (HomeShortcut s : shortcuts) {
                 if (s != shortcut && s.type.equals(type) && s.id.equals(id)) {
-                    Toast.makeText(getContext(), "Shortcut already exists", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), R.string.hint_shortcut_exist, Toast.LENGTH_SHORT).show();
                     return;
                 }
             }

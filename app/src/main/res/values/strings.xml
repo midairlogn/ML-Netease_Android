@@ -66,4 +66,23 @@
     <string name="type_audio_quality_jyeffect">Jyeffect</string>
     <string name="type_audio_quality_sky">Sky</string>
     <string name="type_audio_quality_jymaster">Jymaster</string>
+    <string name="music_nav_menu">Music</string>
+    <string name="no_music">No Music</string>
+    <string name="no_lyrics">No Lyrics</string>
+    <string name="hint_enter_keywords">Please enter keywords</string>
+    <string name="hint_error_title">"Error: "</string>
+    <string name="no_song_found">No songs found</string>
+    <string name="hint_parse_error">Parse error</string>
+    <string name="song_not_found">Song not found</string>
+    <string name="saved_to_gallery">Saved to Gallery</string>
+    <string name="hint_save_failed_title">Save Failed:</string>
+    <string name="hint_null_uri">Uri is null</string>
+    <string name="hint_loading">Loading...</string>
+    <string name="hint_shortcut_not_found">Shortcut not found or list modified unexpectedly.</string>
+    <string name="hint_shortcut_exist">Shortcut already exists</string>
+    <string name="null_timestamp" translatable="false">--:--</string>
+    <string name="playmode_single_loop">Single Loop</string>
+    <string name="playmode_loop_all">Loop All</string>
+    <string name="playmode_shuffle">Shuffle</string>
+    <string name="playmode_order">Order</string>
 </resources>

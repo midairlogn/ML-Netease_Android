@@ -60,4 +60,22 @@
     <string name="type_audio_quality_jyeffect">高清环绕声</string>
     <string name="type_audio_quality_sky">沉浸环绕声</string>
     <string name="type_audio_quality_jymaster">超清母带</string>
+    <string name="music_nav_menu">主页</string>
+    <string name="no_music">暂无正在播放的音乐</string>
+    <string name="no_lyrics">暂无歌词</string>
+    <string name="hint_enter_keywords">请输入关键词</string>
+    <string name="hint_error_title">错误：</string>
+    <string name="no_song_found">没有找到歌曲</string>
+    <string name="hint_parse_error">解析错误</string>
+    <string name="song_not_found">歌曲解析失败</string>
+    <string name="saved_to_gallery">已保存到相册</string>
+    <string name="hint_save_failed_title">保存失败：</string>
+    <string name="hint_null_uri">Uri为空</string>
+    <string name="hint_loading">加载中...</string>
+    <string name="hint_shortcut_not_found">收藏找不到了</string>
+    <string name="hint_shortcut_exist">收藏已存在</string>
+    <string name="playmode_single_loop">单曲循环</string>
+    <string name="playmode_loop_all">全部循环</string>
+    <string name="playmode_shuffle">随机播放</string>
+    <string name="playmode_order">顺序播放</string>
 </resources>

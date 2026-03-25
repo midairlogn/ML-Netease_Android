@@ -572,7 +572,7 @@ public class FloatingLyricsManager {
     private void updateCurrentLyricLine() {
         if (musicPlayerManager.getCurrentSong() == null) {
             if (tvLyricsCurrent != null) {
-                 tvLyricsCurrent.setText("No Music");
+                 tvLyricsCurrent.setText(R.string.no_music);
                  tvLyricsCurrent.setScrollX(0);
             }
             if (tvLyricsCurrentTranslation != null) {
@@ -589,7 +589,7 @@ public class FloatingLyricsManager {
 
         if (currentLyrics == null || currentLyrics.isEmpty()) {
             if (tvLyricsCurrent != null) {
-                 tvLyricsCurrent.setText("No Lyrics");
+                 tvLyricsCurrent.setText(R.string.no_lyrics);
                  tvLyricsCurrent.setScrollX(0);
             }
             if (tvLyricsCurrentTranslation != null) {
