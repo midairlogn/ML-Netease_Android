@@ -42,7 +42,7 @@
                 android:textStyle="bold"
                 android:singleLine="true"
                 android:ellipsize="end"
-                android:text="Song Title"/>
+                android:text="@string/song_title"/>
 
             <TextView
                 android:id="@+id/tv_floating_song_artist"
@@ -52,7 +52,7 @@
                 android:textSize="12sp"
                 android:singleLine="true"
                 android:ellipsize="end"
-                android:text="Artist"/>
+                android:text="@string/artist_name"/>
         </LinearLayout>
 
         <ImageButton
@@ -63,7 +63,7 @@
             android:background="@android:color/transparent"
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
-            android:contentDescription="Close"/>
+            android:contentDescription="@string/close"/>
     </RelativeLayout>
 
     <!-- Lyrics -->
@@ -78,7 +78,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:maxWidth="300dp"
-            android:text="Current Lyrics..."
+            android:text="@string/hint_current_lyrics_floating_window"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
             android:singleLine="true"
@@ -172,7 +172,7 @@
             android:layout_height="32dp"
             android:src="@drawable/ic_translate"
             android:background="@android:color/transparent"
-            android:contentDescription="Toggle translation"/>
+            android:contentDescription="@string/toggle_translation"/>
 
         <ImageButton
             android:id="@+id/btn_prev"
@@ -181,7 +181,7 @@
             android:layout_height="32dp"
             android:src="@android:drawable/ic_media_previous"
             android:background="@android:color/transparent"
-            android:contentDescription="Previous"/>
+            android:contentDescription="@string/previous"/>
 
         <ImageButton
             android:id="@+id/btn_play"
@@ -190,7 +190,7 @@
             android:layout_height="32dp"
             android:src="@android:drawable/ic_media_play"
             android:background="@android:color/transparent"
-            android:contentDescription="Play"/>
+            android:contentDescription="@string/play"/>
 
         <ImageButton
             android:id="@+id/btn_next"
@@ -199,7 +199,7 @@
             android:layout_height="32dp"
             android:src="@android:drawable/ic_media_next"
             android:background="@android:color/transparent"
-            android:contentDescription="Next"/>
+            android:contentDescription="@string/next"/>
 
         <ImageButton
             android:id="@+id/btn_settings"
@@ -208,7 +208,7 @@
             android:layout_height="32dp"
             android:src="@drawable/ic_settings"
             android:background="@android:color/transparent"
-            android:contentDescription="Settings"/>
+            android:contentDescription="@string/settings"/>
     </LinearLayout>
 
     <!-- Settings (Expanded Settings only) -->
@@ -265,14 +265,14 @@
             android:id="@+id/btn_font_plus"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:text="T+"
+            android:text="@string/increase_text_size"
             android:textSize="14sp"/>
 
         <Button
             android:id="@+id/btn_font_minus"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:text="T-"
+            android:text="@string/decrease_text_size"
             android:textSize="14sp"/>
 
     </LinearLayout>

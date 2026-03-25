@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ML Netease</string>
+    <string name="app_name" translatable="false">ML Netease</string>
     <string name="app_description">An Android music player application that integrates with Netease Cloud Music.</string>
     <string name="search">Search</string>
     <string name="parse">Parse</string>
@@ -9,9 +9,60 @@
     <string name="back">Back</string>
     <string name="language_title">Language</string>
     <string name="language_system_default">System Default</string>
+    <string name="title_music_u_cookie">MUSIC_U Cookie</string>
+    <string name="hint_music_u_cookie">Paste MUSIC_U cookie here</string>
+    <string name="title_search_limit">Search Result Limit (Default 10)</string>
+    <string name="hint_search_limit">Enter limit (e.g. 10)</string>
+    <string name="title_app_volume">App Volume</string>
+    <string name="title_audio_quality">Audio Quality</string>
+    <string name="title_lyric_translation">Lyric Translation Integration</string>
+    <string name="title_floating_lyrics">Desktop Floating Lyrics</string>
+    <string name="type_audio_quality_standard">Standard</string>
+    <string name="type_audio_quality_higher">Higher</string>
+    <string name="type_audio_quality_extreme">Extreme</string>
+    <string name="type_audio_quality_lossless">Lossless</string>
+    <string name="type_audio_quality_hires">Hi-Res</string>
+    <string name="type_audio_quality_sky">Sky (Immersive)</string>
+    <string name="title_lyric_highlight_color">Lyric Highlight Color</string>
+    <string name="title_font_size">Font Size</string>
+    <string name="preview">Preview</string>
+    <string name="lyrics_preview_line_one">Current Lyric Preview</string>
+    <string name="lyrics_preview_line_two">Next Lyric Preview</string>
+    <string name="defalut_app_info" translatable="false">Version: v0.0.0 | Author: Midairlogn\nML-Netease_Android © 2026 | GPLv3 LICENSE</string>
     <string-array name="language_options">
         <item>System Default</item>
         <item>English</item>
         <item>简体中文</item>
     </string-array>
+    <string name="download">Download</string>
+    <string name="song_title">Song Title</string>
+    <string name="artist_name">Artist Name</string>
+    <string name="zero_timestamp" translatable="false">0:00</string>
+    <string name="zero_timestamp_negative" translatable="false">-0:00</string>
+    <string name="edit_shortcut">Edit Shortcut</string>
+    <string name="shortcut_title">Shortcut Title</string>
+    <string name="hint_shortcut_id">Playlist or Album ID / URL</string>
+    <string name="save">Save</string>
+    <string name="title_homepage_shortcut">Homepage Shortcuts</string>
+    <string name="add_shortcut">Add Shortcut</string>
+    <string name="hint_search">Search Music</string>
+    <string name="song">Song</string>
+    <string name="current_playlist">Current Playlist</string>
+    <string name="shortcut">Shortcut</string>
+    <string name="close">Close</string>
+    <string name="hint_current_lyrics_floating_window">Current Lyrics...</string>
+    <string name="increase_text_size" translatable="false">T+</string>
+    <string name="decrease_text_size" translatable="false">T-</string>
+    <string name="next">Next</string>
+    <string name="play">Play</string>
+    <string name="previous">Previous</string>
+    <string name="toggle_translation">Toggle translation</string>
+    <string name="hint_no_shortcut">No shortcuts yet</string>
+    <string name="hint_add_shortcut">Add shortcuts for faster access.</string>
+    <string name="play_all">Play All</string>
+    <string name="add_to_shortcut">Add to Shortcut</string>
+    <string name="hint_no_homepage_shortcut">No homepage shortcuts yet</string>
+    <string name="hint_homepage_add_shortcut">Add shortcuts for one-tap playback.</string>
+    <string name="manage_shortcut">Manage Shortcuts</string>
+    <string name="clear">Clear</string>
 </resources>

@@ -8,7 +8,7 @@
         android:id="@+id/tv_shortcut_editor_title"
         android:layout_width="wrap_content"
         android:layout_height="36dp"
-        android:text="Edit Shortcut"
+        android:text="@string/edit_shortcut"
         android:textColor="@color/text_primary"
         android:textSize="20sp"
         android:textStyle="bold"
@@ -40,7 +40,7 @@
                 android:id="@+id/input_shortcut_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Shortcut Title"
+                android:hint="@string/shortcut_title"
                 android:inputType="text"
                 android:paddingEnd="40dp" />
             <ImageButton
@@ -69,14 +69,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:checked="true"
-                android:text="Playlist" />
+                android:text="@string/playlist" />
 
             <RadioButton
                 android:id="@+id/radio_shortcut_album"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
-                android:text="Album" />
+                android:text="@string/album" />
         </RadioGroup>
 
         <RelativeLayout
@@ -87,7 +87,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:hint="Playlist or Album ID / URL"
+                android:hint="@string/hint_shortcut_id"
                 android:inputType="text"
                 android:paddingEnd="40dp" />
             <ImageButton
@@ -109,7 +109,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="Save"
+            android:text="@string/save"
             android:textColor="#FFFFFF"
             android:backgroundTint="@color/brand_primary" />
     </LinearLayout>

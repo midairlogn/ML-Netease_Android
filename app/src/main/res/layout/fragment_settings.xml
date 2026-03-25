@@ -17,7 +17,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Settings"
+            android:text="@string/settings"
             android:textSize="32sp"
             android:textStyle="bold"
             android:textColor="@color/text_primary"
@@ -26,7 +26,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="MUSIC_U Cookie"
+            android:text="@string/title_music_u_cookie"
             android:textColor="@color/text_primary"
             android:textStyle="bold"
             android:layout_marginBottom="8dp"/>
@@ -35,7 +35,7 @@
             android:id="@+id/input_music_u"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Paste MUSIC_U cookie here"
+            android:hint="@string/hint_music_u_cookie"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_secondary"
             android:background="@drawable/search_background"
@@ -46,7 +46,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Search Result Limit (Default 10)"
+            android:text="@string/title_search_limit"
             android:textColor="@color/text_primary"
             android:textStyle="bold"
             android:layout_marginBottom="8dp"/>
@@ -55,7 +55,7 @@
             android:id="@+id/input_search_limit"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Enter limit (e.g. 10)"
+            android:hint="@string/hint_search_limit"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_secondary"
             android:background="@drawable/search_background"
@@ -66,7 +66,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="App Volume"
+            android:text="@string/title_app_volume"
             android:textColor="@color/text_primary"
             android:textStyle="bold"
             android:layout_marginBottom="8dp"/>
@@ -126,7 +126,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Audio Quality"
+            android:text="@string/title_audio_quality"
             android:textColor="@color/text_primary"
             android:textStyle="bold"
             android:layout_marginBottom="12dp"/>
@@ -141,7 +141,7 @@
                 android:id="@+id/quality_standard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Standard"
+                android:text="@string/type_audio_quality_standard"
                 android:textColor="@color/text_primary"
                 android:buttonTint="@color/brand_primary"
                 android:paddingVertical="8dp"/>
@@ -150,7 +150,7 @@
                 android:id="@+id/quality_higher"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Higher"
+                android:text="@string/type_audio_quality_higher"
                 android:textColor="@color/text_primary"
                 android:buttonTint="@color/brand_primary"
                 android:paddingVertical="8dp"/>
@@ -159,7 +159,7 @@
                 android:id="@+id/quality_exhigh"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Extreme"
+                android:text="@string/type_audio_quality_extreme"
                 android:textColor="@color/text_primary"
                 android:buttonTint="@color/brand_primary"
                 android:paddingVertical="8dp"/>
@@ -168,7 +168,7 @@
                 android:id="@+id/quality_lossless"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Lossless"
+                android:text="@string/type_audio_quality_lossless"
                 android:textColor="@color/text_primary"
                 android:buttonTint="@color/brand_primary"
                 android:paddingVertical="8dp"/>
@@ -177,7 +177,7 @@
                 android:id="@+id/quality_hires"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Hi-Res"
+                android:text="@string/type_audio_quality_hires"
                 android:textColor="@color/text_primary"
                 android:buttonTint="@color/brand_primary"
                 android:paddingVertical="8dp"/>
@@ -186,7 +186,7 @@
                 android:id="@+id/quality_sky"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Sky (Immersive)"
+                android:text="@string/type_audio_quality_sky"
                 android:textColor="@color/text_primary"
                 android:buttonTint="@color/brand_primary"
                 android:paddingVertical="8dp"/>
@@ -203,7 +203,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Lyric Translation Integration"
+                android:text="@string/title_lyric_translation"
                 android:textColor="@color/text_primary"
                 android:textStyle="bold"/>
 
@@ -225,7 +225,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Desktop Floating Lyrics"
+                android:text="@string/title_floating_lyrics"
                 android:textColor="@color/text_primary"
                 android:textStyle="bold"/>
 
@@ -246,7 +246,7 @@
              <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Lyric Highlight Color"
+                android:text="@string/title_lyric_highlight_color"
                 android:textColor="@color/text_primary"
                 android:layout_marginBottom="8dp"/>
 
@@ -301,7 +301,7 @@
              <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Font Size"
+                android:text="@string/title_font_size"
                 android:textColor="@color/text_primary"
                 android:layout_marginTop="12dp"
                 android:layout_marginBottom="8dp"/>
@@ -332,7 +332,7 @@
              <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Preview"
+                android:text="@string/preview"
                 android:textColor="@color/text_primary"
                 android:layout_marginTop="12dp"
                 android:layout_marginBottom="8dp"/>
@@ -352,7 +352,7 @@
                          android:layout_width="match_parent"
                          android:layout_height="wrap_content"
                          android:gravity="center"
-                         android:text="Current Lyric Preview"
+                         android:text="@string/lyrics_preview_line_one"
                          android:singleLine="true"
                          android:shadowColor="#FF000000"
                          android:shadowDx="2"
@@ -364,7 +364,7 @@
                          android:layout_width="match_parent"
                          android:layout_height="wrap_content"
                          android:gravity="center"
-                         android:text="Next Lyric Preview"
+                         android:text="@string/lyrics_preview_line_two"
                          android:textColor="#DDDDDD"
                          android:singleLine="true"
                          android:shadowColor="#FF000000"
@@ -380,7 +380,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="Version: v0.0.0 | Author: Midairlogn\nML-Netease_Android © 2026 | GPLv3 LICENSE"
+            android:text="@string/defalut_app_info"
             android:textColor="@color/text_secondary"
             android:textSize="12sp"
             android:layout_marginTop="32dp"

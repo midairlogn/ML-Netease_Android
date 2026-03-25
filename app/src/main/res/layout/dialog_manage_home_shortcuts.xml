@@ -8,7 +8,7 @@
         android:id="@+id/tv_manage_shortcuts_title"
         android:layout_width="wrap_content"
         android:layout_height="36dp"
-        android:text="Homepage Shortcuts"
+        android:text="@string/title_homepage_shortcut"
         android:textColor="@color/text_primary"
         android:textSize="20sp"
         android:textStyle="bold"
@@ -56,7 +56,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="No shortcuts yet"
+            android:text="@string/hint_no_shortcut"
             android:textColor="@color/text_primary"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -65,7 +65,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Add shortcuts for faster access."
+            android:text="@string/hint_add_shortcut"
             android:textColor="@color/text_secondary"
             android:textSize="14sp"
             android:gravity="center" />
@@ -95,7 +95,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:text="Add Shortcut"
+            android:text="@string/add_shortcut"
             android:textColor="@color/brand_primary"
             android:textSize="16sp"
             android:gravity="center_vertical" />

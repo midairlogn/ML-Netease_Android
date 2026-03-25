@@ -37,7 +37,7 @@
             android:id="@+id/player_song_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Song Title"
+            android:text="@string/song_title"
             android:textColor="@color/text_primary"
             android:textSize="22sp"
             android:textStyle="bold"
@@ -48,7 +48,7 @@
             android:id="@+id/player_song_artist"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Artist Name"
+            android:text="@string/artist_name"
             android:textColor="@color/text_primary"
             android:alpha="0.6"
             android:textSize="18sp"
@@ -85,7 +85,7 @@
                 android:id="@+id/text_current_time"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="0:00"
+                android:text="@string/zero_timestamp"
                 android:textColor="@color/text_secondary"
                 android:textSize="12sp"/>
 
@@ -98,7 +98,7 @@
                 android:id="@+id/text_total_time"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="-0:00"
+                android:text="@string/zero_timestamp_negative"
                 android:textColor="@color/text_secondary"
                 android:textSize="12sp"/>
         </LinearLayout>
