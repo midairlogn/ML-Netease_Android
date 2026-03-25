@@ -105,12 +105,12 @@ public class ImageDetailActivity extends AppCompatActivity {
 
                     runOnUiThread(() -> Toast.makeText(this, R.string.saved_to_gallery, Toast.LENGTH_SHORT).show());
                 } else {
-                     runOnUiThread(() -> Toast.makeText(this, R.string.hint_save_failed_title + R.string.hint_null_uri, Toast.LENGTH_SHORT).show());
+                     runOnUiThread(() -> Toast.makeText(this, getString(R.string.hint_save_failed_title) + getString(R.string.hint_null_uri), Toast.LENGTH_SHORT).show());
                 }
 
             } catch (Exception e) {
                 e.printStackTrace();
-                runOnUiThread(() -> Toast.makeText(this, R.string.hint_save_failed_title + e.getMessage(), Toast.LENGTH_SHORT).show());
+                runOnUiThread(() -> Toast.makeText(this, getString(R.string.hint_save_failed_title) + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
         }).start();
     }

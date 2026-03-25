@@ -282,7 +282,7 @@ public class HomeFragment extends Fragment {
 
                                     @Override
                                     public void onError(String error) {
-                                        Toast.makeText(getContext(), R.string.hint_error_title + error, Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show();
                                     }
                                 });
                             }
@@ -297,7 +297,7 @@ public class HomeFragment extends Fragment {
 
                                 @Override
                                 public void onError(String error) {
-                                    Toast.makeText(getContext(), R.string.hint_error_title + error, Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show();
                                 }
                             });
                         }
@@ -314,7 +314,7 @@ public class HomeFragment extends Fragment {
 
                             @Override
                             public void onError(String error) {
-                                Toast.makeText(getContext(), R.string.hint_error_title + error, Toast.LENGTH_SHORT).show();
+                                Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show();
                             }
                         });
                     }
@@ -328,7 +328,7 @@ public class HomeFragment extends Fragment {
 
                     @Override
                     public void onError(String error) {
-                        Toast.makeText(getContext(), R.string.hint_error_title + error, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show();
                     }
                 });
             }
@@ -344,7 +344,7 @@ public class HomeFragment extends Fragment {
 
                 @Override
                 public void onError(String error) {
-                    Toast.makeText(getContext(), R.string.hint_error_title + error, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show();
                 }
             });
         } else if (checkedId == R.id.radio_album) {
@@ -359,7 +359,7 @@ public class HomeFragment extends Fragment {
 
                 @Override
                 public void onError(String error) {
-                    Toast.makeText(getContext(), R.string.hint_error_title + error, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show();
                 }
             });
         }
@@ -412,7 +412,7 @@ public class HomeFragment extends Fragment {
 
                 @Override
                 public void onError(String error) {
-                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), R.string.hint_error_title + error, Toast.LENGTH_SHORT).show());
+                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show());
                 }
             });
         } else if (shortcut.isAlbum()) {
@@ -424,7 +424,7 @@ public class HomeFragment extends Fragment {
 
                 @Override
                 public void onError(String error) {
-                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), R.string.hint_error_title + error, Toast.LENGTH_SHORT).show());
+                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show());
                 }
             });
         }

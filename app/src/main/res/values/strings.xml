@@ -85,4 +85,11 @@
     <string name="playmode_loop_all">Loop All</string>
     <string name="playmode_shuffle">Shuffle</string>
     <string name="playmode_order">Order</string>
+    <string name="permission_required">Permission Required</string>
+    <string name="hint_overlay_permission">Overlay permission is mandatory for floating lyrics. Please enable it in the next screen.</string>
+    <string name="go_to_settings">Go to Settings</string>
+    <string name="cancel">Cancel</string>
+    <string name="hint_all_permission">All requested permissions (Notifications and Storage) are mandatory for the app to function. Please grant them in Settings.</string>
+    <string name="exit">Exit</string>
+    <string name="permissions_required">Permissions Required</string>
 </resources>

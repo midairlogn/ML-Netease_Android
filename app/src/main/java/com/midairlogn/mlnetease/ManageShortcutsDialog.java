@@ -137,7 +137,7 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
             saveAndRender();
         } else {
             // Log this or show a toast, though with synchronization, this case should be rare for valid initial positions.
-            Toast.makeText(getContext(), R.string.hint_error_title + R.string.hint_shortcut_not_found, Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), getString(R.string.hint_error_title) + getString(R.string.hint_shortcut_not_found), Toast.LENGTH_SHORT).show();
         }
     }
 

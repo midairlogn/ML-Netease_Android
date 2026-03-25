@@ -78,4 +78,11 @@
     <string name="playmode_loop_all">全部循环</string>
     <string name="playmode_shuffle">随机播放</string>
     <string name="playmode_order">顺序播放</string>
+    <string name="permission_required">需要授予权限</string>
+    <string name="hint_all_permission">应用运行需要通知和存储权限，请开启。</string>
+    <string name="exit">退出</string>
+    <string name="permissions_required">需要授予权限</string>
+    <string name="hint_overlay_permission">歌词悬浮窗需要显示在其他应用上层的权限，请在设置中开启。</string>
+    <string name="go_to_settings">去设置</string>
+    <string name="cancel">取消</string>
 </resources>

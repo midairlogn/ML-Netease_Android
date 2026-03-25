@@ -9,7 +9,6 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 import android.provider.Settings;
 import android.net.Uri;
 import android.content.pm.PackageManager;
@@ -142,14 +141,14 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             if (!Settings.canDrawOverlays(this)) {
                 new AlertDialog.Builder(this)
-                        .setTitle("Permission Required")
-                        .setMessage("Floating lyrics require overlay permission. Please enable it in the next screen.")
-                        .setPositiveButton("Go to Settings", (dialog, which) -> {
+                        .setTitle(R.string.permission_required)
+                        .setMessage(getString(R.string.hint_overlay_permission))
+                        .setPositiveButton(R.string.go_to_settings, (dialog, which) -> {
                             Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                     Uri.parse("package:" + getPackageName()));
                             startActivityForResult(intent, REQUEST_CODE_OVERLAY);
                         })
-                        .setNegativeButton("Cancel", (dialog, which) -> startMusicService())
+                        .setNegativeButton(getString(R.string.cancel), (dialog, which) -> startMusicService())
                         .setCancelable(false)
                         .show();
             } else {
@@ -182,15 +181,15 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
             }
             if (!allGranted) {
                 new AlertDialog.Builder(this)
-                        .setTitle("Permissions Required")
-                        .setMessage("All requested permissions (Notifications and Storage) are mandatory for the app to function. Please grant them in Settings.")
-                        .setPositiveButton("Go to Settings", (dialog, which) -> {
+                        .setTitle(R.string.permissions_required)
+                        .setMessage(R.string.hint_all_permission)
+                        .setPositiveButton(R.string.go_to_settings, (dialog, which) -> {
                             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                                     Uri.parse("package:" + getPackageName()));
                             startActivity(intent);
                             finish(); // Exit app
                         })
-                        .setNegativeButton("Exit", (dialog, which) -> finish())
+                        .setNegativeButton(R.string.exit, (dialog, which) -> finish())
                         .setCancelable(false)
                         .show();
             } else {
@@ -208,14 +207,14 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
                     startMusicService();
                 } else {
                     new AlertDialog.Builder(this)
-                            .setTitle("Permission Required")
-                            .setMessage("Overlay permission is mandatory for floating lyrics and background operation. Please enable it.")
-                            .setPositiveButton("Go to Settings", (dialog, which) -> {
+                            .setTitle(R.string.permission_required)
+                            .setMessage(R.string.hint_overlay_permission)
+                            .setPositiveButton(R.string.go_to_settings, (dialog, which) -> {
                                 Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                         Uri.parse("package:" + getPackageName()));
                                 startActivityForResult(intent, REQUEST_CODE_OVERLAY);
                             })
-                            .setNegativeButton("Exit", (dialog, which) -> finish())
+                            .setNegativeButton(R.string.exit, (dialog, which) -> finish())
                             .setCancelable(false)
                             .show();
                 }
