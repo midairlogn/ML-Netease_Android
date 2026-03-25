@@ -18,6 +18,8 @@ import android.Manifest;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.os.LocaleListCompat;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
@@ -50,9 +52,13 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     private MusicPlayerManager musicPlayerManager;
     private String currentCoverUrl;
 
+    private SettingsManager settingsManager;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        settingsManager = new SettingsManager(this);
+        setAppLocale(settingsManager.getAppLanguage());
         setContentView(R.layout.activity_main);
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
@@ -364,5 +370,15 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
             miniPlayerProgress.setMax(safeTotal);
             miniPlayerProgress.setProgress(safeCurrent);
         });
+    }
+
+    public void setAppLocale(String languageCode) {
+        LocaleListCompat locales;
+        if (languageCode.equals("system")) {
+            locales = LocaleListCompat.getEmptyLocaleList();
+        } else {
+            locales = LocaleListCompat.forLanguageTags(languageCode);
+        }
+        AppCompatDelegate.setApplicationLocales(locales);
     }
 }

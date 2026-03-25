@@ -24,8 +24,10 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RadioGroup;
 import android.widget.SeekBar;
+import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.AdapterView;
 import android.widget.Toast;
 import android.content.SharedPreferences;
 import androidx.annotation.NonNull;
@@ -40,6 +42,7 @@ public class SettingsFragment extends Fragment {
     private RadioGroup qualityGroup;
     private SeekBar seekbarAppVolume;
     private TextView textAppVolumeValue;
+    private Spinner spinnerLanguage;
 
     private final Handler debounceHandler = new Handler(Looper.getMainLooper());
     private Runnable saveRunnable;
@@ -98,6 +101,7 @@ public class SettingsFragment extends Fragment {
         qualityGroup = view.findViewById(R.id.quality_group);
         seekbarAppVolume = view.findViewById(R.id.seekbar_app_volume);
         textAppVolumeValue = view.findViewById(R.id.text_app_volume_value);
+        spinnerLanguage = view.findViewById(R.id.spinner_language);
         qualityGroup.setOnTouchListener(hideKeyboardTouchListener);
 
         // Floating Window Views
@@ -162,6 +166,43 @@ public class SettingsFragment extends Fragment {
             else if (checkedId == R.id.quality_sky) quality = "sky";
             settingsManager.setQuality(quality);
             notifySettingsChanged();
+        });
+
+        // Language Spinner
+        String currentLanguage = settingsManager.getAppLanguage();
+        String[] languageOptions = getResources().getStringArray(R.array.language_options);
+        int selection = 0; // Default to System Default
+        if (currentLanguage.equals("en")) {
+            selection = 1;
+        } else if (currentLanguage.equals("zh")) {
+            selection = 2;
+        }
+        spinnerLanguage.setSelection(selection);
+
+        spinnerLanguage.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String selectedLanguageCode;
+                switch (position) {
+                    case 0: selectedLanguageCode = "system"; break;
+                    case 1: selectedLanguageCode = "en"; break;
+                    case 2: selectedLanguageCode = "zh"; break;
+                    default: selectedLanguageCode = "system"; break;
+                }
+                if (!settingsManager.getAppLanguage().equals(selectedLanguageCode)) {
+                    settingsManager.setAppLanguage(selectedLanguageCode);
+                    notifySettingsChanged();
+                    // Trigger app locale change
+                    if (getActivity() instanceof MainActivity) {
+                        ((MainActivity) getActivity()).setAppLocale(selectedLanguageCode);
+                    }
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Do nothing
+            }
         });
 
         switchTranslationIntegration.setChecked(settingsManager.isTranslationIntegrationEnabled());

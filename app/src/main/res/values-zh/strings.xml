@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">ML Netease</string>
+    <string name="app_description">一个集成网易云音乐的安卓音乐播放器。</string>
+    <string name="search">搜索</string>
+    <string name="parse">解析</string>
+    <string name="settings">设置</string>
+    <string name="playlist">歌单</string>
+    <string name="album">专辑</string>
+    <string name="back">返回</string>
+    <string name="language_title">语言</string>
+    <string name="language_system_default">跟随系统</string>
+    <string-array name="language_options">
+        <item>跟随系统</item>
+        <item>English</item>
+        <item>简体中文</item>
+    </string-array>
+</resources>

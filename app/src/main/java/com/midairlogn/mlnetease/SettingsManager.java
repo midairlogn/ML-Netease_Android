@@ -21,6 +21,7 @@ public class SettingsManager {
     private static final String KEY_TRANSLATION_INTEGRATION_ENABLED = "translation_integration_enabled";
     private static final String KEY_APP_VOLUME = "app_volume";
     private static final String KEY_HOME_SHORTCUTS = "home_shortcuts";
+    private static final String KEY_APP_LANGUAGE = "app_language";
     public static final int DEFAULT_APP_VOLUME = 80;
 
     private SharedPreferences prefs;
@@ -181,6 +182,14 @@ public class SettingsManager {
         for (int i = 0; i < shortcuts.size(); i++) {
             shortcuts.get(i).sequence = i;
         }
+    }
+
+    public void setAppLanguage(String language) {
+        prefs.edit().putString(KEY_APP_LANGUAGE, language).apply();
+    }
+
+    public String getAppLanguage() {
+        return prefs.getString(KEY_APP_LANGUAGE, "system"); // Default to system language
     }
 
     public SharedPreferences getPrefs() {
