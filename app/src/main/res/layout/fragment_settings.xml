@@ -147,19 +147,10 @@
                 android:paddingVertical="8dp"/>
 
             <RadioButton
-                android:id="@+id/quality_higher"
+                    android:id="@+id/quality_exhigh"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/type_audio_quality_higher"
-                android:textColor="@color/text_primary"
-                android:buttonTint="@color/brand_primary"
-                android:paddingVertical="8dp"/>
-
-            <RadioButton
-                android:id="@+id/quality_exhigh"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/type_audio_quality_extreme"
+                android:text="@string/type_audio_quality_exhigh"
                 android:textColor="@color/text_primary"
                 android:buttonTint="@color/brand_primary"
                 android:paddingVertical="8dp"/>
@@ -183,10 +174,28 @@
                 android:paddingVertical="8dp"/>
 
             <RadioButton
+                android:id="@+id/quality_jyeffect"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/type_audio_quality_jyeffect"
+                android:textColor="@color/text_primary"
+                android:buttonTint="@color/brand_primary"
+                android:paddingVertical="8dp"/>
+
+            <RadioButton
                 android:id="@+id/quality_sky"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/type_audio_quality_sky"
+                android:textColor="@color/text_primary"
+                android:buttonTint="@color/brand_primary"
+                android:paddingVertical="8dp"/>
+
+            <RadioButton
+                android:id="@+id/quality_jymaster"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/type_audio_quality_jymaster"
                 android:textColor="@color/text_primary"
                 android:buttonTint="@color/brand_primary"
                 android:paddingVertical="8dp"/>

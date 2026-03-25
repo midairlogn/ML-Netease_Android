@@ -17,12 +17,6 @@
     <string name="title_audio_quality">Audio Quality</string>
     <string name="title_lyric_translation">Lyric Translation Integration</string>
     <string name="title_floating_lyrics">Desktop Floating Lyrics</string>
-    <string name="type_audio_quality_standard">Standard</string>
-    <string name="type_audio_quality_higher">Higher</string>
-    <string name="type_audio_quality_extreme">Extreme</string>
-    <string name="type_audio_quality_lossless">Lossless</string>
-    <string name="type_audio_quality_hires">Hi-Res</string>
-    <string name="type_audio_quality_sky">Sky (Immersive)</string>
     <string name="title_lyric_highlight_color">Lyric Highlight Color</string>
     <string name="title_font_size">Font Size</string>
     <string name="preview">Preview</string>
@@ -65,4 +59,11 @@
     <string name="hint_homepage_add_shortcut">Add shortcuts for one-tap playback.</string>
     <string name="manage_shortcut">Manage Shortcuts</string>
     <string name="clear">Clear</string>
+    <string name="type_audio_quality_standard">Standard</string>
+    <string name="type_audio_quality_exhigh">Exhigh</string>
+    <string name="type_audio_quality_lossless">Lossless</string>
+    <string name="type_audio_quality_hires">Hires</string>
+    <string name="type_audio_quality_jyeffect">Jyeffect</string>
+    <string name="type_audio_quality_sky">Sky</string>
+    <string name="type_audio_quality_jymaster">Jymaster</string>
 </resources>

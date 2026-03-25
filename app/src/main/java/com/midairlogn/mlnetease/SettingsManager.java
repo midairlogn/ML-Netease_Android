@@ -195,12 +195,4 @@ public class SettingsManager {
     public SharedPreferences getPrefs() {
         return prefs;
     }
-
-    public static final String[] QUALITY_OPTIONS = {
-        "standard", "exhigh", "lossless", "hires", "sky", "jyeffect", "jymaster"
-    };
-
-    public static final String[] QUALITY_LABELS = {
-        "标准音质", "极高音质", "无损音质", "Hires音质", "沉浸环绕声", "高清环绕声", "超清母带"
-    };
 }

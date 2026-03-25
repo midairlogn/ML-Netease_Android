@@ -53,4 +53,11 @@
     <string name="hint_homepage_add_shortcut">添加收藏以快速开始播放</string>
     <string name="manage_shortcut">管理收藏</string>
     <string name="clear">清空</string>
+    <string name="type_audio_quality_standard">标准音质</string>
+    <string name="type_audio_quality_exhigh">极高音质</string>
+    <string name="type_audio_quality_lossless">无损音质</string>
+    <string name="type_audio_quality_hires">Hi-Res音质</string>
+    <string name="type_audio_quality_jyeffect">高清环绕声</string>
+    <string name="type_audio_quality_sky">沉浸环绕声</string>
+    <string name="type_audio_quality_jymaster">超清母带</string>
 </resources>

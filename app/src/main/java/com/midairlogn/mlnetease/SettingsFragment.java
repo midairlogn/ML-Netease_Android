@@ -149,21 +149,23 @@ public class SettingsFragment extends Fragment {
 
         switch (currentQuality) {
             case "standard": qualityGroup.check(R.id.quality_standard); break;
-            case "higher": qualityGroup.check(R.id.quality_higher); break;
             case "exhigh": qualityGroup.check(R.id.quality_exhigh); break;
             case "lossless": qualityGroup.check(R.id.quality_lossless); break;
             case "hires": qualityGroup.check(R.id.quality_hires); break;
+            case "jyeffect": qualityGroup.check(R.id.quality_jyeffect); break;
             case "sky": qualityGroup.check(R.id.quality_sky); break;
+            case "jymaster": qualityGroup.check(R.id.quality_jymaster); break;
             default: qualityGroup.check(R.id.quality_standard); break;
         }
 
         qualityGroup.setOnCheckedChangeListener((group, checkedId) -> {
             String quality = "standard";
-            if (checkedId == R.id.quality_higher) quality = "higher";
-            else if (checkedId == R.id.quality_exhigh) quality = "exhigh";
+            if (checkedId == R.id.quality_exhigh) quality = "exhigh";
             else if (checkedId == R.id.quality_lossless) quality = "lossless";
             else if (checkedId == R.id.quality_hires) quality = "hires";
+            else if (checkedId == R.id.quality_jyeffect) quality = "jyeffect";
             else if (checkedId == R.id.quality_sky) quality = "sky";
+            else if (checkedId == R.id.quality_jymaster) quality = "jymaster";
             settingsManager.setQuality(quality);
             notifySettingsChanged();
         });
@@ -468,11 +470,12 @@ public class SettingsFragment extends Fragment {
         String currentQuality = settingsManager.getQuality();
         switch (currentQuality) {
             case "standard": qualityGroup.check(R.id.quality_standard); break;
-            case "higher": qualityGroup.check(R.id.quality_higher); break;
             case "exhigh": qualityGroup.check(R.id.quality_exhigh); break;
             case "lossless": qualityGroup.check(R.id.quality_lossless); break;
             case "hires": qualityGroup.check(R.id.quality_hires); break;
+            case "jyeffect": qualityGroup.check(R.id.quality_jyeffect); break;
             case "sky": qualityGroup.check(R.id.quality_sky); break;
+            case "jymaster": qualityGroup.check(R.id.quality_jymaster); break;
             default: qualityGroup.check(R.id.quality_standard); break;
         }
 
