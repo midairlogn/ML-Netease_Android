@@ -88,4 +88,14 @@
     <string name="hint_grant_overlay">请授予悬浮窗权限</string>
     <string name="hint_grant_overlay_app_settings">请在应用设置中授予悬浮窗权限</string>
     <string name="hint_grant_overlay_settings">请在设置中授予悬浮窗权限</string>
+    <string name="clear_playlist">清空播放列表</string>
+    <string name="hint_clear_playlist">确认要清空播放列表吗？</string>
+    <string name="yes">是</string>
+    <string name="no">否</string>
+    <string name="album_not_found">专辑解析失败</string>
+    <string name="playlist_not_found">歌单解析失败</string>
+    <string name="title_http_error">HTTP错误：</string>
+    <string name="music_player">音乐播放器</string>
+    <string name="ready_to_play">已经准备就绪</string>
+    <string name="error_fetching_cover">获取封面失败</string>
 </resources>

@@ -13,6 +13,7 @@ public class SettingsManager {
     private static final String PREF_NAME = "ml_netease_prefs";
     private static final String KEY_MUSIC_U = "music_u";
     private static final String KEY_QUALITY = "quality";
+    private static final String KEY_DEFAULT_QUALITY = "standard";
     private static final String KEY_SEARCH_LIMIT = "search_limit";
     private static final String KEY_FLOATING_LYRICS_ENABLED = "floating_lyrics_enabled";
     private static final String KEY_LYRIC_COLOR = "lyric_color";
@@ -43,7 +44,7 @@ public class SettingsManager {
     }
 
     public String getQuality() {
-        return prefs.getString(KEY_QUALITY, "standard");
+        return prefs.getString(KEY_QUALITY, KEY_DEFAULT_QUALITY);
     }
 
     public void setSearchLimit(int limit) {

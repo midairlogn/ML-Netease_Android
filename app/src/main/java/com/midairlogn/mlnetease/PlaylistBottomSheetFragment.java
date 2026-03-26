@@ -41,12 +41,12 @@ public class PlaylistBottomSheetFragment extends BottomSheetDialogFragment imple
 
         view.findViewById(R.id.btn_clear_playlist).setOnClickListener(v -> {
             new android.app.AlertDialog.Builder(getContext())
-                    .setTitle("Clear Playlist")
-                    .setMessage("Are you sure you want to clear the playlist?")
-                    .setPositiveButton("Yes", (dialog, which) -> {
+                    .setTitle(R.string.clear_playlist)
+                    .setMessage(R.string.hint_clear_playlist)
+                    .setPositiveButton(R.string.yes, (dialog, which) -> {
                         musicPlayerManager.setPlaylist(new java.util.ArrayList<>());
                     })
-                    .setNegativeButton("No", null)
+                    .setNegativeButton(R.string.no, null)
                     .show();
         });
 
@@ -130,7 +130,7 @@ public class PlaylistBottomSheetFragment extends BottomSheetDialogFragment imple
     private void updateTitle() {
         if (tvPlaylistTitle != null && musicPlayerManager != null) {
             int count = musicPlayerManager.getPlaylist().size();
-            tvPlaylistTitle.setText("Current Playlist (" + count + ")");
+            tvPlaylistTitle.setText(getString(R.string.current_playlist) + " (" + count + ")");
         }
     }
 

@@ -182,7 +182,7 @@ public class MusicService extends Service {
         if (currentSong != null) {
             updateMetadata(currentSong);
         } else {
-            Song placeholder = new Song("", "Music Player", "Ready to play", "", "");
+            Song placeholder = new Song("", getString(R.string.music_player), getString(R.string.ready_to_play), "", "");
             showNotification(placeholder, false, BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground), true, "service:init-placeholder");
         }
 
@@ -312,7 +312,7 @@ public class MusicService extends Service {
             lastSongId = "";
             lastPicUrl = "";
             lastBitmap = null;
-            Song placeholder = new Song("", "Music Player", "Ready to play", "", "");
+            Song placeholder = new Song("", getString(R.string.music_player), getString(R.string.ready_to_play), "", "");
             showNotification(placeholder, false, BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground), true, "metadata:null-song");
             return;
         }
@@ -361,7 +361,7 @@ public class MusicService extends Service {
                 input = connection.getInputStream();
                 albumArt = decodeBoundedBitmap(input, MAX_NOTIFICATION_ART_SIZE_PX, Bitmap.Config.RGB_565);
             } catch (Exception e) {
-                Log.e(TAG, "Error fetching album art", e);
+                Log.e(TAG, getString(R.string.error_fetching_cover), e);
                 albumArt = BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground);
             } finally {
                 if (input != null) {
@@ -598,7 +598,7 @@ public class MusicService extends Service {
         }
 
         if (song == null) {
-            song = new Song("", "Music Player", "Ready to play", "", "");
+            song = new Song("", getString(R.string.music_player), getString(R.string.ready_to_play), "", "");
             isPlaying = false;
         }
 

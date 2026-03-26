@@ -55,7 +55,7 @@ public class HomeFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        neteaseApi = new NeteaseApi(new SettingsManager(requireContext()));
+        neteaseApi = new NeteaseApi(requireContext(), new SettingsManager(requireContext()));
 
         // Make root layout focusable to intercept clicks for keyboard hiding
         view.setFocusable(true);

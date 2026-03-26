@@ -108,7 +108,7 @@ public class MusicPlayerManager {
     private MusicPlayerManager(Context context) {
         this.context = context.getApplicationContext();
         this.settingsManager = new SettingsManager(this.context);
-        this.neteaseApi = new NeteaseApi(settingsManager);
+        this.neteaseApi = new NeteaseApi(this.context, settingsManager);
         this.currentMode = settingsManager.getPlayMode();
         mediaPlayer = new MediaPlayer();
 
@@ -376,7 +376,7 @@ public class MusicPlayerManager {
             // Emit one stable pause/loading transition at switch start.
             notifyPlaybackStateChanged(false);
         }
-        currentLyric = "Loading...";
+        currentLyric = context.getString(R.string.hint_loading);
         currentTLyric = "";
 
         // Fetch full info

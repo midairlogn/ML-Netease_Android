@@ -95,4 +95,14 @@
     <string name="hint_grant_overlay">Please grant overlay permission</string>
     <string name="hint_grant_overlay_app_settings">Please grant overlay permission in app settings</string>
     <string name="hint_grant_overlay_settings">Please grant overlay permission in settings</string>
+    <string name="clear_playlist">Clear Playlist</string>
+    <string name="hint_clear_playlist">Are you sure you want to clear the playlist?</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="album_not_found">Album not found</string>
+    <string name="playlist_not_found">Playlist not found</string>
+    <string name="title_http_error">HTTP Error:</string>
+    <string name="music_player">Music Player</string>
+    <string name="ready_to_play">Ready to play</string>
+    <string name="error_fetching_cover">Error fetching album art</string>
 </resources>
