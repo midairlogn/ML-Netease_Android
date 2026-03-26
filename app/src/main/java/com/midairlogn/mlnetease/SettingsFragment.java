@@ -265,11 +265,11 @@ public class SettingsFragment extends Fragment {
         switchFloatingLyrics.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
                 if (!Settings.canDrawOverlays(requireContext())) {
-                    Toast.makeText(requireContext(), "Please grant overlay permission", Toast.LENGTH_LONG).show();
+                    Toast.makeText(requireContext(), R.string.hint_grant_overlay, Toast.LENGTH_LONG).show();
                     Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                             Uri.parse("package:" + requireContext().getPackageName()));
-                    startActivityForResult(intent, 1001);
-                    buttonView.setChecked(false); // Re-enable in onResume if granted
+                    startActivity(intent);
+                    buttonView.setChecked(false);
                     return;
                 }
             }
@@ -487,11 +487,11 @@ public class SettingsFragment extends Fragment {
         switchFloatingLyrics.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
                 if (!Settings.canDrawOverlays(requireContext())) {
-                    Toast.makeText(requireContext(), "Please grant overlay permission", Toast.LENGTH_LONG).show();
+                    Toast.makeText(requireContext(), R.string.hint_grant_overlay, Toast.LENGTH_LONG).show();
                     Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                             Uri.parse("package:" + requireContext().getPackageName()));
-                    startActivityForResult(intent, 1001);
-                    buttonView.setChecked(false); // Re-enable in onResume if granted
+                    startActivity(intent);
+                    buttonView.setChecked(false);
                     return;
                 }
             }

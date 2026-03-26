@@ -203,8 +203,17 @@ public class MusicService extends Service {
                     // updatePlaybackState is called via playbackModeChangedListener
                 } else if ("ACTION_TOGGLE_FLOATING".equals(action)) {
                     SettingsManager sm = new SettingsManager(MusicService.this);
-                    boolean newState = !sm.isFloatingLyricsEnabled();
-                    sm.setFloatingLyricsEnabled(newState);
+                    boolean currentState = sm.isFloatingLyricsEnabled();
+                    if (!currentState) {
+                        // Attempting to enable - check permission
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(MusicService.this)) {
+                            android.widget.Toast.makeText(MusicService.this, R.string.hint_grant_overlay_settings, android.widget.Toast.LENGTH_LONG).show();
+                            // We can't easily start Settings Activity from Service without new task flag
+                            // but the user can use the app's settings screen to enable it.
+                            return;
+                        }
+                    }
+                    sm.setFloatingLyricsEnabled(!currentState);
                     if (floatingLyricsManager != null) {
                         floatingLyricsManager.onSettingChanged();
                     }
@@ -685,8 +694,14 @@ public class MusicService extends Service {
                 musicPlayerManager.togglePlaybackMode();
             } else if ("ACTION_TOGGLE_FLOATING".equals(action)) {
                 SettingsManager sm = new SettingsManager(this);
-                boolean newState = !sm.isFloatingLyricsEnabled();
-                sm.setFloatingLyricsEnabled(newState);
+                boolean currentState = sm.isFloatingLyricsEnabled();
+                if (!currentState) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
+                        android.widget.Toast.makeText(this, R.string.hint_grant_overlay_app_settings, android.widget.Toast.LENGTH_LONG).show();
+                        return START_NOT_STICKY;
+                    }
+                }
+                sm.setFloatingLyricsEnabled(!currentState);
                 if (floatingLyricsManager != null) {
                     floatingLyricsManager.onSettingChanged();
                 }

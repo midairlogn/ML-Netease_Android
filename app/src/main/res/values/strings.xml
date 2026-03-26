@@ -92,4 +92,7 @@
     <string name="hint_all_permission">All requested permissions (Notifications and Storage) are mandatory for the app to function. Please grant them in Settings.</string>
     <string name="exit">Exit</string>
     <string name="permissions_required">Permissions Required</string>
+    <string name="hint_grant_overlay">Please grant overlay permission</string>
+    <string name="hint_grant_overlay_app_settings">Please grant overlay permission in app settings</string>
+    <string name="hint_grant_overlay_settings">Please grant overlay permission in settings</string>
 </resources>

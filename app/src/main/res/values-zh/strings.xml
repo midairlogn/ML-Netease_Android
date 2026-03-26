@@ -85,4 +85,7 @@
     <string name="hint_overlay_permission">歌词悬浮窗需要显示在其他应用上层的权限，请在设置中开启。</string>
     <string name="go_to_settings">去设置</string>
     <string name="cancel">取消</string>
+    <string name="hint_grant_overlay">请授予悬浮窗权限</string>
+    <string name="hint_grant_overlay_app_settings">请在应用设置中授予悬浮窗权限</string>
+    <string name="hint_grant_overlay_settings">请在设置中授予悬浮窗权限</string>
 </resources>
