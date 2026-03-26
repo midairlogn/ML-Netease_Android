@@ -110,7 +110,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:text="@string/save"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/text_on_brand"
             android:backgroundTint="@color/brand_primary" />
     </LinearLayout>
 </RelativeLayout>

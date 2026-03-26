@@ -204,23 +204,23 @@ public class FloatingLyricsManager {
         // Color Listeners
         colorRed.setOnClickListener(v -> {
             resetAutoCollapseTimer();
-            updateColor(Color.parseColor("#F44336"));
+            updateColor(context.getResources().getColor(R.color.lyrics_color_red, null));
         });
         colorBlue.setOnClickListener(v -> {
             resetAutoCollapseTimer();
-            updateColor(Color.parseColor("#2196F3"));
+            updateColor(context.getResources().getColor(R.color.lyrics_color_blue, null));
         });
         colorGreen.setOnClickListener(v -> {
             resetAutoCollapseTimer();
-            updateColor(Color.parseColor("#4CAF50"));
+            updateColor(context.getResources().getColor(R.color.lyrics_color_green, null));
         });
         colorYellow.setOnClickListener(v -> {
             resetAutoCollapseTimer();
-            updateColor(Color.parseColor("#FFEB3B"));
+            updateColor(context.getResources().getColor(R.color.lyrics_color_yellow, null));
         });
         colorPurple.setOnClickListener(v -> {
             resetAutoCollapseTimer();
-            updateColor(Color.parseColor("#9C27B0"));
+            updateColor(context.getResources().getColor(R.color.lyrics_color_purple, null));
         });
 
         // Font Listeners
@@ -359,7 +359,7 @@ public class FloatingLyricsManager {
     private void applySettings() {
         int color = settingsManager.getLyricColor();
         if (color == 0) {
-            color = Color.parseColor("#2196F3"); // Default blue
+            color = context.getResources().getColor(R.color.lyrics_color_blue, null); // Default blue
         }
 
         // Font Size
@@ -377,7 +377,7 @@ public class FloatingLyricsManager {
         }
         if (tvLyricsNextTranslation != null) {
             tvLyricsNextTranslation.setTextSize(Math.max(9f, size - 5f));
-            tvLyricsNextTranslation.setTextColor(Color.parseColor("#B0B0B0"));
+            tvLyricsNextTranslation.setTextColor(context.getResources().getColor(R.color.dim_translation_color, null));
         }
     }
 
@@ -622,8 +622,8 @@ public class FloatingLyricsManager {
                 String text = currentLine.text;
                 boolean showTranslation = settingsManager.isTranslationIntegrationEnabled();
                 int highlightColor = settingsManager.getLyricColor();
-                if (highlightColor == 0) highlightColor = Color.parseColor("#2196F3"); // Default
-                int dimTranslationColor = Color.parseColor("#B0B0B0");
+                if (highlightColor == 0) highlightColor = context.getResources().getColor(R.color.lyrics_color_blue, null); // Default
+                int dimTranslationColor = context.getResources().getColor(R.color.dim_translation_color, null);
 
                 if (tvLyricsCurrent != null) {
                     tvLyricsCurrent.setText(text);

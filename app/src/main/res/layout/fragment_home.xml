@@ -40,7 +40,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/search"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/text_on_brand"
             android:backgroundTint="@color/brand_primary"
             android:layout_marginStart="8dp"/>
 
@@ -49,7 +49,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/clear"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/text_on_brand"
             android:backgroundTint="@color/text_secondary"
             android:layout_marginStart="8dp"
             android:visibility="gone"/>
@@ -101,7 +101,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/play_all"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/text_on_brand"
             android:backgroundTint="@color/brand_primary"
             android:visibility="gone"
             android:layout_marginEnd="8dp"/>
@@ -111,7 +111,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/add_to_shortcut"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/text_on_brand"
             android:backgroundTint="@color/brand_primary"
             android:visibility="gone"/>
     </LinearLayout>
@@ -156,7 +156,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="@string/add_shortcut"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/text_on_brand"
             android:backgroundTint="@color/brand_primary" />
     </LinearLayout>
 
@@ -172,7 +172,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/manage_shortcut"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/text_on_brand"
             android:backgroundTint="@color/brand_primary"
             android:visibility="gone" />
     </LinearLayout>

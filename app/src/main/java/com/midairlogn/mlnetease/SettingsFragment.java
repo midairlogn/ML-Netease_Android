@@ -250,7 +250,7 @@ public class SettingsFragment extends Fragment {
         layoutFloatingSettings.setVisibility(isFloatingEnabled ? View.VISIBLE : View.GONE);
 
         tempColor = settingsManager.getLyricColor();
-        if (tempColor == 0) tempColor = Color.parseColor("#2196F3");
+        if (tempColor == 0) tempColor = getResources().getColor(R.color.lyrics_color_blue, null);
         updateColorSelection();
 
         tempSize = settingsManager.getLyricSize();
@@ -280,31 +280,31 @@ public class SettingsFragment extends Fragment {
 
         // Color buttons
         btnColorRed.setOnClickListener(v -> {
-            tempColor = Color.parseColor("#F44336");
+            tempColor = getResources().getColor(R.color.lyrics_color_red, null);
             updateColorSelection();
             settingsManager.setLyricColor(tempColor);
             notifySettingsChanged();
         });
         btnColorBlue.setOnClickListener(v -> {
-            tempColor = Color.parseColor("#2196F3");
+            tempColor = getResources().getColor(R.color.lyrics_color_blue, null);
             updateColorSelection();
             settingsManager.setLyricColor(tempColor);
             notifySettingsChanged();
         });
         btnColorGreen.setOnClickListener(v -> {
-            tempColor = Color.parseColor("#4CAF50");
+            tempColor = getResources().getColor(R.color.lyrics_color_green, null);
             updateColorSelection();
             settingsManager.setLyricColor(tempColor);
             notifySettingsChanged();
         });
         btnColorYellow.setOnClickListener(v -> {
-            tempColor = Color.parseColor("#FFEB3B");
+            tempColor = getResources().getColor(R.color.lyrics_color_yellow, null);
             updateColorSelection();
             settingsManager.setLyricColor(tempColor);
             notifySettingsChanged();
         });
         btnColorPurple.setOnClickListener(v -> {
-            tempColor = Color.parseColor("#9C27B0");
+            tempColor = getResources().getColor(R.color.lyrics_color_purple, null);
             updateColorSelection();
             settingsManager.setLyricColor(tempColor);
             notifySettingsChanged();
@@ -510,7 +510,7 @@ public class SettingsFragment extends Fragment {
         layoutFloatingSettings.setVisibility(isFloatingEnabled ? View.VISIBLE : View.GONE);
 
         tempColor = settingsManager.getLyricColor();
-        if (tempColor == 0) tempColor = Color.parseColor("#2196F3");
+        if (tempColor == 0) tempColor = getResources().getColor(R.color.lyrics_color_blue, null);
         updateColorSelection();
 
         tempSize = settingsManager.getLyricSize();
@@ -530,28 +530,28 @@ public class SettingsFragment extends Fragment {
         btnColorPurple.setText("");
 
         int finalColor = tempColor;
-        if (tempColor == Color.parseColor("#F44336")) {
+        if (tempColor == getResources().getColor(R.color.lyrics_color_red, null)) {
             btnColorRed.setAlpha(1.0f);
             btnColorRed.setText("✓");
             btnColorRed.setTextColor(Color.WHITE);
-        } else if (tempColor == Color.parseColor("#2196F3")) {
+        } else if (tempColor == getResources().getColor(R.color.lyrics_color_blue, null)) {
             btnColorBlue.setAlpha(1.0f);
             btnColorBlue.setText("✓");
             btnColorBlue.setTextColor(Color.WHITE);
-        } else if (tempColor == Color.parseColor("#4CAF50")) {
+        } else if (tempColor == getResources().getColor(R.color.lyrics_color_green, null)) {
             btnColorGreen.setAlpha(1.0f);
             btnColorGreen.setText("✓");
             btnColorGreen.setTextColor(Color.WHITE);
-        } else if (tempColor == Color.parseColor("#FFEB3B")) {
+        } else if (tempColor == getResources().getColor(R.color.lyrics_color_yellow, null)) {
             btnColorYellow.setAlpha(1.0f);
             btnColorYellow.setText("✓");
             btnColorYellow.setTextColor(Color.BLACK); // Yellow needs black text
-        } else if (tempColor == Color.parseColor("#9C27B0")) {
+        } else if (tempColor == getResources().getColor(R.color.lyrics_color_purple, null)) {
             btnColorPurple.setAlpha(1.0f);
             btnColorPurple.setText("✓");
             btnColorPurple.setTextColor(Color.WHITE);
         } else {
-            finalColor = Color.parseColor("#2196F3"); // Fallback for preview
+            finalColor = getResources().getColor(R.color.lyrics_color_blue, null); // Fallback for preview
         }
 
         if (textLyricPreviewCurrent != null) {

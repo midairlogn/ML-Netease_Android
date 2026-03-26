@@ -271,7 +271,7 @@
                      style="?android:attr/buttonBarButtonStyle"
                      android:layout_width="40dp"
                      android:layout_height="40dp"
-                     android:backgroundTint="#F44336"
+                     android:backgroundTint="@color/lyrics_color_red"
                      android:layout_marginEnd="8dp" />
 
                  <Button
@@ -279,7 +279,7 @@
                      style="?android:attr/buttonBarButtonStyle"
                      android:layout_width="40dp"
                      android:layout_height="40dp"
-                     android:backgroundTint="#2196F3"
+                     android:backgroundTint="@color/lyrics_color_blue"
                      android:layout_marginEnd="8dp" />
 
                  <Button
@@ -287,7 +287,7 @@
                      style="?android:attr/buttonBarButtonStyle"
                      android:layout_width="40dp"
                      android:layout_height="40dp"
-                     android:backgroundTint="#4CAF50"
+                     android:backgroundTint="@color/lyrics_color_green"
                      android:layout_marginEnd="8dp" />
 
                  <Button
@@ -295,7 +295,7 @@
                      style="?android:attr/buttonBarButtonStyle"
                      android:layout_width="40dp"
                      android:layout_height="40dp"
-                     android:backgroundTint="#FFEB3B"
+                     android:backgroundTint="@color/lyrics_color_yellow"
                      android:layout_marginEnd="8dp" />
 
                  <Button
@@ -303,7 +303,7 @@
                      style="?android:attr/buttonBarButtonStyle"
                      android:layout_width="40dp"
                      android:layout_height="40dp"
-                     android:backgroundTint="#9C27B0"
+                     android:backgroundTint="@color/lyrics_color_purple"
                      android:layout_marginEnd="8dp"/>
              </LinearLayout>
 
@@ -363,7 +363,7 @@
                          android:gravity="center"
                          android:text="@string/lyrics_preview_line_one"
                          android:singleLine="true"
-                         android:shadowColor="#FF000000"
+                         android:shadowColor="@color/lyrics_preview_shadow_color"
                          android:shadowDx="2"
                          android:shadowDy="2"
                          android:shadowRadius="4"
@@ -374,9 +374,9 @@
                          android:layout_height="wrap_content"
                          android:gravity="center"
                          android:text="@string/lyrics_preview_line_two"
-                         android:textColor="#DDDDDD"
+                         android:textColor="@color/lyrics_preview_text_color"
                          android:singleLine="true"
-                         android:shadowColor="#FF000000"
+                         android:shadowColor="@color/lyrics_preview_shadow_color"
                          android:shadowDx="2"
                          android:shadowDy="2"
                          android:shadowRadius="4"/>

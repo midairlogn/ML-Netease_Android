@@ -12,6 +12,7 @@
     <color name="text_primary">#1C1C1E</color>
     <color name="text_secondary">#8E8E93</color>
     <color name="text_tertiary">#C7C7CC</color>
+    <color name="text_on_brand">#FFFFFF</color>
 
     <!-- UI Elements -->
     <color name="divider">#C6C6C8</color>
@@ -21,10 +22,32 @@
     <color name="lyrics_highlight">#1C1C1E</color>
     <color name="lyrics_normal">#8E8E93</color>
 
+    <!-- Lyrics Choices -->
+    <color name="lyrics_color_red">#F44336</color>
+    <color name="lyrics_color_blue">#2196F3</color>
+    <color name="lyrics_color_green">#4CAF50</color>
+    <color name="lyrics_color_yellow">#FFEB3B</color>
+    <color name="lyrics_color_purple">#9C27B0</color>
+
+    <!-- Lyrics Preview -->
+    <color name="lyrics_preview_shadow_color">#FF000000</color>
+    <color name="lyrics_preview_text_color">#DDDDDD</color>
+
+    <!-- Floating Lyrics Window -->
+    <color name="floating_window_title_color">#FFFFFF</color>
+    <color name="floating_window_artist_color">#DDDDDD</color>
+    <color name="floating_window_lyrics_main_current_color">#FFFFFF</color>
+    <color name="floating_window_lyrics_main_current_shadow_color">#FF000000</color>
+    <color name="floating_window_lyrics_translation_main_current_color">#CCDDDDDD</color>
+    <color name="floating_window_lyrics_translation_main_current_shadow_color">#FF000000</color>
+    <color name="floating_window_lyrics_secondary_current_color">#DDDDDD</color>
+    <color name="floating_window_lyrics_secondary_current_shadow_color">#FF000000</color>
+    <color name="floating_window_lyrics_translation_secondary_current_color">#BBDDDDDD</color>
+    <color name="floating_window_lyrics_translation_secondary_current_shadow_color">#FF000000</color>
+    <color name="dim_translation_color">#B0B0B0</color>
+    
     <!-- Navigation -->
     <color name="nav_bar_background">#F9F9F9</color>
     <color name="nav_item_selected">#FA233B</color>
     <color name="nav_item_unselected">#8E8E93</color>
-
-    <color name="text_on_brand">#FFFFFF</color>
 </resources>
