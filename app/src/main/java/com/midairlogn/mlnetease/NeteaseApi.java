@@ -28,9 +28,11 @@ public class NeteaseApi {
             .build();
 
     private SettingsManager settingsManager;
+    private android.content.Context context;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    public NeteaseApi(SettingsManager settingsManager) {
+    public NeteaseApi(android.content.Context context, SettingsManager settingsManager) {
+        this.context = context;
         this.settingsManager = settingsManager;
     }
 
@@ -175,7 +177,7 @@ public class NeteaseApi {
 
                 JSONObject album = json.optJSONObject("album");
                 if (album == null) {
-                    postError(callback, "Album not found");
+                    postError(callback, context.getString(R.string.album_not_found));
                     return;
                 }
 
@@ -239,7 +241,7 @@ public class NeteaseApi {
                 JSONObject json1 = new JSONObject(body1);
 
                 if (!json1.has("playlist")) {
-                    postError(callback, "Playlist not found or error: " + body1);
+                    postError(callback, context.getString(R.string.playlist_not_found));
                     return;
                 }
 
@@ -412,7 +414,7 @@ public class NeteaseApi {
                     }
                 } else {
                     // No song details found, invalid ID
-                    postError(callback, "Song not found");
+                    postError(callback, context.getString(R.string.song_not_found));
                     return;
                 }
 
@@ -447,7 +449,7 @@ public class NeteaseApi {
                 if (response.isSuccessful()) {
                     postSuccess(callback, response.body().string());
                 } else {
-                    postError(callback, "HTTP Error: " + response.code());
+                    postError(callback, context.getString(R.string.title_http_error) + response.code());
                 }
             }
         });

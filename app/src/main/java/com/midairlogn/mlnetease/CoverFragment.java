@@ -83,7 +83,7 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
         boolean urlChanged = urlString == null || !ImageUtils.isSameImage(urlString, currentUrl);
         currentUrl = urlString;
 
-        // Only set placeholder if the URL actually changed or we have nothing
+        // Only set placeholder if the URL actually changed, or we have nothing
         if (albumCover != null && (albumCover.getDrawable() == null || (urlChanged && isPlaceholder) || albumCover.getTag() == null || !ImageUtils.isSameImage(urlString, (String) albumCover.getTag()))) {
             if (urlChanged) {
                 isPlaceholder = true;

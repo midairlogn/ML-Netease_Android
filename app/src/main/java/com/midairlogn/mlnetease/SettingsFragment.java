@@ -24,8 +24,10 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RadioGroup;
 import android.widget.SeekBar;
+import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.AdapterView;
 import android.widget.Toast;
 import android.content.SharedPreferences;
 import androidx.annotation.NonNull;
@@ -40,6 +42,7 @@ public class SettingsFragment extends Fragment {
     private RadioGroup qualityGroup;
     private SeekBar seekbarAppVolume;
     private TextView textAppVolumeValue;
+    private Spinner spinnerLanguage;
 
     private final Handler debounceHandler = new Handler(Looper.getMainLooper());
     private Runnable saveRunnable;
@@ -98,6 +101,7 @@ public class SettingsFragment extends Fragment {
         qualityGroup = view.findViewById(R.id.quality_group);
         seekbarAppVolume = view.findViewById(R.id.seekbar_app_volume);
         textAppVolumeValue = view.findViewById(R.id.text_app_volume_value);
+        spinnerLanguage = view.findViewById(R.id.spinner_language);
         qualityGroup.setOnTouchListener(hideKeyboardTouchListener);
 
         // Floating Window Views
@@ -145,23 +149,62 @@ public class SettingsFragment extends Fragment {
 
         switch (currentQuality) {
             case "standard": qualityGroup.check(R.id.quality_standard); break;
-            case "higher": qualityGroup.check(R.id.quality_higher); break;
             case "exhigh": qualityGroup.check(R.id.quality_exhigh); break;
             case "lossless": qualityGroup.check(R.id.quality_lossless); break;
             case "hires": qualityGroup.check(R.id.quality_hires); break;
+            case "jyeffect": qualityGroup.check(R.id.quality_jyeffect); break;
             case "sky": qualityGroup.check(R.id.quality_sky); break;
+            case "jymaster": qualityGroup.check(R.id.quality_jymaster); break;
             default: qualityGroup.check(R.id.quality_standard); break;
         }
 
         qualityGroup.setOnCheckedChangeListener((group, checkedId) -> {
             String quality = "standard";
-            if (checkedId == R.id.quality_higher) quality = "higher";
-            else if (checkedId == R.id.quality_exhigh) quality = "exhigh";
+            if (checkedId == R.id.quality_exhigh) quality = "exhigh";
             else if (checkedId == R.id.quality_lossless) quality = "lossless";
             else if (checkedId == R.id.quality_hires) quality = "hires";
+            else if (checkedId == R.id.quality_jyeffect) quality = "jyeffect";
             else if (checkedId == R.id.quality_sky) quality = "sky";
+            else if (checkedId == R.id.quality_jymaster) quality = "jymaster";
             settingsManager.setQuality(quality);
             notifySettingsChanged();
+        });
+
+        // Language Spinner
+        String currentLanguage = settingsManager.getAppLanguage();
+        String[] languageOptions = getResources().getStringArray(R.array.language_options);
+        int selection = 0; // Default to System Default
+        if (currentLanguage.equals("en")) {
+            selection = 1;
+        } else if (currentLanguage.equals("zh")) {
+            selection = 2;
+        }
+        spinnerLanguage.setSelection(selection);
+
+        spinnerLanguage.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String selectedLanguageCode;
+                switch (position) {
+                    case 0: selectedLanguageCode = "system"; break;
+                    case 1: selectedLanguageCode = "en"; break;
+                    case 2: selectedLanguageCode = "zh"; break;
+                    default: selectedLanguageCode = "system"; break;
+                }
+                if (!settingsManager.getAppLanguage().equals(selectedLanguageCode)) {
+                    settingsManager.setAppLanguage(selectedLanguageCode);
+                    notifySettingsChanged();
+                    // Trigger app locale change
+                    if (getActivity() instanceof MainActivity) {
+                        ((MainActivity) getActivity()).setAppLocale(selectedLanguageCode);
+                    }
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Do nothing
+            }
         });
 
         switchTranslationIntegration.setChecked(settingsManager.isTranslationIntegrationEnabled());
@@ -207,7 +250,7 @@ public class SettingsFragment extends Fragment {
         layoutFloatingSettings.setVisibility(isFloatingEnabled ? View.VISIBLE : View.GONE);
 
         tempColor = settingsManager.getLyricColor();
-        if (tempColor == 0) tempColor = Color.parseColor("#2196F3");
+        if (tempColor == 0) tempColor = getResources().getColor(R.color.lyrics_color_blue, null);
         updateColorSelection();
 
         tempSize = settingsManager.getLyricSize();
@@ -222,11 +265,11 @@ public class SettingsFragment extends Fragment {
         switchFloatingLyrics.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
                 if (!Settings.canDrawOverlays(requireContext())) {
-                    Toast.makeText(requireContext(), "Please grant overlay permission", Toast.LENGTH_LONG).show();
+                    Toast.makeText(requireContext(), R.string.hint_grant_overlay, Toast.LENGTH_LONG).show();
                     Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                             Uri.parse("package:" + requireContext().getPackageName()));
-                    startActivityForResult(intent, 1001);
-                    buttonView.setChecked(false); // Re-enable in onResume if granted
+                    startActivity(intent);
+                    buttonView.setChecked(false);
                     return;
                 }
             }
@@ -237,31 +280,31 @@ public class SettingsFragment extends Fragment {
 
         // Color buttons
         btnColorRed.setOnClickListener(v -> {
-            tempColor = Color.parseColor("#F44336");
+            tempColor = getResources().getColor(R.color.lyrics_color_red, null);
             updateColorSelection();
             settingsManager.setLyricColor(tempColor);
             notifySettingsChanged();
         });
         btnColorBlue.setOnClickListener(v -> {
-            tempColor = Color.parseColor("#2196F3");
+            tempColor = getResources().getColor(R.color.lyrics_color_blue, null);
             updateColorSelection();
             settingsManager.setLyricColor(tempColor);
             notifySettingsChanged();
         });
         btnColorGreen.setOnClickListener(v -> {
-            tempColor = Color.parseColor("#4CAF50");
+            tempColor = getResources().getColor(R.color.lyrics_color_green, null);
             updateColorSelection();
             settingsManager.setLyricColor(tempColor);
             notifySettingsChanged();
         });
         btnColorYellow.setOnClickListener(v -> {
-            tempColor = Color.parseColor("#FFEB3B");
+            tempColor = getResources().getColor(R.color.lyrics_color_yellow, null);
             updateColorSelection();
             settingsManager.setLyricColor(tempColor);
             notifySettingsChanged();
         });
         btnColorPurple.setOnClickListener(v -> {
-            tempColor = Color.parseColor("#9C27B0");
+            tempColor = getResources().getColor(R.color.lyrics_color_purple, null);
             updateColorSelection();
             settingsManager.setLyricColor(tempColor);
             notifySettingsChanged();
@@ -427,11 +470,12 @@ public class SettingsFragment extends Fragment {
         String currentQuality = settingsManager.getQuality();
         switch (currentQuality) {
             case "standard": qualityGroup.check(R.id.quality_standard); break;
-            case "higher": qualityGroup.check(R.id.quality_higher); break;
             case "exhigh": qualityGroup.check(R.id.quality_exhigh); break;
             case "lossless": qualityGroup.check(R.id.quality_lossless); break;
             case "hires": qualityGroup.check(R.id.quality_hires); break;
+            case "jyeffect": qualityGroup.check(R.id.quality_jyeffect); break;
             case "sky": qualityGroup.check(R.id.quality_sky); break;
+            case "jymaster": qualityGroup.check(R.id.quality_jymaster); break;
             default: qualityGroup.check(R.id.quality_standard); break;
         }
 
@@ -443,11 +487,11 @@ public class SettingsFragment extends Fragment {
         switchFloatingLyrics.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
                 if (!Settings.canDrawOverlays(requireContext())) {
-                    Toast.makeText(requireContext(), "Please grant overlay permission", Toast.LENGTH_LONG).show();
+                    Toast.makeText(requireContext(), R.string.hint_grant_overlay, Toast.LENGTH_LONG).show();
                     Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                             Uri.parse("package:" + requireContext().getPackageName()));
-                    startActivityForResult(intent, 1001);
-                    buttonView.setChecked(false); // Re-enable in onResume if granted
+                    startActivity(intent);
+                    buttonView.setChecked(false);
                     return;
                 }
             }
@@ -466,7 +510,7 @@ public class SettingsFragment extends Fragment {
         layoutFloatingSettings.setVisibility(isFloatingEnabled ? View.VISIBLE : View.GONE);
 
         tempColor = settingsManager.getLyricColor();
-        if (tempColor == 0) tempColor = Color.parseColor("#2196F3");
+        if (tempColor == 0) tempColor = getResources().getColor(R.color.lyrics_color_blue, null);
         updateColorSelection();
 
         tempSize = settingsManager.getLyricSize();
@@ -486,28 +530,28 @@ public class SettingsFragment extends Fragment {
         btnColorPurple.setText("");
 
         int finalColor = tempColor;
-        if (tempColor == Color.parseColor("#F44336")) {
+        if (tempColor == getResources().getColor(R.color.lyrics_color_red, null)) {
             btnColorRed.setAlpha(1.0f);
             btnColorRed.setText("✓");
             btnColorRed.setTextColor(Color.WHITE);
-        } else if (tempColor == Color.parseColor("#2196F3")) {
+        } else if (tempColor == getResources().getColor(R.color.lyrics_color_blue, null)) {
             btnColorBlue.setAlpha(1.0f);
             btnColorBlue.setText("✓");
             btnColorBlue.setTextColor(Color.WHITE);
-        } else if (tempColor == Color.parseColor("#4CAF50")) {
+        } else if (tempColor == getResources().getColor(R.color.lyrics_color_green, null)) {
             btnColorGreen.setAlpha(1.0f);
             btnColorGreen.setText("✓");
             btnColorGreen.setTextColor(Color.WHITE);
-        } else if (tempColor == Color.parseColor("#FFEB3B")) {
+        } else if (tempColor == getResources().getColor(R.color.lyrics_color_yellow, null)) {
             btnColorYellow.setAlpha(1.0f);
             btnColorYellow.setText("✓");
             btnColorYellow.setTextColor(Color.BLACK); // Yellow needs black text
-        } else if (tempColor == Color.parseColor("#9C27B0")) {
+        } else if (tempColor == getResources().getColor(R.color.lyrics_color_purple, null)) {
             btnColorPurple.setAlpha(1.0f);
             btnColorPurple.setText("✓");
             btnColorPurple.setTextColor(Color.WHITE);
         } else {
-            finalColor = Color.parseColor("#2196F3"); // Fallback for preview
+            finalColor = getResources().getColor(R.color.lyrics_color_blue, null); // Fallback for preview
         }
 
         if (textLyricPreviewCurrent != null) {

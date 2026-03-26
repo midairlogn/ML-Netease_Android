@@ -27,7 +27,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="Search Music"
+            android:hint="@string/hint_search"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_secondary"
             android:background="@null"
@@ -39,8 +39,8 @@
             android:id="@+id/search_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Search"
-            android:textColor="#FFFFFF"
+            android:text="@string/search"
+            android:textColor="@color/text_on_brand"
             android:backgroundTint="@color/brand_primary"
             android:layout_marginStart="8dp"/>
 
@@ -48,8 +48,8 @@
             android:id="@+id/btn_reset_search"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Clear"
-            android:textColor="#FFFFFF"
+            android:text="@string/clear"
+            android:textColor="@color/text_on_brand"
             android:backgroundTint="@color/text_secondary"
             android:layout_marginStart="8dp"
             android:visibility="gone"/>
@@ -67,7 +67,7 @@
             android:id="@+id/radio_song"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Song"
+            android:text="@string/song"
             android:textColor="@color/text_primary"
             android:buttonTint="@color/brand_primary"
             android:layout_marginEnd="16dp"/>
@@ -76,7 +76,7 @@
             android:id="@+id/radio_playlist"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Playlist"
+            android:text="@string/playlist"
             android:textColor="@color/text_primary"
             android:buttonTint="@color/brand_primary"
             android:layout_marginEnd="16dp"/>
@@ -85,7 +85,7 @@
             android:id="@+id/radio_album"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Album"
+            android:text="@string/album"
             android:textColor="@color/text_primary"
             android:buttonTint="@color/brand_primary"/>
     </RadioGroup>
@@ -100,8 +100,8 @@
             android:id="@+id/btn_play_all"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Play All"
-            android:textColor="#FFFFFF"
+            android:text="@string/play_all"
+            android:textColor="@color/text_on_brand"
             android:backgroundTint="@color/brand_primary"
             android:visibility="gone"
             android:layout_marginEnd="8dp"/>
@@ -110,8 +110,8 @@
             android:id="@+id/btn_add_to_shortcut"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Add to Shortcut"
-            android:textColor="#FFFFFF"
+            android:text="@string/add_to_shortcut"
+            android:textColor="@color/text_on_brand"
             android:backgroundTint="@color/brand_primary"
             android:visibility="gone"/>
     </LinearLayout>
@@ -136,7 +136,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="No homepage shortcuts yet"
+            android:text="@string/hint_no_homepage_shortcut"
             android:textColor="@color/text_primary"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -145,7 +145,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Add shortcuts for one-tap playback."
+            android:text="@string/hint_homepage_add_shortcut"
             android:textColor="@color/text_secondary"
             android:textSize="14sp"
             android:gravity="center" />
@@ -155,8 +155,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Add Shortcuts"
-            android:textColor="#FFFFFF"
+            android:text="@string/add_shortcut"
+            android:textColor="@color/text_on_brand"
             android:backgroundTint="@color/brand_primary" />
     </LinearLayout>
 
@@ -171,8 +171,8 @@
             android:id="@+id/btn_manage_shortcuts"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Manage Shortcuts"
-            android:textColor="#FFFFFF"
+            android:text="@string/manage_shortcut"
+            android:textColor="@color/text_on_brand"
             android:backgroundTint="@color/brand_primary"
             android:visibility="gone" />
     </LinearLayout>

@@ -13,6 +13,7 @@ public class SettingsManager {
     private static final String PREF_NAME = "ml_netease_prefs";
     private static final String KEY_MUSIC_U = "music_u";
     private static final String KEY_QUALITY = "quality";
+    private static final String KEY_DEFAULT_QUALITY = "standard";
     private static final String KEY_SEARCH_LIMIT = "search_limit";
     private static final String KEY_FLOATING_LYRICS_ENABLED = "floating_lyrics_enabled";
     private static final String KEY_LYRIC_COLOR = "lyric_color";
@@ -21,6 +22,7 @@ public class SettingsManager {
     private static final String KEY_TRANSLATION_INTEGRATION_ENABLED = "translation_integration_enabled";
     private static final String KEY_APP_VOLUME = "app_volume";
     private static final String KEY_HOME_SHORTCUTS = "home_shortcuts";
+    private static final String KEY_APP_LANGUAGE = "app_language";
     public static final int DEFAULT_APP_VOLUME = 80;
 
     private SharedPreferences prefs;
@@ -42,7 +44,7 @@ public class SettingsManager {
     }
 
     public String getQuality() {
-        return prefs.getString(KEY_QUALITY, "standard");
+        return prefs.getString(KEY_QUALITY, KEY_DEFAULT_QUALITY);
     }
 
     public void setSearchLimit(int limit) {
@@ -183,15 +185,15 @@ public class SettingsManager {
         }
     }
 
+    public void setAppLanguage(String language) {
+        prefs.edit().putString(KEY_APP_LANGUAGE, language).apply();
+    }
+
+    public String getAppLanguage() {
+        return prefs.getString(KEY_APP_LANGUAGE, "system"); // Default to system language
+    }
+
     public SharedPreferences getPrefs() {
         return prefs;
     }
-
-    public static final String[] QUALITY_OPTIONS = {
-        "standard", "exhigh", "lossless", "hires", "sky", "jyeffect", "jymaster"
-    };
-
-    public static final String[] QUALITY_LABELS = {
-        "标准音质", "极高音质", "无损音质", "Hires音质", "沉浸环绕声", "高清环绕声", "超清母带"
-    };
 }

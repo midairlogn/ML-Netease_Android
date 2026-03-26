@@ -49,7 +49,7 @@
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="Song Title"
+            android:text="@string/song_title"
             android:textColor="@color/text_primary"
             android:textSize="14sp"
             android:textStyle="bold" />
@@ -67,7 +67,7 @@
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="Artist"
+            android:text="@string/artist_name"
             android:textColor="@color/text_secondary"
             android:textSize="14sp" />
     </LinearLayout>

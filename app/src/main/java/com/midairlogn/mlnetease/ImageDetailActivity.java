@@ -103,14 +103,14 @@ public class ImageDetailActivity extends AppCompatActivity {
                         resolver.update(imageUri, values, null, null);
                     }
 
-                    runOnUiThread(() -> Toast.makeText(this, "Saved to Gallery", Toast.LENGTH_SHORT).show());
+                    runOnUiThread(() -> Toast.makeText(this, R.string.saved_to_gallery, Toast.LENGTH_SHORT).show());
                 } else {
-                     runOnUiThread(() -> Toast.makeText(this, "Save Failed: Uri is null", Toast.LENGTH_SHORT).show());
+                     runOnUiThread(() -> Toast.makeText(this, getString(R.string.hint_save_failed_title) + getString(R.string.hint_null_uri), Toast.LENGTH_SHORT).show());
                 }
 
             } catch (Exception e) {
                 e.printStackTrace();
-                runOnUiThread(() -> Toast.makeText(this, "Save Failed: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                runOnUiThread(() -> Toast.makeText(this, getString(R.string.hint_save_failed_title) + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
         }).start();
     }

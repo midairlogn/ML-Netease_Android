@@ -39,7 +39,7 @@ public class HomeShortcutAdapter extends RecyclerView.Adapter<HomeShortcutAdapte
         HomeShortcut shortcut = shortcuts.get(position);
         holder.title.setText(shortcut.title);
         holder.subtitle.setText("ID: " + shortcut.id);
-        holder.type.setText(shortcut.isPlaylist() ? "Playlist" : "Album");
+        holder.type.setText(shortcut.isPlaylist() ? R.string.playlist : R.string.album);
         holder.sequence.setText(String.valueOf(position + 1));
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {

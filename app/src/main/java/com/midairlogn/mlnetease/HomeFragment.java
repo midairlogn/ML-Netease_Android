@@ -55,7 +55,7 @@ public class HomeFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        neteaseApi = new NeteaseApi(new SettingsManager(requireContext()));
+        neteaseApi = new NeteaseApi(requireContext(), new SettingsManager(requireContext()));
 
         // Make root layout focusable to intercept clicks for keyboard hiding
         view.setFocusable(true);
@@ -176,7 +176,7 @@ public class HomeFragment extends Fragment {
         searchButton.setOnClickListener(v -> {
             String input = searchInput.getText().toString().trim();
             if (input.isEmpty()) {
-                Toast.makeText(getContext(), "Please enter keywords", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.hint_enter_keywords, Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -206,7 +206,7 @@ public class HomeFragment extends Fragment {
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 String input = searchInput.getText().toString().trim();
                 if (input.isEmpty()) {
-                    Toast.makeText(getContext(), "Please enter keywords", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), R.string.hint_enter_keywords, Toast.LENGTH_SHORT).show();
                     return true;
                 }
 
@@ -282,7 +282,7 @@ public class HomeFragment extends Fragment {
 
                                     @Override
                                     public void onError(String error) {
-                                        Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show();
                                     }
                                 });
                             }
@@ -297,7 +297,7 @@ public class HomeFragment extends Fragment {
 
                                 @Override
                                 public void onError(String error) {
-                                    Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show();
                                 }
                             });
                         }
@@ -314,7 +314,7 @@ public class HomeFragment extends Fragment {
 
                             @Override
                             public void onError(String error) {
-                                Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
+                                Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show();
                             }
                         });
                     }
@@ -328,7 +328,7 @@ public class HomeFragment extends Fragment {
 
                     @Override
                     public void onError(String error) {
-                        Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show();
                     }
                 });
             }
@@ -344,7 +344,7 @@ public class HomeFragment extends Fragment {
 
                 @Override
                 public void onError(String error) {
-                    Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show();
                 }
             });
         } else if (checkedId == R.id.radio_album) {
@@ -359,7 +359,7 @@ public class HomeFragment extends Fragment {
 
                 @Override
                 public void onError(String error) {
-                    Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show();
                 }
             });
         }
@@ -412,7 +412,7 @@ public class HomeFragment extends Fragment {
 
                 @Override
                 public void onError(String error) {
-                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show());
+                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show());
                 }
             });
         } else if (shortcut.isAlbum()) {
@@ -424,7 +424,7 @@ public class HomeFragment extends Fragment {
 
                 @Override
                 public void onError(String error) {
-                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), "Error: " + error, Toast.LENGTH_SHORT).show());
+                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show());
                 }
             });
         }
@@ -434,14 +434,14 @@ public class HomeFragment extends Fragment {
         try {
             JSONObject root = new JSONObject(json);
             if (!root.has("songs")) {
-                Toast.makeText(getContext(), "No songs found", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), R.string.no_song_found, Toast.LENGTH_SHORT).show();
                 return;
             }
             JSONArray songsArray = root.getJSONArray("songs");
             updateList(songsArray, isShortcut);
         } catch (Exception e) {
             e.printStackTrace();
-            Toast.makeText(getContext(), "Parse error", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), R.string.hint_parse_error, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -455,7 +455,7 @@ public class HomeFragment extends Fragment {
             updateList(songsArray, isShortcut);
         } catch (Exception e) {
             e.printStackTrace();
-            Toast.makeText(getContext(), "Parse error", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), R.string.hint_parse_error, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -543,7 +543,7 @@ public class HomeFragment extends Fragment {
             JSONObject root = new JSONObject(json);
             if (root.optInt("status") != 200) {
                 getActivity().runOnUiThread(() ->
-                        Toast.makeText(getContext(), "Song not found", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(getContext(), R.string.song_not_found, Toast.LENGTH_SHORT).show()
                 );
                 return;
             }
@@ -568,7 +568,7 @@ public class HomeFragment extends Fragment {
         } catch (Exception e) {
             e.printStackTrace();
             getActivity().runOnUiThread(() ->
-                    Toast.makeText(getContext(), "Parse error", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(getContext(), R.string.hint_parse_error, Toast.LENGTH_SHORT).show()
             );
         }
     }

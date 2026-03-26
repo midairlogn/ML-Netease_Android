@@ -154,17 +154,17 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         String message;
         switch (mode) {
             case MusicPlayerManager.MODE_LOOP_ONE:
-                message = "Single Loop";
+                message = String.valueOf(R.string.playmode_single_loop);
                 break;
             case MusicPlayerManager.MODE_LOOP_ALL:
-                message = "Loop All";
+                message = String.valueOf(R.string.playmode_loop_all);
                 break;
             case MusicPlayerManager.MODE_SHUFFLE:
-                message = "Shuffle";
+                message = String.valueOf(R.string.playmode_shuffle);
                 break;
             case MusicPlayerManager.MODE_ORDER:
             default:
-                message = "Order";
+                message = String.valueOf(R.string.playmode_order);
                 break;
         }
         currentToast = Toast.makeText(this, message, Toast.LENGTH_SHORT);
@@ -182,8 +182,8 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         if (total <= 0) {
             seekBar.setMax(0);
             seekBar.setProgress(0);
-            currentTime.setText("00:00");
-            totalTime.setText("--:--");
+            currentTime.setText(R.string.zero_timestamp);
+            totalTime.setText(R.string.null_timestamp);
             return;
         }
 
