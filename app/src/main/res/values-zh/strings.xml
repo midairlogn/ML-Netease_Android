@@ -99,4 +99,5 @@
     <string name="ready_to_play">已经准备就绪</string>
     <string name="error_fetching_cover">获取封面失败</string>
     <string name="hint_no_songs_in_list">此列表中没有歌曲</string>
+    <string name="disclaimer">本工具仅供学习交流使用。请支持正版音乐。\n使用本工具时，请遵守相关法律法规，尊重音乐人的劳动成果。</string>
 </resources>
