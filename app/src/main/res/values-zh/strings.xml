@@ -98,4 +98,5 @@
     <string name="music_player">音乐播放器</string>
     <string name="ready_to_play">已经准备就绪</string>
     <string name="error_fetching_cover">获取封面失败</string>
+    <string name="hint_no_songs_in_list">此列表中没有歌曲</string>
 </resources>

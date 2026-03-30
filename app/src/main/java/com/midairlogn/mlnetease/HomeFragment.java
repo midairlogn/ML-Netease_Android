@@ -438,6 +438,10 @@ public class HomeFragment extends Fragment {
                 return;
             }
             JSONArray songsArray = root.getJSONArray("songs");
+            if (songsArray.length() == 0) {
+                Toast.makeText(getContext(), R.string.hint_no_songs_in_list, Toast.LENGTH_SHORT).show();
+                return;
+            }
             updateList(songsArray, isShortcut);
         } catch (Exception e) {
             e.printStackTrace();
@@ -452,6 +456,10 @@ public class HomeFragment extends Fragment {
             JSONObject album = root.getJSONObject("album");
             if (!album.has("songs")) return;
             JSONArray songsArray = album.getJSONArray("songs");
+            if (songsArray.length() == 0) {
+                Toast.makeText(getContext(), R.string.hint_no_songs_in_list, Toast.LENGTH_SHORT).show();
+                return;
+            }
             updateList(songsArray, isShortcut);
         } catch (Exception e) {
             e.printStackTrace();
