@@ -68,7 +68,7 @@ Alternatively, you can build from source:
 
 ## Disclaimer
 
-This application is an unofficial client for learning and personal use. It is not affiliated with, associated with, or endorsed by Netease Cloud Music. All content and data are property of their respective owners.
+This tool is for learning and communication purposes only and is not an official application of NetEase Cloud Music. Please support genuine music. When using this tool, please abide by relevant laws and regulations and respect the work of musicians.
 
 ## Related Projects
 
