@@ -1,4 +1,4 @@
-package com.midairlogn.mlnetease.image;
+package com.midairlogn.mlnetease;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -12,8 +12,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import com.midairlogn.mlnetease.ImageUtils;
 
 public class ImageManager {
 
@@ -60,7 +58,7 @@ public class ImageManager {
             imageView.setImageBitmap(cachedBitmap);
             return;
         }
-        
+
         executorService.submit(() -> {
             Bitmap bitmap = fetchBitmapInternal(url);
             if (bitmap != null) {

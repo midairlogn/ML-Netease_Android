@@ -28,8 +28,6 @@ import androidx.media.session.MediaButtonReceiver;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import com.midairlogn.mlnetease.image.ImageManager;
-import java.net.URL;
 
 public class MusicService extends Service {
     private static final String TAG = "MusicService";

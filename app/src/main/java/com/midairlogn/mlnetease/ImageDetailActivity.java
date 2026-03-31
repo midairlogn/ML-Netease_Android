@@ -3,7 +3,6 @@ package com.midairlogn.mlnetease;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -11,13 +10,10 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.widget.Button;
 import android.widget.ImageButton;
-import android.widget.ImageView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
-import com.midairlogn.mlnetease.image.ImageManager;
+
 import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 
 public class ImageDetailActivity extends AppCompatActivity {
 
