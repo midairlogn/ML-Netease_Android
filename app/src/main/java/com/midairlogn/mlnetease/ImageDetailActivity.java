@@ -14,7 +14,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
-import java.io.InputStream;
+import com.midairlogn.mlnetease.image.ImageManager;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -47,20 +47,9 @@ public class ImageDetailActivity extends AppCompatActivity {
 
     private void loadImage(String urlString) {
         new Thread(() -> {
-            try {
-                URL url = new URL(urlString);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("GET");
-                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/91.0.4472.164 NeteaseMusicDesktop/2.10.2.200154");
-                connection.setRequestProperty("Referer", "https://music.163.com/");
-                connection.setDoInput(true);
-                connection.connect();
-                InputStream input = connection.getInputStream();
-                currentBitmap = BitmapFactory.decodeStream(input);
-
+            currentBitmap = ImageManager.getInstance().fetchBitmap(urlString);
+            if (currentBitmap != null) {
                 runOnUiThread(() -> imageView.setImageBitmap(currentBitmap));
-            } catch (Exception e) {
-                e.printStackTrace();
             }
         }).start();
     }

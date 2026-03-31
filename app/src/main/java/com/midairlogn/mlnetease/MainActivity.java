@@ -23,7 +23,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-import java.io.InputStream;
+import com.midairlogn.mlnetease.image.ImageManager;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -275,44 +275,14 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
 
         // Load Cover
         if (song.picUrl != null) {
-            boolean urlChanged = !ImageUtils.isSameImage(song.picUrl, currentCoverUrl);
-            final String targetUrl = song.picUrl;
-            currentCoverUrl = targetUrl;
-
-            // Only set placeholder if the URL actually changed or we have nothing
-            if (miniPlayerThumb.getDrawable() == null || (urlChanged && miniPlayerThumb.getTag() == null) || !ImageUtils.isSameImage(targetUrl, (String) miniPlayerThumb.getTag())) {
-                if (urlChanged) {
-                    miniPlayerThumb.setImageResource(R.drawable.ic_ml_app_logo_foreground);
-                    miniPlayerThumb.setTag(null); // Clear tag while loading
-                }
-            }
-
-            if (urlChanged || miniPlayerThumb.getTag() == null) {
-                new Thread(() -> {
-                    try {
-                        URL url = new URL(targetUrl);
-                        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                        connection.setDoInput(true);
-                        connection.connect();
-                        InputStream input = connection.getInputStream();
-                        Bitmap bitmap = BitmapFactory.decodeStream(input);
-
-                        runOnUiThread(() -> {
-                            // Only update if this is still the current song's URL
-                            if (targetUrl.equals(currentCoverUrl) && miniPlayerThumb != null) {
-                                miniPlayerThumb.setImageBitmap(bitmap);
-                                miniPlayerThumb.setTag(targetUrl); // Mark as loaded
-                            }
-                        });
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }).start();
+            if (!ImageUtils.isSameImage(song.picUrl, (String) miniPlayerThumb.getTag())) {
+                miniPlayerThumb.setImageResource(R.drawable.ic_ml_app_logo_foreground);
+                miniPlayerThumb.setTag(song.picUrl);
+                ImageManager.getInstance().load(song.picUrl, miniPlayerThumb);
             }
         } else {
             miniPlayerThumb.setImageResource(R.drawable.ic_ml_app_logo_foreground);
             miniPlayerThumb.setTag(null);
-            currentCoverUrl = null;
         }
     }
 

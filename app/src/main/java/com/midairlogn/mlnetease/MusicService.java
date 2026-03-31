@@ -28,7 +28,7 @@ import androidx.media.session.MediaButtonReceiver;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
+import com.midairlogn.mlnetease.image.ImageManager;
 import java.net.URL;
 
 public class MusicService extends Service {
@@ -350,31 +350,7 @@ public class MusicService extends Service {
         fetchingPicUrl = song.picUrl;
 
         new Thread(() -> {
-            Bitmap albumArt;
-            HttpURLConnection connection = null;
-            InputStream input = null;
-            try {
-                URL url = new URL(song.picUrl);
-                connection = (HttpURLConnection) url.openConnection();
-                connection.setDoInput(true);
-                connection.connect();
-                input = connection.getInputStream();
-                albumArt = decodeBoundedBitmap(input, MAX_NOTIFICATION_ART_SIZE_PX, Bitmap.Config.RGB_565);
-            } catch (Exception e) {
-                Log.e(TAG, getString(R.string.error_fetching_cover), e);
-                albumArt = BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground);
-            } finally {
-                if (input != null) {
-                    try {
-                        input.close();
-                    } catch (IOException ignored) {
-                    }
-                }
-                if (connection != null) {
-                    connection.disconnect();
-                }
-            }
-
+            Bitmap albumArt = ImageManager.getInstance().fetchBitmap(song.picUrl);
             if (albumArt == null) {
                 albumArt = BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground);
             }

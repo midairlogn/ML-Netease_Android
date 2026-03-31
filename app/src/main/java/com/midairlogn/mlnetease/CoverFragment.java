@@ -11,7 +11,7 @@ import android.widget.ImageView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import java.io.InputStream;
+import com.midairlogn.mlnetease.image.ImageManager;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
@@ -71,57 +71,20 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
     }
 
     private void updateCover(String urlString) {
-        if (urlString != null && ImageUtils.isSameImage(urlString, currentUrl) && !isPlaceholder) {
-            return;
-        }
-
-        // If URL is the same but we are still loading, don't restart thread or reset UI
-        if (urlString != null && ImageUtils.isSameImage(urlString, currentUrl) && albumCover.getTag() != null && ImageUtils.isSameImage(urlString, (String) albumCover.getTag())) {
-            return;
-        }
-
-        boolean urlChanged = urlString == null || !ImageUtils.isSameImage(urlString, currentUrl);
-        currentUrl = urlString;
-
-        // Only set placeholder if the URL actually changed, or we have nothing
-        if (albumCover != null && (albumCover.getDrawable() == null || (urlChanged && isPlaceholder) || albumCover.getTag() == null || !ImageUtils.isSameImage(urlString, (String) albumCover.getTag()))) {
-            if (urlChanged) {
-                isPlaceholder = true;
-                albumCover.setImageResource(R.drawable.ic_ml_app_logo_foreground);
-                albumCover.setTag(null);
-            }
-        }
-
         if (urlString == null || urlString.isEmpty()) {
             return;
         }
 
-        // Use a final variable for the thread to check against the LATEST currentUrl
-        final String targetUrl = urlString;
-        new Thread(() -> {
-            try {
-                URL url = new URL(targetUrl);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("GET");
-                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/91.0.4472.164 NeteaseMusicDesktop/2.10.2.200154");
-                connection.setRequestProperty("Referer", "https://music.163.com/");
-                connection.setDoInput(true);
-                connection.connect();
-                InputStream input = connection.getInputStream();
-                Bitmap bitmap = BitmapFactory.decodeStream(input);
+        if (ImageUtils.isSameImage(urlString, currentUrl) && !isPlaceholder) {
+            return;
+        }
 
-                if (getActivity() != null) {
-                    getActivity().runOnUiThread(() -> {
-                        if (targetUrl.equals(currentUrl)) {
-                            albumCover.setImageBitmap(bitmap);
-                            albumCover.setTag(targetUrl);
-                            isPlaceholder = false;
-                        }
-                    });
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }).start();
+        currentUrl = urlString;
+        isPlaceholder = false;
+
+        albumCover.setImageResource(R.drawable.ic_ml_app_logo_foreground);
+        albumCover.setTag(urlString);
+
+        ImageManager.getInstance().load(urlString, albumCover);
     }
 }
