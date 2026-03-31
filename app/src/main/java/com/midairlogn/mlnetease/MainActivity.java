@@ -275,7 +275,9 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
 
         // Load Cover
         if (song.picUrl != null) {
-            if (!ImageUtils.isSameImage(song.picUrl, (String) miniPlayerThumb.getTag())) {
+            // Check if current view is showing placeholder (logo)
+            boolean isPlaceholder = miniPlayerThumb.getTag() == null || miniPlayerThumb.getTag().equals(R.drawable.ic_ml_app_logo_foreground);
+            if (isPlaceholder || !ImageUtils.isSameImage(song.picUrl, (String) miniPlayerThumb.getTag())) {
                 miniPlayerThumb.setTag(song.picUrl);
                 ImageManager.getInstance().load(song.picUrl, miniPlayerThumb, R.drawable.ic_ml_app_logo_foreground);
             }

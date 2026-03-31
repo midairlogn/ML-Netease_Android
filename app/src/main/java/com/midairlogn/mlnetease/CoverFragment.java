@@ -73,11 +73,13 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
     private void updateCover(String urlString) {
         if (urlString == null || urlString.isEmpty()) {
             albumCover.setImageResource(R.drawable.ic_ml_app_logo_foreground);
+            currentUrl = null;
             isPlaceholder = true;
             return;
         }
 
-        if (ImageUtils.isSameImage(urlString, currentUrl)) {
+        // Allow update if the URL is different, OR if we were previously in a placeholder state (failed load)
+        if (ImageUtils.isSameImage(urlString, currentUrl) && !isPlaceholder && albumCover.getTag() != null) {
             return;
         }
 

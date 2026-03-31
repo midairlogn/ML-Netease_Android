@@ -51,20 +51,30 @@ public class ImageManager {
         String normalizedUrl = ImageUtils.normalizeUrl(url);
         imageView.setTag(normalizedUrl);
 
+        // Set placeholder immediately
+        imageView.setImageResource(placeholderResId);
+
+        // Check cache
         Bitmap cachedBitmap = memoryCache.get(normalizedUrl);
         if (cachedBitmap != null) {
             imageView.setImageBitmap(cachedBitmap);
             return;
         }
-
-        imageView.setImageResource(placeholderResId);
-
+        
         executorService.submit(() -> {
             Bitmap bitmap = fetchBitmapInternal(url);
             if (bitmap != null) {
                 mainHandler.post(() -> {
+                    // This is the critical part: ensure the UI is still expecting this image
                     if (normalizedUrl.equals(imageView.getTag())) {
                         imageView.setImageBitmap(bitmap);
+                    }
+                });
+            } else {
+                // If it failed, clear the tag so the next call is forced to reload
+                mainHandler.post(() -> {
+                    if (normalizedUrl.equals(imageView.getTag())) {
+                        imageView.setTag(null);
                     }
                 });
             }
