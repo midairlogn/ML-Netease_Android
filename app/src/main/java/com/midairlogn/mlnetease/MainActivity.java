@@ -276,9 +276,8 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         // Load Cover
         if (song.picUrl != null) {
             if (!ImageUtils.isSameImage(song.picUrl, (String) miniPlayerThumb.getTag())) {
-                miniPlayerThumb.setImageResource(R.drawable.ic_ml_app_logo_foreground);
                 miniPlayerThumb.setTag(song.picUrl);
-                ImageManager.getInstance().load(song.picUrl, miniPlayerThumb);
+                ImageManager.getInstance().load(song.picUrl, miniPlayerThumb, R.drawable.ic_ml_app_logo_foreground);
             }
         } else {
             miniPlayerThumb.setImageResource(R.drawable.ic_ml_app_logo_foreground);

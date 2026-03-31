@@ -42,8 +42,9 @@ public class ImageManager {
         return instance;
     }
 
-    public void load(final String url, final ImageView imageView) {
+    public void load(final String url, final ImageView imageView, int placeholderResId) {
         if (url == null || url.isEmpty()) {
+            imageView.setImageResource(placeholderResId);
             return;
         }
 
@@ -56,7 +57,7 @@ public class ImageManager {
             return;
         }
 
-        imageView.setImageDrawable(null);
+        imageView.setImageResource(placeholderResId);
 
         executorService.submit(() -> {
             Bitmap bitmap = fetchBitmapInternal(url);

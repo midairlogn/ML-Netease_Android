@@ -31,6 +31,7 @@ public class ImageDetailActivity extends AppCompatActivity {
         setContentView(R.layout.activity_image_detail);
 
         imageView = findViewById(R.id.fullscreen_image);
+        imageView.setImageResource(R.drawable.ic_ml_app_logo_foreground);
         Button btnDownload = findViewById(R.id.btn_download);
         ImageButton btnClose = findViewById(R.id.btn_close);
 
