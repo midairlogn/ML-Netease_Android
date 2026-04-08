@@ -154,17 +154,17 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         String message;
         switch (mode) {
             case MusicPlayerManager.MODE_LOOP_ONE:
-                message = String.valueOf(R.string.playmode_single_loop);
+                message = getString(R.string.playmode_single_loop);
                 break;
             case MusicPlayerManager.MODE_LOOP_ALL:
-                message = String.valueOf(R.string.playmode_loop_all);
+                message = getString(R.string.playmode_loop_all);
                 break;
             case MusicPlayerManager.MODE_SHUFFLE:
-                message = String.valueOf(R.string.playmode_shuffle);
+                message = getString(R.string.playmode_shuffle);
                 break;
             case MusicPlayerManager.MODE_ORDER:
             default:
-                message = String.valueOf(R.string.playmode_order);
+                message = getString(R.string.playmode_order);
                 break;
         }
         currentToast = Toast.makeText(this, message, Toast.LENGTH_SHORT);

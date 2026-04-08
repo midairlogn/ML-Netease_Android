@@ -216,7 +216,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
     @Override
     public void onSongChanged(Song song) {
         // Reset lyrics when song changes
-        updateLyrics(String.valueOf(R.string.hint_loading), "");
+        updateLyrics(getString(R.string.hint_loading), "");
     }
 
     @Override
