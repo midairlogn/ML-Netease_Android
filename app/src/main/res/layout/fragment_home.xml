@@ -114,6 +114,16 @@
             android:textColor="@color/text_on_brand"
             android:backgroundTint="@color/brand_primary"
             android:visibility="gone"/>
+
+        <Button
+            android:id="@+id/btn_download_all"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/download_all"
+            android:textColor="@color/text_on_brand"
+            android:backgroundTint="@color/brand_primary"
+            android:visibility="gone"
+            android:layout_marginStart="8dp"/>
     </LinearLayout>
 
     <LinearLayout

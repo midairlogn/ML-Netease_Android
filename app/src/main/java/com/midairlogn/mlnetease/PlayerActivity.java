@@ -19,7 +19,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
     private TextView currentTime, totalTime;
     private SeekBar seekBar;
     private ImageButton btnPlayPause, btnPrev, btnNext;
-    private ImageButton btnMode, btnPlaylist;
+    private ImageButton btnMode, btnPlaylist, btnDownloadSong;
     private ImageButton btnBack;
     private ViewPager2 viewPager;
     private MusicPlayerManager musicPlayerManager;
@@ -62,6 +62,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         btnNext = findViewById(R.id.btn_next);
         btnMode = findViewById(R.id.btn_mode);
         btnPlaylist = findViewById(R.id.btn_playlist);
+        btnDownloadSong = findViewById(R.id.btn_download_song);
         btnBack = findViewById(R.id.btn_back);
         viewPager = findViewById(R.id.view_pager);
     }
@@ -86,6 +87,16 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         btnPlaylist.setOnClickListener(v -> {
             PlaylistBottomSheetFragment bottomSheet = new PlaylistBottomSheetFragment();
             bottomSheet.show(getSupportFragmentManager(), "PlaylistBottomSheet");
+        });
+
+        btnDownloadSong.setOnClickListener(v -> {
+            Song currentSong = musicPlayerManager.getCurrentSong();
+            if (currentSong == null) {
+                Toast.makeText(this, R.string.no_music, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            SongDownloadStarter.downloadCurrentSong(this, currentSong);
+            Toast.makeText(this, R.string.download_added, Toast.LENGTH_SHORT).show();
         });
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {

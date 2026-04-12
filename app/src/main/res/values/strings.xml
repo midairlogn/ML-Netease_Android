@@ -29,6 +29,14 @@
         <item>简体中文</item>
     </string-array>
     <string name="download">Download</string>
+    <string name="download_all">Download All</string>
+    <string name="download_added">Download added</string>
+    <string name="download_preparing">Preparing download</string>
+    <string name="download_starting">Starting background download</string>
+    <string name="download_completed">Download completed</string>
+    <string name="download_failed">Download failed</string>
+    <string name="download_completed_summary">%1$d/%2$d songs downloaded</string>
+    <string name="download_already_running">A download task is already running</string>
     <string name="song_title">Song Title</string>
     <string name="artist_name">Artist Name</string>
     <string name="zero_timestamp" translatable="false">0:00</string>
