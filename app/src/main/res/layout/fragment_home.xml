@@ -91,39 +91,60 @@
     </RadioGroup>
 
     <LinearLayout
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="0dp">
-
-        <Button
-            android:id="@+id/btn_play_all"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/play_all"
-            android:textColor="@color/text_on_brand"
-            android:backgroundTint="@color/brand_primary"
-            android:visibility="gone"
-            android:layout_marginEnd="8dp"/>
+        android:orientation="vertical"
+        android:layout_marginBottom="8dp">
 
         <Button
             android:id="@+id/btn_add_to_shortcut"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:layout_marginBottom="8dp"
+            android:paddingHorizontal="16dp"
             android:text="@string/add_to_shortcut"
+            android:textAllCaps="false"
             android:textColor="@color/text_on_brand"
             android:backgroundTint="@color/brand_primary"
             android:visibility="gone"/>
 
-        <Button
-            android:id="@+id/btn_download_all"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/download_all"
-            android:textColor="@color/text_on_brand"
-            android:backgroundTint="@color/brand_primary"
-            android:visibility="gone"
-            android:layout_marginStart="8dp"/>
+            android:orientation="horizontal"
+            android:baselineAligned="false">
+
+            <Button
+                android:id="@+id/btn_play_all"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:minWidth="0dp"
+                android:minHeight="48dp"
+                android:layout_marginEnd="8dp"
+                android:paddingHorizontal="16dp"
+                android:text="@string/play_all"
+                android:textAllCaps="false"
+                android:textColor="@color/text_on_brand"
+                android:backgroundTint="@color/brand_primary"
+                android:visibility="gone"/>
+
+            <Button
+                android:id="@+id/btn_download_all"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:minWidth="0dp"
+                android:minHeight="48dp"
+                android:layout_marginStart="8dp"
+                android:paddingHorizontal="16dp"
+                android:text="@string/download_all"
+                android:textAllCaps="false"
+                android:textColor="@color/text_on_brand"
+                android:backgroundTint="@color/brand_primary"
+                android:visibility="gone"/>
+        </LinearLayout>
     </LinearLayout>
 
     <LinearLayout
