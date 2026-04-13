@@ -49,6 +49,8 @@
     <string name="download_retry">Retry</string>
     <string name="download_remove">Remove</string>
     <string name="download_clear_finished">Clear finished</string>
+    <string name="download_open_folder">Open download folder</string>
+    <string name="download_open_folder_failed">Could not open the download folder</string>
     <string name="download_fetching_metadata">Fetching metadata</string>
     <string name="download_audio_progress">Downloading audio</string>
     <string name="download_cover_progress">Fetching cover</string>

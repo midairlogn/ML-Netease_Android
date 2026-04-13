@@ -47,6 +47,8 @@
     <string name="download_retry">重试</string>
     <string name="download_remove">移除</string>
     <string name="download_clear_finished">清空已完成</string>
+    <string name="download_open_folder">打开下载文件夹</string>
+    <string name="download_open_folder_failed">无法打开下载文件夹</string>
     <string name="download_fetching_metadata">正在获取元数据</string>
     <string name="download_audio_progress">正在下载音频</string>
     <string name="download_cover_progress">正在获取封面</string>

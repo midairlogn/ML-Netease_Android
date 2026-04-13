@@ -1,9 +1,14 @@
 package com.midairlogn.mlnetease;
 
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -23,6 +28,7 @@ public class DownloadsFragment extends Fragment implements DownloadTaskManager.L
     private TextView textSummary;
     private TextView textEmpty;
     private Button btnClearFinished;
+    private Button btnOpenFolder;
     private View emptyLayout;
 
     @Nullable
@@ -39,6 +45,7 @@ public class DownloadsFragment extends Fragment implements DownloadTaskManager.L
         textSummary = view.findViewById(R.id.text_downloads_summary);
         textEmpty = view.findViewById(R.id.text_downloads_empty);
         btnClearFinished = view.findViewById(R.id.btn_clear_finished_downloads);
+        btnOpenFolder = view.findViewById(R.id.btn_open_download_folder);
         emptyLayout = view.findViewById(R.id.layout_downloads_empty);
         RecyclerView recyclerView = view.findViewById(R.id.recycler_download_tasks);
 
@@ -74,6 +81,7 @@ public class DownloadsFragment extends Fragment implements DownloadTaskManager.L
         recyclerView.setAdapter(adapter);
 
         btnClearFinished.setOnClickListener(v -> SongDownloadService.clearFinishedTasks(requireContext()));
+        btnOpenFolder.setOnClickListener(v -> openDownloadFolder());
 
         onDownloadTasksChanged(taskManager.getTaskSnapshots());
     }
@@ -143,5 +151,42 @@ public class DownloadsFragment extends Fragment implements DownloadTaskManager.L
             }
         }
         adapter.setItems(items);
+    }
+
+    private void openDownloadFolder() {
+        String folderPath = Environment.DIRECTORY_MUSIC + "/ML Netease";
+        Uri folderUri = Uri.parse("content://com.android.externalstorage.documents/document/primary%3A" + Uri.encode(folderPath));
+
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(folderUri, "vnd.android.document/directory");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            return;
+        } catch (ActivityNotFoundException ignored) {
+        } catch (SecurityException ignored) {
+        }
+
+        try {
+            Intent intent = new Intent("android.intent.action.VIEW_DOWNLOADS");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            return;
+        } catch (ActivityNotFoundException ignored) {
+        }
+
+        try {
+            Intent fallback = new Intent(Intent.ACTION_VIEW);
+            fallback.setType("resource/folder");
+            fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                startActivity(fallback);
+                return;
+            } catch (ActivityNotFoundException ignored) {
+            }
+        } catch (Exception ignored) {
+        }
+
+        Toast.makeText(requireContext(), R.string.download_open_folder_failed, Toast.LENGTH_SHORT).show();
     }
 }

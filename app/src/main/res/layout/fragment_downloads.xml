@@ -52,10 +52,20 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="12dp"
         android:text="@string/download_manager_subtitle"
         android:textColor="@color/text_secondary"
         android:textSize="14sp" />
+
+    <Button
+        android:id="@+id/btn_open_download_folder"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:text="@string/download_open_folder"
+        android:textAllCaps="false"
+        android:textColor="@color/text_primary"
+        android:backgroundTint="@color/background_tertiary" />
 
     <FrameLayout
         android:layout_width="match_parent"
