@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background_primary"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/text_local_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/text_secondary"
+        android:textSize="14sp"
+        android:text="@string/local_music_not_scanned" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="12dp">
+
+        <Button
+            android:id="@+id/btn_scan_local_music"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/local_music_scan"
+            android:textColor="@color/text_on_brand"
+            android:backgroundTint="@color/brand_primary" />
+
+        <Button
+            android:id="@+id/btn_pick_local_audio"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="@string/local_music_pick"
+            android:textColor="@color/text_on_brand"
+            android:backgroundTint="@color/brand_primary" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layout_local_permission"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:paddingBottom="12dp">
+
+        <Button
+            android:id="@+id/btn_grant_local_permission"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/local_music_grant_permission"
+            android:textColor="@color/text_on_brand"
+            android:backgroundTint="@color/brand_primary" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layout_local_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingVertical="24dp">
+
+        <TextView
+            android:id="@+id/text_local_empty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/local_music_empty"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_local_songs"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+</LinearLayout>

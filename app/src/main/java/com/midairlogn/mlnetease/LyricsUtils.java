@@ -17,6 +17,45 @@ public class LyricsUtils {
     private static final Pattern INDIVIDUAL_TIMESTAMP_PATTERN = Pattern.compile("\\[\\d{1,2}[:.]\\d{1,2}(?:[:.](\\d{1,3}|\\d{2}-1|00-1))?.*?]");
     private static final Pattern RAW_TIMESTAMP_PATTERN = Pattern.compile("\\[(\\d{1,2})[:.](\\d{1,2})(?:[:.](\\d{1,3}|\\d{2}-1|00-1))?.*?]");
     private static final Pattern CANONICAL_TIMESTAMP_PATTERN = Pattern.compile("\\[(\\d{2}):(\\d{2})(?:\\.(\\d{1,3}))?]");
+    private static final Pattern INLINE_TRANSLATION_PATTERN = Pattern.compile("^(.*?)(?:\\((?:Translation|translation|翻译)\\s*[:：]\\s*(.+?)\\))\\s*$");
+
+    public static SplitLyricsResult splitInlineTranslatedLyrics(String lyrics) {
+        String processedLyrics = preprocessLyrics(lyrics);
+        if (processedLyrics.isEmpty()) {
+            return new SplitLyricsResult("", "");
+        }
+
+        String[] rawLines = processedLyrics.split("\\n");
+        StringBuilder originalBuilder = new StringBuilder();
+        StringBuilder translatedBuilder = new StringBuilder();
+        for (String rawLine : rawLines) {
+            Matcher matcher = CANONICAL_TIMESTAMP_PATTERN.matcher(rawLine);
+            if (!matcher.find()) {
+                appendLine(originalBuilder, rawLine);
+                continue;
+            }
+
+            String timestamp = matcher.group();
+            String content = rawLine.substring(matcher.end()).trim();
+            Matcher translationMatcher = INLINE_TRANSLATION_PATTERN.matcher(content);
+            if (!translationMatcher.matches()) {
+                appendLine(originalBuilder, rawLine);
+                continue;
+            }
+
+            String originalText = translationMatcher.group(1) == null ? "" : translationMatcher.group(1).trim();
+            String translatedText = sanitizeTranslationText(translationMatcher.group(2));
+            if (!originalText.isEmpty()) {
+                appendLine(originalBuilder, timestamp + originalText);
+            }
+            if (!translatedText.isEmpty()) {
+                appendLine(translatedBuilder, timestamp + translatedText);
+            }
+        }
+
+        String original = originalBuilder.length() == 0 ? processedLyrics : originalBuilder.toString();
+        return new SplitLyricsResult(resolveTimestampConflicts(original), resolveTimestampConflicts(translatedBuilder.toString()));
+    }
 
     public static List<LyricLine> parseLyrics(String lyrics) {
         return toLyricLines(parseLyricEntries(lyrics));
@@ -370,6 +409,16 @@ public class LyricsUtils {
         }
     }
 
+    public static final class SplitLyricsResult {
+        public final String lyric;
+        public final String translatedLyric;
+
+        SplitLyricsResult(String lyric, String translatedLyric) {
+            this.lyric = lyric == null ? "" : lyric;
+            this.translatedLyric = translatedLyric == null ? "" : translatedLyric;
+        }
+    }
+
     private static class ProcessedLyricLine {
         final String timeToken;
         final String content;
@@ -380,5 +429,15 @@ public class LyricsUtils {
             this.content = content == null ? "" : content;
             this.isMetadata = isMetadata;
         }
+    }
+
+    private static void appendLine(StringBuilder builder, String line) {
+        if (line == null || line.trim().isEmpty()) {
+            return;
+        }
+        if (builder.length() > 0) {
+            builder.append('\n');
+        }
+        builder.append(line.trim());
     }
 }

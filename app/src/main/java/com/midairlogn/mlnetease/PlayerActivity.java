@@ -126,6 +126,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         if (song != null) {
             songTitle.setText(song.name);
             songArtist.setText(song.artists);
+            btnDownloadSong.setVisibility(song.isLocal() ? android.view.View.GONE : android.view.View.VISIBLE);
         }
     }
 

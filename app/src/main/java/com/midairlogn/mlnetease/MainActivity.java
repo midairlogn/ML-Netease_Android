@@ -31,10 +31,12 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     private static final int REQUEST_CODE_OVERLAY = 1002;
     public static final String EXTRA_OPEN_TAB = "extra_open_tab";
     public static final String TAB_HOME = "home";
+    public static final String TAB_LOCAL = "local";
     public static final String TAB_DOWNLOADS = "downloads";
     public static final String TAB_SETTINGS = "settings";
 
     private HomeFragment homeFragment;
+    private LocalFragment localFragment;
     private DownloadsFragment downloadsFragment;
     private SettingsFragment settingsFragment;
     private Fragment activeFragment;
@@ -53,6 +55,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     private String currentCoverUrl;
 
     private SettingsManager settingsManager;
+    private boolean pendingExternalAudioIntent = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,11 +69,14 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
 
         if (savedInstanceState == null) {
             homeFragment = new HomeFragment();
+            localFragment = new LocalFragment();
             downloadsFragment = new DownloadsFragment();
             settingsFragment = new SettingsFragment();
             activeFragment = homeFragment;
 
             getSupportFragmentManager().beginTransaction()
+                    .add(R.id.fragment_container, localFragment, "local")
+                    .hide(localFragment)
                     .add(R.id.fragment_container, downloadsFragment, "downloads")
                     .hide(downloadsFragment)
                     .add(R.id.fragment_container, settingsFragment, "settings")
@@ -79,6 +85,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
                     .commit();
         } else {
             homeFragment = (HomeFragment) getSupportFragmentManager().findFragmentByTag("home");
+            localFragment = (LocalFragment) getSupportFragmentManager().findFragmentByTag("local");
             downloadsFragment = (DownloadsFragment) getSupportFragmentManager().findFragmentByTag("downloads");
             settingsFragment = (SettingsFragment) getSupportFragmentManager().findFragmentByTag("settings");
 
@@ -86,6 +93,8 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
             int selectedItemId = ((BottomNavigationView) findViewById(R.id.nav_view)).getSelectedItemId();
             if (selectedItemId == R.id.navigation_home) {
                 activeFragment = homeFragment;
+            } else if (selectedItemId == R.id.navigation_local) {
+                activeFragment = localFragment;
             } else if (selectedItemId == R.id.navigation_downloads) {
                 activeFragment = downloadsFragment;
             } else {
@@ -101,6 +110,9 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
             if (itemId == R.id.navigation_home) {
                 switchToFragment(homeFragment);
                 return true;
+            } else if (itemId == R.id.navigation_local) {
+                switchToFragment(localFragment);
+                return true;
             } else if (itemId == R.id.navigation_downloads) {
                 switchToFragment(downloadsFragment);
                 return true;
@@ -113,6 +125,9 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         applyRequestedTab(getIntent(), navView, savedInstanceState == null);
 
         initMiniPlayer();
+        if (pendingExternalAudioIntent) {
+            handleIncomingAudioIntent(getIntent());
+        }
     }
 
     @Override
@@ -123,6 +138,9 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         if (navView != null) {
             applyRequestedTab(intent, navView, false);
         }
+        if (hasIncomingAudioIntent(intent)) {
+            handleIncomingAudioIntent(intent);
+        }
     }
 
     private void applyRequestedTab(Intent intent, BottomNavigationView navView, boolean firstCreate) {
@@ -132,12 +150,15 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         String targetTab = intent.getStringExtra(EXTRA_OPEN_TAB);
         if (TAB_DOWNLOADS.equals(targetTab)) {
             navView.setSelectedItemId(R.id.navigation_downloads);
+        } else if (TAB_LOCAL.equals(targetTab)) {
+            navView.setSelectedItemId(R.id.navigation_local);
         } else if (TAB_SETTINGS.equals(targetTab)) {
             navView.setSelectedItemId(R.id.navigation_settings);
         } else if (TAB_HOME.equals(targetTab) && !firstCreate) {
             navView.setSelectedItemId(R.id.navigation_home);
         }
         intent.removeExtra(EXTRA_OPEN_TAB);
+        pendingExternalAudioIntent = hasIncomingAudioIntent(intent);
     }
 
     private void switchToFragment(Fragment target) {
@@ -230,15 +251,14 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
             if (!allGranted) {
                 new AlertDialog.Builder(this)
                         .setTitle(R.string.permissions_required)
-                        .setMessage(R.string.hint_all_permission)
+                        .setMessage(R.string.hint_partial_permission)
                         .setPositiveButton(R.string.go_to_settings, (dialog, which) -> {
                             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                                     Uri.parse("package:" + getPackageName()));
                             startActivity(intent);
-                            finish(); // Exit app
+                            startMusicService();
                         })
-                        .setNegativeButton(R.string.exit, (dialog, which) -> finish())
-                        .setCancelable(false)
+                        .setNegativeButton(R.string.cancel, (dialog, which) -> checkOverlayPermission())
                         .show();
             } else {
                 checkOverlayPermission();
@@ -321,8 +341,10 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         miniPlayerTitle.setText(song.name);
         miniPlayerArtist.setText(song.artists);
 
-        // Load Cover
-        if (song.picUrl != null) {
+        if (song.embeddedPicture != null && song.embeddedPicture.length > 0) {
+            miniPlayerThumb.setImageBitmap(android.graphics.BitmapFactory.decodeByteArray(song.embeddedPicture, 0, song.embeddedPicture.length));
+            miniPlayerThumb.setTag("embedded:" + song.id);
+        } else if (song.picUrl != null && !song.picUrl.isEmpty()) {
             // Check if current view is showing placeholder (logo)
             boolean isPlaceholder = miniPlayerThumb.getTag() == null || miniPlayerThumb.getTag().equals(R.drawable.ic_ml_app_logo_foreground);
             if (isPlaceholder || !ImageUtils.isSameImage(song.picUrl, (String) miniPlayerThumb.getTag())) {
@@ -398,5 +420,32 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
             locales = LocaleListCompat.forLanguageTags(languageCode);
         }
         AppCompatDelegate.setApplicationLocales(locales);
+    }
+
+    private boolean hasIncomingAudioIntent(Intent intent) {
+        return intent != null && Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null;
+    }
+
+    private void handleIncomingAudioIntent(Intent intent) {
+        if (intent == null) {
+            return;
+        }
+        String action = intent.getAction();
+        Uri data = intent.getData();
+        if (Intent.ACTION_VIEW.equals(action) && data != null) {
+            String type = intent.getType();
+            if (type == null || type.startsWith("audio/")) {
+                BottomNavigationView navView = findViewById(R.id.nav_view);
+                if (navView != null) {
+                    navView.setSelectedItemId(R.id.navigation_local);
+                }
+                if (localFragment != null) {
+                    localFragment.handleExternalAudio(data, true);
+                }
+                pendingExternalAudioIntent = false;
+                intent.setAction(null);
+                intent.setData(null);
+            }
+        }
     }
 }

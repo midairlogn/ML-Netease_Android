@@ -318,6 +318,17 @@ public class MusicService extends Service {
         boolean isNewSong = !song.id.equals(lastSongId);
         lastSongId = song.id;
 
+        if (song.embeddedPicture != null && song.embeddedPicture.length > 0) {
+            Bitmap embeddedBitmap = BitmapFactory.decodeByteArray(song.embeddedPicture, 0, song.embeddedPicture.length);
+            if (embeddedBitmap != null) {
+                lastBitmap = embeddedBitmap;
+                lastPicUrl = "";
+                updateMediaSessionMetadata(song, embeddedBitmap);
+                showNotification(song, musicPlayerManager.isPlaying(), embeddedBitmap, isNewSong, "metadata:embedded-art");
+                return;
+            }
+        }
+
         // 1. Optimization: If the image URL hasn't changed and a bitmap already exists, update Metadata directly
         if (song.picUrl != null && ImageUtils.isSameImage(song.picUrl, lastPicUrl) && lastBitmap != null) {
             updateMediaSessionMetadata(song, lastBitmap);

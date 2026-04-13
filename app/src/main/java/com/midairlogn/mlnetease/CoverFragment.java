@@ -40,7 +40,7 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
         manager.addOnFullInfoAvailableListener(this);
         Song current = manager.getCurrentSong();
         if (current != null) {
-            updateCover(current.picUrl);
+            updateCover(current);
         }
     }
 
@@ -54,18 +54,27 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
     @Override
     public void onSongChanged(Song song) {
         if (song != null) {
-            updateCover(song.picUrl);
+            updateCover(song);
         }
     }
 
     @Override
     public void onFullInfoAvailable(Song song) {
         if (song != null) {
-            updateCover(song.picUrl);
+            updateCover(song);
         }
     }
 
-    private void updateCover(String urlString) {
+    private void updateCover(Song song) {
+        if (song.embeddedPicture != null && song.embeddedPicture.length > 0) {
+            albumCover.setImageBitmap(android.graphics.BitmapFactory.decodeByteArray(song.embeddedPicture, 0, song.embeddedPicture.length));
+            currentUrl = null;
+            isPlaceholder = false;
+            albumCover.setTag("embedded:" + song.id);
+            return;
+        }
+
+        String urlString = song.picUrl;
         if (urlString == null || urlString.isEmpty()) {
             albumCover.setImageResource(R.drawable.ic_ml_app_logo_foreground);
             currentUrl = null;

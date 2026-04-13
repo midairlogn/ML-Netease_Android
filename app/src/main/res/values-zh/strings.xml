@@ -124,6 +124,7 @@
     <string name="playmode_order">顺序播放</string>
     <string name="permission_required">需要授予权限</string>
     <string name="hint_all_permission">应用运行需要通知和存储权限，请开启。</string>
+    <string name="hint_partial_permission">通知和本地媒体库权限可以提升完整体验，但即使不授予，应用仍可继续运行，之后也可以在设置中开启。</string>
     <string name="exit">退出</string>
     <string name="permissions_required">需要授予权限</string>
     <string name="hint_overlay_permission">歌词悬浮窗需要显示在其他应用上层的权限，请在设置中开启。</string>
@@ -190,4 +191,16 @@
     <string name="settings_backup_read_error">无法打开文件</string>
     <string name="settings_backup_write_error">无法写入数据文件</string>
     <string name="delete_shortcut">删除收藏</string>
+    <string name="local_music_nav">本地</string>
+    <string name="local_music_scan">扫描本地音乐</string>
+    <string name="local_music_pick">选择音频文件</string>
+    <string name="local_music_grant_permission">授予媒体库权限</string>
+    <string name="local_music_not_scanned">本地音乐库尚未扫描。</string>
+    <string name="local_music_scanning">正在扫描本地音乐...</string>
+    <string name="local_music_scan_result">已发现 %1$d 个本地音频文件</string>
+    <string name="local_music_empty">还没有发现本地歌曲。可以先扫描，或直接选择文件。</string>
+    <string name="local_music_permission_required">扫描媒体库需要本地音频权限。</string>
+    <string name="local_audio_open_failed">无法打开所选音频文件</string>
+    <string name="unknown_artist">未知歌手</string>
+    <string name="unknown_title">未知标题</string>
 </resources>

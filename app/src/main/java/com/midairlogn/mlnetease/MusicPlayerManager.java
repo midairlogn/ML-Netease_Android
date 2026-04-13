@@ -1,6 +1,7 @@
 package com.midairlogn.mlnetease;
 
 import android.content.Context;
+import android.net.Uri;
 import android.media.MediaPlayer;
 import android.os.Handler;
 import android.os.Looper;
@@ -294,6 +295,17 @@ public class MusicPlayerManager {
     private static final int RETRY_DELAY_MS = 2000;
     private static final int AUTO_SKIP_DELAY_MS = 1000;
 
+    public void replacePlaylistAndPlay(List<Song> songs, int startIndex) {
+        if (songs == null || songs.isEmpty()) {
+            setPlaylist(new ArrayList<>());
+            return;
+        }
+        this.playlist = new ArrayList<>(songs);
+        this.currentIndex = -1;
+        notifyPlaylistChanged();
+        play(Math.max(0, Math.min(startIndex, this.playlist.size() - 1)));
+    }
+
     private void handlePlaybackFailure(int index, long requestId, String reason) {
         if (requestId != activePlayRequestId || currentIndex != index) return;
 
@@ -379,6 +391,11 @@ public class MusicPlayerManager {
         currentLyric = context.getString(R.string.hint_loading);
         currentTLyric = "";
 
+        if (song.isLocal()) {
+            playLocalSong(song, index, requestId);
+            return;
+        }
+
         // Fetch full info
         neteaseApi.getSongFullInfo(song.id, new NeteaseApi.ApiCallback() {
             @Override
@@ -426,6 +443,36 @@ public class MusicPlayerManager {
         });
     }
 
+    private void playLocalSong(Song song, int index, long requestId) {
+        Uri mediaUri = song.getMediaUri();
+        if (mediaUri == null) {
+            handlePlaybackFailure(index, requestId, "Missing local media uri");
+            return;
+        }
+
+        try {
+            LocalAudioMetadata metadata = LocalAudioMetadataReader.read(context, mediaUri);
+            if (!metadata.title.isEmpty()) {
+                song.name = metadata.title;
+            }
+            if (!metadata.artist.isEmpty()) {
+                song.artists = metadata.artist;
+            }
+            song.album = metadata.album;
+            song.mimeType = metadata.mimeType;
+            song.durationMs = metadata.durationMs;
+            song.lyric = metadata.lyric;
+            song.translatedLyric = metadata.translatedLyric;
+            song.embeddedPicture = metadata.artworkData;
+            currentLyric = metadata.lyric;
+            currentTLyric = metadata.translatedLyric;
+            notifyFullInfoAvailable(song);
+            playUri(mediaUri, index, requestId, false);
+        } catch (Exception e) {
+            handlePlaybackFailure(index, requestId, "Local metadata/read failure: " + e.getMessage());
+        }
+    }
+
     private void playUrl(String url, int expectedIndex, long requestId) {
         if (url == null || url.trim().isEmpty() || "null".equals(url)) {
             android.util.Log.e("MusicPlayerManager", "playUrl called with invalid url: " + url);
@@ -434,16 +481,29 @@ public class MusicPlayerManager {
             }
             return;
         }
+        java.util.Map<String, String> headers = new java.util.HashMap<>();
+        headers.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/91.0.4472.164 NeteaseMusicDesktop/2.10.2.200154");
+        headers.put("Referer", "https://music.163.com/");
+        playUri(Uri.parse(url), expectedIndex, requestId, true, headers);
+    }
+
+    private void playUri(Uri uri, int expectedIndex, long requestId, boolean remote) {
+        playUri(uri, expectedIndex, requestId, remote, null);
+    }
+
+    private void playUri(Uri uri, int expectedIndex, long requestId, boolean remote, Map<String, String> headers) {
+        if (uri == null) {
+            handlePlaybackFailure(expectedIndex, requestId, "Invalid media uri");
+            return;
+        }
         try {
             mediaPlayer.reset();
             setAppVolume(settingsManager.getAppVolume());
-            // Use headers to mimic browser/desktop client to avoid 403 Forbidden from CDN
-            java.util.Map<String, String> headers = new java.util.HashMap<>();
-            headers.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/91.0.4472.164 NeteaseMusicDesktop/2.10.2.200154");
-            headers.put("Referer", "https://music.163.com/");
-
-            android.net.Uri uri = android.net.Uri.parse(url);
-            mediaPlayer.setDataSource(context, uri, headers);
+            if (remote && headers != null && !headers.isEmpty()) {
+                mediaPlayer.setDataSource(context, uri, headers);
+            } else {
+                mediaPlayer.setDataSource(context, uri);
+            }
 
             mediaPlayer.setOnPreparedListener(mp -> {
                 if (requestId != activePlayRequestId || currentIndex != expectedIndex) {
@@ -459,7 +519,6 @@ public class MusicPlayerManager {
                 }
                 mp.start();
                 isPaused = false;
-                // Enable completion listener only after successful preparation and start
                 isCompletionListenerEnabled = true;
                 notifyPlaybackStateChanged(true);
             });
@@ -470,13 +529,13 @@ public class MusicPlayerManager {
             });
 
             mediaPlayer.prepareAsync();
-
         } catch (Exception e) {
             if (requestId == activePlayRequestId) {
                 isSwitchingSong = false;
             }
             e.printStackTrace();
-            android.util.Log.e("MusicPlayerManager", "playUrl exception", e);
+            android.util.Log.e("MusicPlayerManager", remote ? "playUrl exception" : "playUri exception", e);
+            handlePlaybackFailure(expectedIndex, requestId, e.getMessage() == null ? "playback exception" : e.getMessage());
         }
     }
 

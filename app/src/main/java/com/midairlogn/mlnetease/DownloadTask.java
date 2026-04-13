@@ -112,6 +112,10 @@ public class DownloadTask {
                 songObject.put("artists", song.artists);
                 songObject.put("album", song.album);
                 songObject.put("picUrl", song.picUrl);
+                songObject.put("sourceType", song.sourceType);
+                songObject.put("mediaUri", song.mediaUri);
+                songObject.put("mimeType", song.mimeType);
+                songObject.put("durationMs", song.durationMs);
                 songsArray.put(songObject);
             }
             requestObject.put("songs", songsArray);
@@ -151,6 +155,11 @@ public class DownloadTask {
                             songObject.optString("album", ""),
                             songObject.optString("picUrl", "")
                     ));
+                    Song restoredSong = songs.get(songs.size() - 1);
+                    restoredSong.sourceType = songObject.optString("sourceType", Song.SOURCE_REMOTE);
+                    restoredSong.mediaUri = songObject.optString("mediaUri", "");
+                    restoredSong.mimeType = songObject.optString("mimeType", "");
+                    restoredSong.durationMs = Math.max(0L, songObject.optLong("durationMs", 0L));
                 }
             }
             DownloadRequest request = new DownloadRequest(
