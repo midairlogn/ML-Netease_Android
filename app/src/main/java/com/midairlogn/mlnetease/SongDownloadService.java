@@ -57,6 +57,8 @@ public class SongDownloadService extends Service {
     private DownloadTaskManager taskManager;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private volatile boolean workerRunning;
+    private boolean hasRecoveredInterruptedTasks;
+    private volatile boolean serviceShuttingDown;
 
     public static void enqueueProcessing(Context context) {
         if (context == null) {
@@ -120,6 +122,7 @@ public class SongDownloadService extends Service {
         settingsManager = new SettingsManager(this);
         neteaseApi = new NeteaseApi(this, settingsManager);
         taskManager = DownloadTaskManager.getInstance(this);
+        recoverInterruptedTasksIfNeeded();
         createNotificationChannel();
         startForeground(NOTIFICATION_ID, buildIdleNotification());
     }
@@ -127,7 +130,6 @@ public class SongDownloadService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent == null || intent.getAction() == null) {
-            recoverStaleActiveTasks();
             maybeScheduleWorker(startId);
             return START_STICKY;
         }
@@ -145,18 +147,16 @@ public class SongDownloadService extends Service {
         }
 
         updateNotificationForCurrentState();
-        recoverStaleActiveTasks();
         maybeScheduleWorker(startId);
         return START_STICKY;
     }
 
-    private void recoverStaleActiveTasks() {
-        for (DownloadTaskSnapshot snapshot : taskManager.getTaskSnapshots()) {
-            if (snapshot.status == DownloadTaskStatus.ACTIVE) {
-                taskManager.retryTask(snapshot.id);
-            }
+    private void recoverInterruptedTasksIfNeeded() {
+        if (hasRecoveredInterruptedTasks) {
+            return;
         }
-        updateNotificationForCurrentState();
+        hasRecoveredInterruptedTasks = true;
+        taskManager.recoverInterruptedTasks();
     }
 
     private void maybeScheduleWorker(int startId) {
@@ -171,6 +171,9 @@ public class SongDownloadService extends Service {
     private void runQueue(int startId) {
         try {
             while (true) {
+                if (serviceShuttingDown) {
+                    break;
+                }
                 DownloadTask activeTask = taskManager.getActiveTask();
                 if (activeTask == null) {
                     activeTask = taskManager.getNextWaitingTask();
@@ -188,11 +191,22 @@ public class SongDownloadService extends Service {
 
                 try {
                     processTask(activeTask);
+                } catch (ServiceStoppingException ignored) {
+                    break;
                 } catch (PausedTaskException ignored) {
+                    if (serviceShuttingDown) {
+                        break;
+                    }
                     taskManager.markPaused(activeTask.id, getString(R.string.download_paused));
                 } catch (CancelledTaskException ignored) {
+                    if (serviceShuttingDown) {
+                        break;
+                    }
                     taskManager.markCancelled(activeTask.id);
                 } catch (Exception e) {
+                    if (serviceShuttingDown) {
+                        break;
+                    }
                     e.printStackTrace();
                     taskManager.failTask(activeTask.id, messageOrFallback(e, getString(R.string.download_failed)));
                 }
@@ -201,6 +215,9 @@ public class SongDownloadService extends Service {
             }
         } finally {
             workerRunning = false;
+            if (serviceShuttingDown) {
+                taskManager.recoverInterruptedTasks();
+            }
             updateNotificationForCurrentState();
             if (!taskManager.hasWaitingOrActiveWork()) {
                 stopSelf(startId);
@@ -212,6 +229,7 @@ public class SongDownloadService extends Service {
         if (task == null) {
             return;
         }
+        throwIfServiceStopping();
         int total = task.songs.size();
         if (total == 0) {
             taskManager.failTask(task.id, "No songs in task");
@@ -264,6 +282,7 @@ public class SongDownloadService extends Service {
 
     private void downloadSong(DownloadTask task, Song song, int index, int total) throws Exception {
         JSONObject info = fetchSongInfo(song.id);
+        throwIfServiceStopping();
         throwIfCancelled(task.id);
         throwIfPauseRequested(task.id);
 
@@ -293,6 +312,7 @@ public class SongDownloadService extends Service {
         updateNotificationForCurrentState();
 
         byte[] audioBytes = fetchBytesWithProgress(task, title, audioUrl, index);
+        throwIfServiceStopping();
         throwIfCancelled(task.id);
         throwIfPauseRequested(task.id);
 
@@ -307,6 +327,7 @@ public class SongDownloadService extends Service {
         );
 
         byte[] coverBytes = pic == null || pic.isEmpty() ? null : fetchBytesSimple(pic);
+        throwIfServiceStopping();
         if (coverBytes != null && coverBytes.length > 0) {
             coverBytes = CoverUtils.resizeCover(coverBytes);
         }
@@ -343,6 +364,7 @@ public class SongDownloadService extends Service {
                     : FlacTagWriter.writeTaggedBytes(audioBytes, tagData);
         }
 
+        throwIfServiceStopping();
         throwIfCancelled(task.id);
         throwIfPauseRequested(task.id);
 
@@ -364,6 +386,7 @@ public class SongDownloadService extends Service {
         boolean publishSuccess = false;
         try {
             DownloadFileUtils.writeAudio(this, savedUri, taggedBytes);
+            throwIfServiceStopping();
             throwIfCancelled(task.id);
             throwIfPauseRequested(task.id);
             DownloadFileUtils.publishAudio(this, savedUri);
@@ -413,10 +436,16 @@ public class SongDownloadService extends Service {
 
         synchronized (lock) {
             while (state.get() == 0) {
-                lock.wait();
+                try {
+                    lock.wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new ServiceStoppingException();
+                }
             }
         }
 
+        throwIfServiceStopping();
         if (state.get() < 0) {
             throw new IOException(errorHolder[0]);
         }
@@ -441,7 +470,9 @@ public class SongDownloadService extends Service {
                 long downloaded = 0L;
                 int read;
                 long lastUpdateAt = 0L;
+                throwIfServiceStopping();
                 while ((read = inputStream.read(buffer)) != -1) {
+                    throwIfServiceStopping();
                     throwIfCancelled(task.id);
                     if (taskManager.shouldPause(task.id)) {
                         throw new PausedTaskException();
@@ -642,6 +673,12 @@ public class SongDownloadService extends Service {
         }
     }
 
+    private void throwIfServiceStopping() throws ServiceStoppingException {
+        if (serviceShuttingDown || Thread.currentThread().isInterrupted()) {
+            throw new ServiceStoppingException();
+        }
+    }
+
     private void throwIfCancelled(String taskId) throws CancelledTaskException {
         if (taskManager.shouldCancel(taskId)) {
             throw new CancelledTaskException();
@@ -778,6 +815,7 @@ public class SongDownloadService extends Service {
 
     @Override
     public void onDestroy() {
+        serviceShuttingDown = true;
         executor.shutdownNow();
         super.onDestroy();
     }
@@ -798,5 +836,8 @@ public class SongDownloadService extends Service {
     }
 
     private static final class CancelledTaskException extends Exception {
+    }
+
+    private static final class ServiceStoppingException extends Exception {
     }
 }

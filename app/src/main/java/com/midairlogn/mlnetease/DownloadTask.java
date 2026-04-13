@@ -160,9 +160,6 @@ public class DownloadTask {
             );
             DownloadTask task = new DownloadTask(object.optString("id", "download-task-restored-" + System.currentTimeMillis()), request);
             task.status = parseStatus(object.optString("status", DownloadTaskStatus.WAITING.name()));
-            if (task.status == DownloadTaskStatus.ACTIVE) {
-                task.status = DownloadTaskStatus.WAITING;
-            }
             task.totalCount = object.optInt("totalCount", task.totalCount);
             task.completedCount = object.optInt("completedCount", 0);
             task.successCount = object.optInt("successCount", 0);
@@ -174,7 +171,7 @@ public class DownloadTask {
             task.createdAt = object.optLong("createdAt", System.currentTimeMillis());
             task.startedAt = object.optLong("startedAt", 0L);
             task.updatedAt = object.optLong("updatedAt", task.createdAt);
-            task.pausedAt = 0L;
+            task.pausedAt = task.status == DownloadTaskStatus.PAUSED ? object.optLong("pausedAt", 0L) : 0L;
             task.totalPausedDuration = object.optLong("totalPausedDuration", 0L);
             task.etaMillis = task.status == DownloadTaskStatus.COMPLETED ? 0L : -1L;
             task.currentSongTitle = object.optString("currentSongTitle", "");

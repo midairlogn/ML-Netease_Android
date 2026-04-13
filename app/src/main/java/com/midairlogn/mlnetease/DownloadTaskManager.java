@@ -13,6 +13,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class DownloadTaskManager {
+    private static final String TASK_ID_PREFIX = "download-task-";
+
     public interface Listener {
         void onDownloadTasksChanged(List<DownloadTaskSnapshot> tasks);
     }
@@ -39,6 +41,7 @@ public class DownloadTaskManager {
     private DownloadTaskManager(Context appContext) {
         this.appContext = appContext;
         tasks.addAll(DownloadTaskStore.load(appContext));
+        seedIdCounterFromLoadedTasks();
     }
 
     public DownloadTaskSnapshot enqueue(DownloadRequest request) {
@@ -129,6 +132,12 @@ public class DownloadTaskManager {
         synchronized (lock) {
             DownloadTask task = findTaskLocked(taskId);
             if (task == null || task.status == DownloadTaskStatus.CANCELLED || task.status == DownloadTaskStatus.COMPLETED || task.status == DownloadTaskStatus.FAILED) {
+                return false;
+            }
+            for (DownloadTask candidate : tasks) {
+                if (candidate == task || candidate.status != DownloadTaskStatus.ACTIVE) {
+                    continue;
+                }
                 return false;
             }
             task.status = DownloadTaskStatus.ACTIVE;
@@ -248,6 +257,36 @@ public class DownloadTaskManager {
             task.cancelRequested = false;
             task.pauseRequested = false;
             task.failedSongTitles.clear();
+        }
+        persistTasks();
+        notifyListeners();
+    }
+
+    public void recoverInterruptedTasks() {
+        boolean changed = false;
+        synchronized (lock) {
+            for (DownloadTask task : tasks) {
+                if (task.status != DownloadTaskStatus.ACTIVE) {
+                    continue;
+                }
+                task.status = DownloadTaskStatus.WAITING;
+                task.pauseRequested = false;
+                task.cancelRequested = false;
+                task.currentSongIndex = Math.max(task.completedCount, 0);
+                task.currentSongBytesDownloaded = 0L;
+                task.currentSongBytesTotal = -1L;
+                task.etaMillis = -1L;
+                if (task.statusMessage == null || task.statusMessage.trim().isEmpty()
+                        || "Cancelling".equals(task.statusMessage)
+                        || "Pausing after current step".equals(task.statusMessage)) {
+                    task.statusMessage = "Queued";
+                }
+                task.updatedAt = System.currentTimeMillis();
+                changed = true;
+            }
+        }
+        if (!changed) {
+            return;
         }
         persistTasks();
         notifyListeners();
@@ -434,7 +473,29 @@ public class DownloadTaskManager {
     }
 
     private static String nextTaskId() {
-        return "download-task-" + ID_COUNTER.getAndIncrement();
+        return TASK_ID_PREFIX + ID_COUNTER.getAndIncrement();
+    }
+
+    private void seedIdCounterFromLoadedTasks() {
+        long nextId = 1L;
+        synchronized (lock) {
+            for (DownloadTask task : tasks) {
+                if (task == null || task.id == null || !task.id.startsWith(TASK_ID_PREFIX)) {
+                    continue;
+                }
+                try {
+                    long numericId = Long.parseLong(task.id.substring(TASK_ID_PREFIX.length()));
+                    nextId = Math.max(nextId, numericId + 1L);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+        while (true) {
+            long current = ID_COUNTER.get();
+            if (current >= nextId || ID_COUNTER.compareAndSet(current, nextId)) {
+                return;
+            }
+        }
     }
 
     private static int clamp(int value) {
