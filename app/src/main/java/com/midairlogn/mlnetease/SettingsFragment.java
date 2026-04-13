@@ -62,6 +62,7 @@ public class SettingsFragment extends Fragment {
     private ActivityResultLauncher<String> createSettingsBackupLauncher;
     private ActivityResultLauncher<String[]> importSettingsBackupLauncher;
     private PendingBackupAction pendingBackupAction;
+    private boolean lastImportSkippedFloatingLyrics;
 
     private final Handler debounceHandler = new Handler(Looper.getMainLooper());
     private Runnable saveRunnable;
@@ -77,6 +78,7 @@ public class SettingsFragment extends Fragment {
     private TextView textLyricPreviewNext;
 
     private SharedPreferences.OnSharedPreferenceChangeListener preferenceChangeListener;
+    private boolean isUpdatingLanguageSpinner;
 
     private int tempColor = 0;
     private float tempSize = 16f;
@@ -219,20 +221,12 @@ public class SettingsFragment extends Fragment {
             notifySettingsChanged();
         });
 
-        // Language Spinner
-        String currentLanguage = settingsManager.getAppLanguage();
-        String[] languageOptions = getResources().getStringArray(R.array.language_options);
-        int selection = 0; // Default to System Default
-        if (currentLanguage.equals("en")) {
-            selection = 1;
-        } else if (currentLanguage.equals("zh")) {
-            selection = 2;
-        }
-        spinnerLanguage.setSelection(selection);
-
         spinnerLanguage.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (isUpdatingLanguageSpinner) {
+                    return;
+                }
                 String selectedLanguageCode;
                 switch (position) {
                     case 0: selectedLanguageCode = "system"; break;
@@ -255,6 +249,7 @@ public class SettingsFragment extends Fragment {
                 // Do nothing
             }
         });
+        updateLanguageSpinnerSelection();
 
         switchTranslationIntegration.setChecked(settingsManager.isTranslationIntegrationEnabled());
         switchTranslationIntegration.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -517,6 +512,7 @@ public class SettingsFragment extends Fragment {
         int appVolume = settingsManager.getAppVolume();
         seekbarAppVolume.setProgress(appVolume);
         textAppVolumeValue.setText(appVolume + "%");
+        updateLanguageSpinnerSelection();
 
         String currentQuality = settingsManager.getQuality();
         switch (currentQuality) {
@@ -567,6 +563,25 @@ public class SettingsFragment extends Fragment {
         tempSize = settingsManager.getLyricSize();
         textFontSize.setText(String.valueOf((int)tempSize));
         refreshDownloadCustomizeSummary();
+    }
+
+    private void updateLanguageSpinnerSelection() {
+        if (spinnerLanguage == null || settingsManager == null) {
+            return;
+        }
+        String currentLanguage = settingsManager.getAppLanguage();
+        int selection = 0;
+        if ("en".equals(currentLanguage)) {
+            selection = 1;
+        } else if ("zh".equals(currentLanguage)) {
+            selection = 2;
+        }
+        if (spinnerLanguage.getSelectedItemPosition() == selection) {
+            return;
+        }
+        isUpdatingLanguageSpinner = true;
+        spinnerLanguage.setSelection(selection, false);
+        isUpdatingLanguageSpinner = false;
     }
 
     private void refreshDownloadCustomizeSummary() {
@@ -772,13 +787,17 @@ public class SettingsFragment extends Fragment {
         }
         try {
             byte[] data = readAllBytes(sourceUri);
-            settingsManager.importEncryptedData(data, action.password);
+            lastImportSkippedFloatingLyrics = settingsManager.importEncryptedData(data, action.password);
             refreshSettingsUI();
             if (getActivity() instanceof MainActivity) {
                 ((MainActivity) getActivity()).setAppLocale(settingsManager.getAppLanguage());
+                ((MainActivity) getActivity()).reloadHomeShortcuts();
             }
             notifySettingsChanged();
             Toast.makeText(requireContext(), R.string.settings_import_success, Toast.LENGTH_SHORT).show();
+            if (lastImportSkippedFloatingLyrics) {
+                Toast.makeText(requireContext(), R.string.hint_grant_overlay, Toast.LENGTH_LONG).show();
+            }
         } catch (IllegalArgumentException e) {
             Toast.makeText(requireContext(), R.string.settings_backup_invalid_file, Toast.LENGTH_SHORT).show();
         } catch (AEADBadTagException e) {

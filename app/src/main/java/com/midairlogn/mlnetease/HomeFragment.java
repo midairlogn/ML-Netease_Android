@@ -434,6 +434,13 @@ public class HomeFragment extends Fragment {
         updateViewMode();
     }
 
+    public void reloadShortcuts() {
+        if (!isAdded()) {
+            return;
+        }
+        loadShortcuts();
+    }
+
     private void executeShortcut(HomeShortcut shortcut) {
         hideKeyboard(getView());
         searchInput.clearFocus();

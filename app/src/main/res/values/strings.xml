@@ -124,7 +124,7 @@
     <string name="hint_homepage_add_shortcut">Add shortcuts for one-tap playback.</string>
     <string name="manage_shortcut">Manage Shortcuts</string>
     <string name="delete_shortcut">Delete shortcut</string>
-    <string name="shortcut_meta_format">%1$s (ID: %2$s)</string>
+    <string name="shortcut_meta_format" translatable="false">%1$s (ID: %2$s)</string>
     <string name="clear">Clear</string>
     <string name="type_audio_quality_standard">Standard</string>
     <string name="type_audio_quality_exhigh">Exhigh</string>

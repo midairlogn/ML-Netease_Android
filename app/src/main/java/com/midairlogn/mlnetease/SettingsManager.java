@@ -2,6 +2,7 @@ package com.midairlogn.mlnetease;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.provider.Settings;
 import android.util.Base64;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,10 +54,12 @@ public class SettingsManager {
     public static final String DEFAULT_DOWNLOAD_FILENAME_SEPARATOR = "_";
     public static final int DEFAULT_APP_VOLUME = 80;
 
+    private final Context appContext;
     private SharedPreferences prefs;
 
     public SettingsManager(Context context) {
-        prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        appContext = context.getApplicationContext();
+        prefs = appContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
     }
 
     public void setMusicU(String musicU) {
@@ -363,7 +366,7 @@ public class SettingsManager {
         return backup.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 
-    public void importEncryptedData(byte[] fileBytes, String password) throws Exception {
+    public boolean importEncryptedData(byte[] fileBytes, String password) throws Exception {
         if (fileBytes == null || fileBytes.length == 0) {
             throw new IllegalArgumentException("Empty data file");
         }
@@ -385,7 +388,7 @@ public class SettingsManager {
         cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
         byte[] decrypted = cipher.doFinal(payload);
         JSONObject data = new JSONObject(new String(decrypted, java.nio.charset.StandardCharsets.UTF_8));
-        importAppDataJson(data);
+        return importAppDataJson(data);
     }
 
     private JSONObject exportAppDataJson() throws Exception {
@@ -413,7 +416,7 @@ public class SettingsManager {
         return json;
     }
 
-    private void importAppDataJson(JSONObject json) {
+    private boolean importAppDataJson(JSONObject json) {
         if (json == null) {
             throw new IllegalArgumentException("Missing data payload");
         }
@@ -421,7 +424,9 @@ public class SettingsManager {
         setMusicU(json.optString(KEY_MUSIC_U, ""));
         setQuality(normalizeQuality(json.optString(KEY_QUALITY, KEY_DEFAULT_QUALITY)));
         setSearchLimit(clamp(json.optInt(KEY_SEARCH_LIMIT, 10), 1, 100));
-        setFloatingLyricsEnabled(json.optBoolean(KEY_FLOATING_LYRICS_ENABLED, false));
+        boolean requestedFloatingLyrics = json.optBoolean(KEY_FLOATING_LYRICS_ENABLED, false);
+        boolean canEnableFloatingLyrics = !requestedFloatingLyrics || Settings.canDrawOverlays(appContext);
+        setFloatingLyricsEnabled(canEnableFloatingLyrics && requestedFloatingLyrics);
         setLyricColor(json.optInt(KEY_LYRIC_COLOR, 0));
         setLyricSize(clampFloat((float) json.optDouble(KEY_LYRIC_SIZE, 16f), 10f, 30f));
         setPlayMode(normalizePlayMode(json.optInt(KEY_PLAY_MODE, 0)));
@@ -441,6 +446,7 @@ public class SettingsManager {
         downloadSettings.writeCover = json.optBoolean(KEY_DOWNLOAD_METADATA_COVER, true);
         downloadSettings.writeExtra = json.optBoolean(KEY_DOWNLOAD_METADATA_EXTRA, true);
         setDownloadCustomizationSettings(downloadSettings);
+        return requestedFloatingLyrics && !canEnableFloatingLyrics;
     }
 
     private JSONArray serializeHomeShortcuts() {

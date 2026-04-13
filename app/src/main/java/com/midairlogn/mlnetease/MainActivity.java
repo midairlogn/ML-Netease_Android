@@ -148,6 +148,12 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         activeFragment = target;
     }
 
+    public void reloadHomeShortcuts() {
+        if (homeFragment != null) {
+            homeFragment.reloadShortcuts();
+        }
+    }
+
     private void checkAndRequestPermissions() {
         List<String> permissionsNeeded = new ArrayList<>();
 

@@ -189,4 +189,5 @@
     <string name="settings_backup_wrong_password">密码错误或文件已被损坏</string>
     <string name="settings_backup_read_error">无法打开文件</string>
     <string name="settings_backup_write_error">无法写入数据文件</string>
+    <string name="delete_shortcut">删除收藏</string>
 </resources>
