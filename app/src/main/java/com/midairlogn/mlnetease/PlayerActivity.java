@@ -95,8 +95,10 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
                 Toast.makeText(this, R.string.no_music, Toast.LENGTH_SHORT).show();
                 return;
             }
-            SongDownloadStarter.downloadCurrentSong(this, currentSong);
-            Toast.makeText(this, R.string.download_added, Toast.LENGTH_SHORT).show();
+            DownloadTaskSnapshot task = SongDownloadStarter.downloadCurrentSong(this, currentSong);
+            if (task != null) {
+                Toast.makeText(this, getString(R.string.download_added_named, task.title), Toast.LENGTH_SHORT).show();
+            }
         });
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {

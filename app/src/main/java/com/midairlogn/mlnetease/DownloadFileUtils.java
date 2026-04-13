@@ -8,6 +8,8 @@ import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
 
+import androidx.annotation.Nullable;
+
 import java.io.OutputStream;
 public final class DownloadFileUtils {
     private DownloadFileUtils() {}
@@ -57,6 +59,21 @@ public final class DownloadFileUtils {
     }
 
     public static Uri saveAudio(Context context, byte[] data, String displayName, String mimeType, String relativePath) throws Exception {
+        Uri uri = createPendingAudio(context, displayName, mimeType, relativePath);
+        boolean publishSuccess = false;
+        try {
+            writeAudio(context, uri, data);
+            publishAudio(context, uri);
+            publishSuccess = true;
+            return uri;
+        } finally {
+            if (!publishSuccess) {
+                deleteAudio(context, uri);
+            }
+        }
+    }
+
+    public static Uri createPendingAudio(Context context, String displayName, String mimeType, String relativePath) {
         ContentResolver resolver = context.getContentResolver();
         ContentValues values = new ContentValues();
         values.put(MediaStore.Audio.Media.DISPLAY_NAME, displayName);
@@ -74,7 +91,11 @@ public final class DownloadFileUtils {
         if (uri == null) {
             throw new IllegalStateException("Failed to create media store entry");
         }
+        return uri;
+    }
 
+    public static void writeAudio(Context context, Uri uri, byte[] data) throws Exception {
+        ContentResolver resolver = context.getContentResolver();
         try (OutputStream outputStream = resolver.openOutputStream(uri)) {
             if (outputStream == null) {
                 throw new IllegalStateException("Failed to open output stream");
@@ -82,14 +103,22 @@ public final class DownloadFileUtils {
             outputStream.write(data);
             outputStream.flush();
         }
+    }
 
+    public static void publishAudio(Context context, Uri uri) {
+        ContentResolver resolver = context.getContentResolver();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ContentValues update = new ContentValues();
             update.put(MediaStore.Audio.Media.IS_PENDING, 0);
             resolver.update(uri, update, null, null);
         }
+    }
 
-        return uri;
+    public static void deleteAudio(Context context, @Nullable Uri uri) {
+        if (uri == null) {
+            return;
+        }
+        context.getContentResolver().delete(uri, null, null);
     }
 
     public static String sanitizeFileName(String input) {

@@ -29,14 +29,46 @@
         <item>简体中文</item>
     </string-array>
     <string name="download">Download</string>
+    <string name="download_manager_title">Downloads</string>
+    <string name="download_manager_nav">Downloads</string>
+    <string name="download_manager_subtitle">Track queue progress, estimated time, and control each task.</string>
+    <string name="download_manager_idle">No active downloads</string>
+    <string name="download_manager_queue_count">%1$d tasks in queue</string>
     <string name="download_all">Download All</string>
     <string name="download_added">Download added</string>
+    <string name="download_added_named">Added to downloads: %1$s</string>
     <string name="download_preparing">Preparing download</string>
     <string name="download_starting">Starting background download</string>
     <string name="download_completed">Download completed</string>
     <string name="download_failed">Download failed</string>
     <string name="download_completed_summary">%1$d/%2$d songs downloaded</string>
     <string name="download_already_running">A download task is already running</string>
+    <string name="download_paused">Paused</string>
+    <string name="download_pause">Pause</string>
+    <string name="download_resume">Resume</string>
+    <string name="download_remove">Remove</string>
+    <string name="download_clear_finished">Clear finished</string>
+    <string name="download_fetching_metadata">Fetching metadata</string>
+    <string name="download_audio_progress">Downloading audio</string>
+    <string name="download_cover_progress">Fetching cover</string>
+    <string name="download_writing_tags">Writing metadata</string>
+    <string name="download_saving_file">Saving file</string>
+    <string name="download_song_completed">Song completed</string>
+    <string name="download_status_waiting">Waiting</string>
+    <string name="download_status_active">Downloading</string>
+    <string name="download_status_paused">Paused</string>
+    <string name="download_status_completed">Completed</string>
+    <string name="download_status_failed">Failed</string>
+    <string name="download_status_cancelled">Cancelled</string>
+    <string name="download_eta_format">ETA %1$s</string>
+    <string name="download_task_counts">%1$d/%2$d songs</string>
+    <string name="download_percent_format">%1$d%%</string>
+    <string name="downloads_summary_empty">No downloads yet</string>
+    <string name="downloads_summary_format">Active %1$d • Waiting %2$d • Finished %3$d</string>
+    <string name="downloads_empty">Your download tasks will appear here.</string>
+    <string name="download_section_active">In progress</string>
+    <string name="download_section_waiting">Waiting and paused</string>
+    <string name="download_section_finished">Finished</string>
     <string name="song_title">Song Title</string>
     <string name="artist_name">Artist Name</string>
     <string name="zero_timestamp" translatable="false">0:00</string>

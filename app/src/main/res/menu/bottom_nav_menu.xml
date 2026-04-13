@@ -6,6 +6,11 @@
         android:title="@string/music_nav_menu"/>
 
     <item
+        android:id="@+id/navigation_downloads"
+        android:icon="@android:drawable/stat_sys_download_done"
+        android:title="@string/download_manager_nav"/>
+
+    <item
         android:id="@+id/navigation_settings"
         android:icon="@drawable/ic_settings"
         android:title="@string/settings"/>

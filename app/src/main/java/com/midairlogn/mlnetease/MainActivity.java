@@ -29,8 +29,13 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
 
     private static final int REQUEST_CODE_PERMISSIONS = 1001;
     private static final int REQUEST_CODE_OVERLAY = 1002;
+    public static final String EXTRA_OPEN_TAB = "extra_open_tab";
+    public static final String TAB_HOME = "home";
+    public static final String TAB_DOWNLOADS = "downloads";
+    public static final String TAB_SETTINGS = "settings";
 
     private HomeFragment homeFragment;
+    private DownloadsFragment downloadsFragment;
     private SettingsFragment settingsFragment;
     private Fragment activeFragment;
 
@@ -61,22 +66,28 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
 
         if (savedInstanceState == null) {
             homeFragment = new HomeFragment();
+            downloadsFragment = new DownloadsFragment();
             settingsFragment = new SettingsFragment();
             activeFragment = homeFragment;
 
             getSupportFragmentManager().beginTransaction()
+                    .add(R.id.fragment_container, downloadsFragment, "downloads")
+                    .hide(downloadsFragment)
                     .add(R.id.fragment_container, settingsFragment, "settings")
                     .hide(settingsFragment)
                     .add(R.id.fragment_container, homeFragment, "home")
                     .commit();
         } else {
             homeFragment = (HomeFragment) getSupportFragmentManager().findFragmentByTag("home");
+            downloadsFragment = (DownloadsFragment) getSupportFragmentManager().findFragmentByTag("downloads");
             settingsFragment = (SettingsFragment) getSupportFragmentManager().findFragmentByTag("settings");
 
             // Restore active fragment state
             int selectedItemId = ((BottomNavigationView) findViewById(R.id.nav_view)).getSelectedItemId();
             if (selectedItemId == R.id.navigation_home) {
                 activeFragment = homeFragment;
+            } else if (selectedItemId == R.id.navigation_downloads) {
+                activeFragment = downloadsFragment;
             } else {
                 activeFragment = settingsFragment;
             }
@@ -88,18 +99,53 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         navView.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
             if (itemId == R.id.navigation_home) {
-                getSupportFragmentManager().beginTransaction().hide(activeFragment).show(homeFragment).commit();
-                activeFragment = homeFragment;
+                switchToFragment(homeFragment);
+                return true;
+            } else if (itemId == R.id.navigation_downloads) {
+                switchToFragment(downloadsFragment);
                 return true;
             } else if (itemId == R.id.navigation_settings) {
-                getSupportFragmentManager().beginTransaction().hide(activeFragment).show(settingsFragment).commit();
-                activeFragment = settingsFragment;
+                switchToFragment(settingsFragment);
                 return true;
             }
             return false;
         });
+        applyRequestedTab(getIntent(), navView, savedInstanceState == null);
 
         initMiniPlayer();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        BottomNavigationView navView = findViewById(R.id.nav_view);
+        if (navView != null) {
+            applyRequestedTab(intent, navView, false);
+        }
+    }
+
+    private void applyRequestedTab(Intent intent, BottomNavigationView navView, boolean firstCreate) {
+        if (intent == null || navView == null) {
+            return;
+        }
+        String targetTab = intent.getStringExtra(EXTRA_OPEN_TAB);
+        if (TAB_DOWNLOADS.equals(targetTab)) {
+            navView.setSelectedItemId(R.id.navigation_downloads);
+        } else if (TAB_SETTINGS.equals(targetTab)) {
+            navView.setSelectedItemId(R.id.navigation_settings);
+        } else if (TAB_HOME.equals(targetTab) && !firstCreate) {
+            navView.setSelectedItemId(R.id.navigation_home);
+        }
+        intent.removeExtra(EXTRA_OPEN_TAB);
+    }
+
+    private void switchToFragment(Fragment target) {
+        if (target == null || activeFragment == target) {
+            return;
+        }
+        getSupportFragmentManager().beginTransaction().hide(activeFragment).show(target).commit();
+        activeFragment = target;
     }
 
     private void checkAndRequestPermissions() {

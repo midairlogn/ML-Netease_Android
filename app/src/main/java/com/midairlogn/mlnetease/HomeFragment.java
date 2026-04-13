@@ -264,8 +264,10 @@ public class HomeFragment extends Fragment {
             if (requestTitle == null || requestTitle.trim().isEmpty()) {
                 requestTitle = lastSearchedId;
             }
-            SongDownloadStarter.downloadList(requireContext(), requestType, requestTitle, songs);
-            Toast.makeText(getContext(), R.string.download_added, Toast.LENGTH_SHORT).show();
+            DownloadTaskSnapshot task = SongDownloadStarter.downloadList(requireContext(), requestType, requestTitle, songs);
+            if (task != null) {
+                Toast.makeText(getContext(), getString(R.string.download_added_named, task.title), Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
