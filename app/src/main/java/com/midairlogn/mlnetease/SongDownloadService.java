@@ -17,10 +17,14 @@ import androidx.core.app.NotificationCompat;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -32,6 +36,7 @@ public class SongDownloadService extends Service {
 
     private static final String CHANNEL_ID = "download_channel";
     private static final int NOTIFICATION_ID = 2001;
+    private static final Pattern LRC_TIMESTAMP_PATTERN = Pattern.compile("\\[(\\d{2}):(\\d{2})(?:\\.(\\d{1,3}))?]");
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final OkHttpClient httpClient = new OkHttpClient();
@@ -214,10 +219,11 @@ public class SongDownloadService extends Service {
     }
 
     private String mergeLyrics(String lyric, String tlyric) {
+        String processedLyric = preprocessLyrics(lyric == null ? "" : lyric);
         if (tlyric == null || tlyric.trim().isEmpty()) {
-            return lyric == null ? "" : lyric;
+            return resolveTimestampConflicts(normalizeLrcMilliseconds(processedLyric));
         }
-        List<LyricLine> lines = LyricsUtils.mergeLyricsWithTranslation(lyric, tlyric);
+        List<LyricLine> lines = LyricsUtils.mergeLyricsWithTranslation(processedLyric, preprocessLyrics(tlyric));
         StringBuilder builder = new StringBuilder();
         for (LyricLine line : lines) {
             builder.append(formatLrcTimestamp(line.time)).append(line.text);
@@ -226,14 +232,153 @@ public class SongDownloadService extends Service {
             }
             builder.append('\n');
         }
-        return builder.toString().trim();
+        return resolveTimestampConflicts(normalizeLrcMilliseconds(builder.toString().trim()));
     }
 
     private String formatLrcTimestamp(long timeMs) {
         long minutes = timeMs / 60000L;
         long seconds = (timeMs % 60000L) / 1000L;
         long millis = timeMs % 1000L;
-        return String.format(java.util.Locale.getDefault(), "[%02d:%02d.%03d]", minutes, seconds, millis);
+        return String.format(Locale.US, "[%02d:%02d.%03d]", minutes, seconds, millis);
+    }
+
+    private String preprocessLyrics(String lyrics) {
+        if (lyrics == null || lyrics.trim().isEmpty()) {
+            return "";
+        }
+        String[] rawLines = lyrics.split("\\n");
+        List<ProcessedLyricLine> processedLines = new ArrayList<>();
+        Pattern leadingBlockPattern = Pattern.compile("^((?:\\s*\\[\\d{1,2}[:.]\\d{1,2}(?:[:.]\\d{1,3})?.*])+)(.*)$");
+        Pattern individualTimestampPattern = Pattern.compile("\\[\\d{1,2}[:.]\\d{1,2}(?:[:.]\\d{1,3})?.*?]");
+        for (String rawLine : rawLines) {
+            String trimmed = rawLine == null ? "" : rawLine.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            Matcher blockMatcher = leadingBlockPattern.matcher(trimmed);
+            if (blockMatcher.matches()) {
+                String timestamps = blockMatcher.group(1);
+                String content = blockMatcher.group(2).trim();
+                Matcher timestampMatcher = individualTimestampPattern.matcher(timestamps);
+                while (timestampMatcher.find()) {
+                    processedLines.add(new ProcessedLyricLine(normalizeTimestampToken(timestampMatcher.group()), content, false));
+                }
+                continue;
+            }
+            if (trimmed.startsWith("[") && trimmed.contains(":") && !trimmed.matches("^\\[\\d.*")) {
+                processedLines.add(new ProcessedLyricLine(trimmed, "", true));
+                continue;
+            }
+            processedLines.add(new ProcessedLyricLine("", trimmed, false));
+        }
+
+        processedLines.sort((left, right) -> {
+            if (left.isMetadata != right.isMetadata) {
+                return left.isMetadata ? -1 : 1;
+            }
+            if (left.isMetadata) {
+                return 0;
+            }
+            if (left.timeToken.isEmpty() != right.timeToken.isEmpty()) {
+                return left.timeToken.isEmpty() ? 1 : -1;
+            }
+            return left.timeToken.compareTo(right.timeToken);
+        });
+
+        StringBuilder builder = new StringBuilder();
+        for (ProcessedLyricLine line : processedLines) {
+            if (builder.length() > 0) {
+                builder.append('\n');
+            }
+            builder.append(line.timeToken).append(line.content);
+        }
+        return builder.toString();
+    }
+
+    private String normalizeTimestampToken(String rawTimestamp) {
+        Matcher matcher = Pattern.compile("\\[(\\d{1,2})[:.](\\d{1,2})(?:[:.](\\d{1,3}))?.*?]").matcher(rawTimestamp);
+        if (!matcher.matches()) {
+            return rawTimestamp;
+        }
+        String minutes = matcher.group(1) == null ? "00" : matcher.group(1);
+        String seconds = matcher.group(2) == null ? "00" : matcher.group(2);
+        String millis = matcher.group(3) == null ? "000" : matcher.group(3);
+        return String.format(Locale.US, "[%02d:%02d.%03d]",
+                Integer.parseInt(minutes),
+                Integer.parseInt(seconds),
+                Integer.parseInt(padRight(millis, 3).substring(0, 3)));
+    }
+
+    private String normalizeLrcMilliseconds(String lyrics) {
+        Matcher matcher = LRC_TIMESTAMP_PATTERN.matcher(lyrics == null ? "" : lyrics);
+        StringBuffer buffer = new StringBuffer();
+        while (matcher.find()) {
+            String millis = matcher.group(3);
+            if (millis == null) {
+                matcher.appendReplacement(buffer, Matcher.quoteReplacement(matcher.group(0)));
+                continue;
+            }
+            String replacement = String.format(Locale.US, "[%s:%s.%s]",
+                    matcher.group(1),
+                    matcher.group(2),
+                    padRight(millis, 3).substring(0, 3));
+            matcher.appendReplacement(buffer, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(buffer);
+        return buffer.toString();
+    }
+
+    private String resolveTimestampConflicts(String lyrics) {
+        if (lyrics == null || lyrics.isEmpty()) {
+            return "";
+        }
+        String[] lines = lyrics.split("\\n");
+        StringBuilder builder = new StringBuilder();
+        long previousTimestampMs = -1L;
+        for (String line : lines) {
+            String updatedLine = line;
+            Matcher matcher = LRC_TIMESTAMP_PATTERN.matcher(line);
+            if (matcher.find()) {
+                int minutes = Integer.parseInt(matcher.group(1));
+                int seconds = Integer.parseInt(matcher.group(2));
+                int millis = matcher.group(3) == null ? 0 : Integer.parseInt(padRight(matcher.group(3), 3).substring(0, 3));
+                long baseMs = minutes * 60000L + seconds * 1000L;
+                long currentMs = baseMs + millis;
+                if (currentMs <= previousTimestampMs) {
+                    currentMs = Math.min(baseMs + 999L, previousTimestampMs + 5L);
+                }
+                previousTimestampMs = currentMs;
+                long currentOffsetMs = Math.max(0L, Math.min(999L, currentMs - baseMs));
+                String normalizedTimestamp = String.format(Locale.US, "[%02d:%02d.%03d]", minutes, seconds, currentOffsetMs);
+                updatedLine = matcher.replaceFirst(Matcher.quoteReplacement(normalizedTimestamp));
+            }
+            if (builder.length() > 0) {
+                builder.append('\n');
+            }
+            builder.append(updatedLine);
+        }
+        return builder.toString().trim();
+    }
+
+    private String padRight(String input, int targetLength) {
+        String value = input == null ? "" : input;
+        StringBuilder builder = new StringBuilder(value);
+        while (builder.length() < targetLength) {
+            builder.append('0');
+        }
+        return builder.toString();
+    }
+
+    private static final class ProcessedLyricLine {
+        final String timeToken;
+        final String content;
+        final boolean isMetadata;
+
+        ProcessedLyricLine(String timeToken, String content, boolean isMetadata) {
+            this.timeToken = timeToken == null ? "" : timeToken;
+            this.content = content == null ? "" : content;
+            this.isMetadata = isMetadata;
+        }
     }
 
     private void updateNotification(String songName, String requestTitle, int completed, int total, boolean ongoing) {

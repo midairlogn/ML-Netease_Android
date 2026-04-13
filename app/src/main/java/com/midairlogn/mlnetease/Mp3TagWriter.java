@@ -6,6 +6,7 @@ import com.mpatric.mp3agic.Mp3File;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
+import java.util.Locale;
 
 public final class Mp3TagWriter {
     private Mp3TagWriter() {}
@@ -23,8 +24,10 @@ public final class Mp3TagWriter {
             tag.setTitle(tagData.title);
             tag.setArtist(tagData.artist);
             tag.setAlbum(tagData.album);
-            tag.setLyrics(tagData.lyrics);
             tag.setComment(tagData.comment);
+            if (tagData.lyrics != null && !tagData.lyrics.trim().isEmpty()) {
+                tag.setLyrics(normalizeLyricsForId3(tagData.lyrics));
+            }
             if (tagData.coverData != null && tagData.coverData.length > 0) {
                 tag.setAlbumImage(tagData.coverData, tagData.coverMimeType);
             }
@@ -35,5 +38,13 @@ public final class Mp3TagWriter {
             input.delete();
             output.delete();
         }
+    }
+
+    private static String normalizeLyricsForId3(String lyrics) {
+        String normalized = lyrics.replace("\r\n", "\n").replace('\r', '\n').trim();
+        if (normalized.isEmpty()) {
+            return normalized;
+        }
+        return String.format(Locale.US, "%s", normalized);
     }
 }
