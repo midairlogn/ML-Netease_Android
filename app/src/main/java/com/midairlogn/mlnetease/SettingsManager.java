@@ -23,6 +23,17 @@ public class SettingsManager {
     private static final String KEY_APP_VOLUME = "app_volume";
     private static final String KEY_HOME_SHORTCUTS = "home_shortcuts";
     private static final String KEY_APP_LANGUAGE = "app_language";
+    private static final String KEY_DOWNLOAD_FILENAME_TEMPLATE = "download_filename_template";
+    private static final String KEY_DOWNLOAD_FILENAME_SEPARATOR = "download_filename_separator";
+    private static final String KEY_DOWNLOAD_METADATA_ENABLED = "download_metadata_enabled";
+    private static final String KEY_DOWNLOAD_METADATA_TITLE = "download_metadata_title";
+    private static final String KEY_DOWNLOAD_METADATA_ARTIST = "download_metadata_artist";
+    private static final String KEY_DOWNLOAD_METADATA_ALBUM = "download_metadata_album";
+    private static final String KEY_DOWNLOAD_METADATA_LYRICS = "download_metadata_lyrics";
+    private static final String KEY_DOWNLOAD_METADATA_COVER = "download_metadata_cover";
+    private static final String KEY_DOWNLOAD_METADATA_EXTRA = "download_metadata_extra";
+    public static final String DEFAULT_DOWNLOAD_FILENAME_TEMPLATE = "${title}_${artist}_${album}";
+    public static final String DEFAULT_DOWNLOAD_FILENAME_SEPARATOR = "_";
     public static final int DEFAULT_APP_VOLUME = 80;
 
     private SharedPreferences prefs;
@@ -191,6 +202,120 @@ public class SettingsManager {
 
     public String getAppLanguage() {
         return prefs.getString(KEY_APP_LANGUAGE, "system"); // Default to system language
+    }
+
+    public DownloadCustomizationSettings getDownloadCustomizationSettings() {
+        DownloadCustomizationSettings settings = new DownloadCustomizationSettings();
+        settings.fileNameTemplate = getDownloadFileNameTemplate();
+        settings.separator = getDownloadFileNameSeparator();
+        settings.metadataEnabled = isDownloadMetadataEnabled();
+        settings.writeTitle = isDownloadMetadataTitleEnabled();
+        settings.writeArtist = isDownloadMetadataArtistEnabled();
+        settings.writeAlbum = isDownloadMetadataAlbumEnabled();
+        settings.writeLyrics = isDownloadMetadataLyricsEnabled();
+        settings.writeCover = isDownloadMetadataCoverEnabled();
+        settings.writeExtra = isDownloadMetadataExtraEnabled();
+        return settings;
+    }
+
+    public void setDownloadCustomizationSettings(DownloadCustomizationSettings settings) {
+        if (settings == null) {
+            settings = new DownloadCustomizationSettings();
+        }
+        prefs.edit()
+                .putString(KEY_DOWNLOAD_FILENAME_TEMPLATE, normalizeDownloadTemplate(settings.fileNameTemplate))
+                .putString(KEY_DOWNLOAD_FILENAME_SEPARATOR, normalizeDownloadSeparator(settings.separator))
+                .putBoolean(KEY_DOWNLOAD_METADATA_ENABLED, settings.metadataEnabled)
+                .putBoolean(KEY_DOWNLOAD_METADATA_TITLE, settings.writeTitle)
+                .putBoolean(KEY_DOWNLOAD_METADATA_ARTIST, settings.writeArtist)
+                .putBoolean(KEY_DOWNLOAD_METADATA_ALBUM, settings.writeAlbum)
+                .putBoolean(KEY_DOWNLOAD_METADATA_LYRICS, settings.writeLyrics)
+                .putBoolean(KEY_DOWNLOAD_METADATA_COVER, settings.writeCover)
+                .putBoolean(KEY_DOWNLOAD_METADATA_EXTRA, settings.writeExtra)
+                .apply();
+    }
+
+    public String getDownloadFileNameTemplate() {
+        return normalizeDownloadTemplate(prefs.getString(KEY_DOWNLOAD_FILENAME_TEMPLATE, DEFAULT_DOWNLOAD_FILENAME_TEMPLATE));
+    }
+
+    public void setDownloadFileNameTemplate(String template) {
+        prefs.edit().putString(KEY_DOWNLOAD_FILENAME_TEMPLATE, normalizeDownloadTemplate(template)).apply();
+    }
+
+    public String getDownloadFileNameSeparator() {
+        return normalizeDownloadSeparator(prefs.getString(KEY_DOWNLOAD_FILENAME_SEPARATOR, DEFAULT_DOWNLOAD_FILENAME_SEPARATOR));
+    }
+
+    public void setDownloadFileNameSeparator(String separator) {
+        prefs.edit().putString(KEY_DOWNLOAD_FILENAME_SEPARATOR, normalizeDownloadSeparator(separator)).apply();
+    }
+
+    public boolean isDownloadMetadataEnabled() {
+        return prefs.getBoolean(KEY_DOWNLOAD_METADATA_ENABLED, true);
+    }
+
+    public void setDownloadMetadataEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_ENABLED, enabled).apply();
+    }
+
+    public boolean isDownloadMetadataTitleEnabled() {
+        return prefs.getBoolean(KEY_DOWNLOAD_METADATA_TITLE, true);
+    }
+
+    public void setDownloadMetadataTitleEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_TITLE, enabled).apply();
+    }
+
+    public boolean isDownloadMetadataArtistEnabled() {
+        return prefs.getBoolean(KEY_DOWNLOAD_METADATA_ARTIST, true);
+    }
+
+    public void setDownloadMetadataArtistEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_ARTIST, enabled).apply();
+    }
+
+    public boolean isDownloadMetadataAlbumEnabled() {
+        return prefs.getBoolean(KEY_DOWNLOAD_METADATA_ALBUM, true);
+    }
+
+    public void setDownloadMetadataAlbumEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_ALBUM, enabled).apply();
+    }
+
+    public boolean isDownloadMetadataLyricsEnabled() {
+        return prefs.getBoolean(KEY_DOWNLOAD_METADATA_LYRICS, true);
+    }
+
+    public void setDownloadMetadataLyricsEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_LYRICS, enabled).apply();
+    }
+
+    public boolean isDownloadMetadataCoverEnabled() {
+        return prefs.getBoolean(KEY_DOWNLOAD_METADATA_COVER, true);
+    }
+
+    public void setDownloadMetadataCoverEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_COVER, enabled).apply();
+    }
+
+    public boolean isDownloadMetadataExtraEnabled() {
+        return prefs.getBoolean(KEY_DOWNLOAD_METADATA_EXTRA, true);
+    }
+
+    public void setDownloadMetadataExtraEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_EXTRA, enabled).apply();
+    }
+
+    private String normalizeDownloadTemplate(String template) {
+        if (template == null || template.trim().isEmpty()) {
+            return DEFAULT_DOWNLOAD_FILENAME_TEMPLATE;
+        }
+        return template.trim();
+    }
+
+    private String normalizeDownloadSeparator(String separator) {
+        return "-".equals(separator) ? "-" : DEFAULT_DOWNLOAD_FILENAME_SEPARATOR;
     }
 
     public SharedPreferences getPrefs() {

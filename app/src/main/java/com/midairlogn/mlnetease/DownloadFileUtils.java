@@ -9,8 +9,6 @@ import android.os.Environment;
 import android.provider.MediaStore;
 
 import java.io.OutputStream;
-import java.util.Locale;
-
 public final class DownloadFileUtils {
     private DownloadFileUtils() {}
 
@@ -37,10 +35,21 @@ public final class DownloadFileUtils {
     }
 
     public static String buildDisplayName(Song song, String extension) {
+        return buildDisplayName(song, extension, null);
+    }
+
+    public static String buildDisplayName(Song song, String extension, DownloadCustomizationSettings settings) {
         String title = song == null ? "" : song.name;
         String artist = song == null ? "" : song.artists;
         String album = song == null ? "" : song.album;
-        String fileName = sanitizeFileName(String.format(Locale.getDefault(), "%s_%s_%s", safe(title), safe(artist), safe(album)));
+        String template = settings == null || settings.fileNameTemplate == null || settings.fileNameTemplate.trim().isEmpty()
+                ? SettingsManager.DEFAULT_DOWNLOAD_FILENAME_TEMPLATE
+                : settings.fileNameTemplate.trim();
+        String fileName = template
+                .replace("${title}", safe(title))
+                .replace("${artist}", safe(artist))
+                .replace("${album}", safe(album));
+        fileName = sanitizeFileName(fileName);
         if (fileName.isEmpty()) {
             fileName = "netease_" + System.currentTimeMillis();
         }

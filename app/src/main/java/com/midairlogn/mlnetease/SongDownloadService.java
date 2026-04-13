@@ -122,6 +122,7 @@ public class SongDownloadService extends Service {
         String lyric = mergeLyrics(info.optString("lyric", ""), info.optString("tlyric", ""));
         String quality = settingsManager.getQuality();
         String extension = DownloadFileUtils.getAudioExtensionForQuality(quality);
+        DownloadCustomizationSettings customizationSettings = settingsManager.getDownloadCustomizationSettings();
 
         byte[] audioBytes = fetchBytes(audioUrl);
         byte[] coverBytes = pic == null || pic.isEmpty() ? null : fetchBytes(pic);
@@ -130,22 +131,29 @@ public class SongDownloadService extends Service {
         }
 
         DownloadTagData tagData = new DownloadTagData();
-        tagData.title = title;
-        tagData.artist = artist;
-        tagData.album = album;
-        tagData.lyrics = lyric;
-        tagData.quality = quality;
-        tagData.songId = song.id;
-        tagData.coverData = coverBytes;
-        tagData.coverMimeType = CoverUtils.getCoverMimeType();
-        tagData.comment = "Downloaded by ML Netease Android | Netease Song ID: " + song.id;
+        if (customizationSettings.metadataEnabled) {
+            tagData.title = customizationSettings.writeTitle ? title : null;
+            tagData.artist = customizationSettings.writeArtist ? artist : null;
+            tagData.album = customizationSettings.writeAlbum ? album : null;
+            tagData.lyrics = customizationSettings.writeLyrics ? lyric : null;
+            tagData.coverData = customizationSettings.writeCover ? coverBytes : null;
+            tagData.coverMimeType = customizationSettings.writeCover ? CoverUtils.getCoverMimeType() : null;
+            if (customizationSettings.writeExtra) {
+                tagData.quality = quality;
+                tagData.songId = song.id;
+                tagData.comment = "Downloaded by ML Netease Android | Netease Song ID: " + song.id;
+            }
+        }
 
-        byte[] taggedBytes = "mp3".equals(extension)
-                ? Mp3TagWriter.writeTaggedBytes(audioBytes, tagData)
-                : FlacTagWriter.writeTaggedBytes(audioBytes, tagData);
+        byte[] taggedBytes = audioBytes;
+        if (customizationSettings.metadataEnabled) {
+            taggedBytes = "mp3".equals(extension)
+                    ? Mp3TagWriter.writeTaggedBytes(audioBytes, tagData)
+                    : FlacTagWriter.writeTaggedBytes(audioBytes, tagData);
+        }
 
         Song finalSong = new Song(song.id, title, artist, album, pic);
-        String displayName = DownloadFileUtils.buildDisplayName(finalSong, extension);
+        String displayName = DownloadFileUtils.buildDisplayName(finalSong, extension, customizationSettings);
         String mimeType = "mp3".equals(extension) ? "audio/mpeg" : "audio/flac";
         String relativePath = DownloadFileUtils.buildRelativePath(request.type, request.title);
         DownloadFileUtils.saveAudio(this, taggedBytes, displayName, mimeType, relativePath);

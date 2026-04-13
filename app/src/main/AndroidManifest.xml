@@ -49,6 +49,9 @@
             android:name=".PlayerActivity"
             android:launchMode="singleTop"
             android:screenOrientation="portrait" />
+        <activity
+            android:name=".DownloadCustomizationActivity"
+            android:screenOrientation="portrait" />
         <activity android:name=".ImageDetailActivity" android:screenOrientation="portrait" />
 
         <service

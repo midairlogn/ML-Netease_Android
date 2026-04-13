@@ -43,6 +43,8 @@ public class SettingsFragment extends Fragment {
     private SeekBar seekbarAppVolume;
     private TextView textAppVolumeValue;
     private Spinner spinnerLanguage;
+    private View layoutDownloadCustomize;
+    private TextView textDownloadCustomizeSummary;
 
     private final Handler debounceHandler = new Handler(Looper.getMainLooper());
     private Runnable saveRunnable;
@@ -102,6 +104,8 @@ public class SettingsFragment extends Fragment {
         seekbarAppVolume = view.findViewById(R.id.seekbar_app_volume);
         textAppVolumeValue = view.findViewById(R.id.text_app_volume_value);
         spinnerLanguage = view.findViewById(R.id.spinner_language);
+        layoutDownloadCustomize = view.findViewById(R.id.layout_download_customize);
+        textDownloadCustomizeSummary = view.findViewById(R.id.text_download_customize_summary);
         qualityGroup.setOnTouchListener(hideKeyboardTouchListener);
 
         // Floating Window Views
@@ -144,6 +148,7 @@ public class SettingsFragment extends Fragment {
 
         // Input Listeners
         setupInputListeners();
+        layoutDownloadCustomize.setOnClickListener(v -> startActivity(new Intent(requireContext(), DownloadCustomizationActivity.class)));
 
         String currentQuality = settingsManager.getQuality();
 
@@ -327,6 +332,8 @@ public class SettingsFragment extends Fragment {
             settingsManager.setLyricSize(tempSize);
             notifySettingsChanged();
         });
+
+        refreshDownloadCustomizeSummary();
     }
 
     @Override
@@ -515,6 +522,23 @@ public class SettingsFragment extends Fragment {
 
         tempSize = settingsManager.getLyricSize();
         textFontSize.setText(String.valueOf((int)tempSize));
+        refreshDownloadCustomizeSummary();
+    }
+
+    private void refreshDownloadCustomizeSummary() {
+        if (textDownloadCustomizeSummary == null || settingsManager == null) {
+            return;
+        }
+        DownloadCustomizationSettings settings = settingsManager.getDownloadCustomizationSettings();
+        Song previewSong = new Song("0", "Example Song", "Example Artist", "Example Album", "");
+        String previewName = DownloadFileUtils.buildDisplayName(
+                previewSong,
+                DownloadFileUtils.getAudioExtensionForQuality(settingsManager.getQuality()),
+                settings);
+        String metadataState = settings.metadataEnabled
+                ? getString(R.string.download_customize_metadata_on)
+                : getString(R.string.download_customize_metadata_off);
+        textDownloadCustomizeSummary.setText(getString(R.string.download_customize_summary, previewName, metadataState));
     }
 
     private void updateColorSelection() {
