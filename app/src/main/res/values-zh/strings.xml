@@ -55,6 +55,7 @@
     <string name="download_writing_tags">正在写入元数据</string>
     <string name="download_saving_file">正在保存文件</string>
     <string name="download_song_completed">单曲下载完成</string>
+    <string name="download_song_skipped_exists">文件已存在，已跳过</string>
     <string name="download_status_waiting">等待中</string>
     <string name="download_status_active">下载中</string>
     <string name="download_status_paused">已暂停</string>

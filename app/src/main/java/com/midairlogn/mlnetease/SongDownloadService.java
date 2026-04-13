@@ -294,6 +294,22 @@ public class SongDownloadService extends Service {
         String quality = settingsManager.getQuality();
         String extension = DownloadFileUtils.getAudioExtensionForQuality(quality);
         DownloadCustomizationSettings customizationSettings = settingsManager.getDownloadCustomizationSettings();
+        Song finalSong = new Song(song.id, title, artist, album, pic);
+        String displayName = DownloadFileUtils.buildDisplayName(finalSong, extension, customizationSettings);
+        String relativePath = DownloadFileUtils.buildRelativePath(task.request.type, task.request.title);
+
+        if (DownloadFileUtils.audioExists(this, displayName, relativePath)) {
+            taskManager.updateTaskProgress(
+                    task.id,
+                    index,
+                    title,
+                    getString(R.string.download_song_skipped_exists),
+                    computeOverallProgress(task, index, 100),
+                    0L,
+                    -1L
+            );
+            return;
+        }
 
         taskManager.updateTaskProgress(
                 task.id,
@@ -373,10 +389,7 @@ public class SongDownloadService extends Service {
                 -1L
         );
 
-        Song finalSong = new Song(song.id, title, artist, album, pic);
-        String displayName = DownloadFileUtils.buildDisplayName(finalSong, extension, customizationSettings);
         String mimeType = "mp3".equals(extension) ? "audio/mpeg" : "audio/flac";
-        String relativePath = DownloadFileUtils.buildRelativePath(task.request.type, task.request.title);
         Uri savedUri = DownloadFileUtils.createPendingAudio(this, displayName, mimeType, relativePath);
         boolean publishSuccess = false;
         try {

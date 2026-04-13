@@ -3,6 +3,7 @@ package com.midairlogn.mlnetease;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -11,6 +12,8 @@ import android.provider.MediaStore;
 import androidx.annotation.Nullable;
 
 import java.io.OutputStream;
+import java.util.Locale;
+
 public final class DownloadFileUtils {
     private DownloadFileUtils() {}
 
@@ -73,6 +76,64 @@ public final class DownloadFileUtils {
         }
     }
 
+    public static boolean audioExists(Context context, String displayName, String relativePath) {
+        ContentResolver resolver = context.getContentResolver();
+        Uri collection = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                ? MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                : MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+
+        String normalizedDisplayName = normalizeDisplayName(displayName);
+        String normalizedRelativePath = normalizeRelativePath(relativePath);
+
+        String selection;
+        String[] selectionArgs;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            selection = "LOWER(" + MediaStore.Audio.Media.DISPLAY_NAME + ") = ?";
+            selectionArgs = new String[]{normalizedDisplayName};
+        } else {
+            selection = "LOWER(" + MediaStore.Audio.Media.DISPLAY_NAME + ") = ? AND LOWER(" + MediaStore.Audio.Media.DATA + ") LIKE ?";
+            selectionArgs = new String[]{
+                    normalizedDisplayName,
+                    ("%/" + normalizedRelativePath.replace('/', '%') + normalizedDisplayName).toLowerCase(Locale.US)
+            };
+        }
+
+        try (Cursor cursor = resolver.query(
+                collection,
+                new String[]{
+                        MediaStore.Audio.Media._ID,
+                        MediaStore.Audio.Media.DISPLAY_NAME,
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ? MediaStore.Audio.Media.RELATIVE_PATH : MediaStore.Audio.Media.DATA,
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ? MediaStore.Audio.Media.IS_PENDING : MediaStore.Audio.Media._ID
+                },
+                selection,
+                selectionArgs,
+                null
+        )) {
+            if (cursor == null) {
+                return false;
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                int pathIndex = cursor.getColumnIndex(MediaStore.Audio.Media.RELATIVE_PATH);
+                int nameIndex = cursor.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME);
+                int pendingIndex = cursor.getColumnIndex(MediaStore.Audio.Media.IS_PENDING);
+                while (cursor.moveToNext()) {
+                    String existingName = nameIndex >= 0 ? normalizeDisplayName(cursor.getString(nameIndex)) : "";
+                    String existingPath = pathIndex >= 0 ? normalizeRelativePath(cursor.getString(pathIndex)) : "";
+                    boolean isPending = pendingIndex >= 0 && cursor.getInt(pendingIndex) == 1;
+                    if (normalizedDisplayName.equals(existingName) && normalizedRelativePath.equals(existingPath)) {
+                        return true;
+                    }
+                    if (isPending && normalizedDisplayName.equals(existingName) && normalizedRelativePath.equals(existingPath)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            return cursor.moveToFirst();
+        }
+    }
+
     public static Uri createPendingAudio(Context context, String displayName, String mimeType, String relativePath) {
         ContentResolver resolver = context.getContentResolver();
         ContentValues values = new ContentValues();
@@ -130,5 +191,23 @@ public final class DownloadFileUtils {
 
     private static String safe(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private static String normalizeRelativePath(String relativePath) {
+        if (relativePath == null) {
+            return "";
+        }
+        String normalized = relativePath.replace('\\', '/').trim();
+        while (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        if (!normalized.isEmpty() && !normalized.endsWith("/")) {
+            normalized += "/";
+        }
+        return normalized;
+    }
+
+    private static String normalizeDisplayName(String displayName) {
+        return displayName == null ? "" : displayName.trim().toLowerCase(Locale.US);
     }
 }

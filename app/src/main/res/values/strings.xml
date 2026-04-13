@@ -57,6 +57,7 @@
     <string name="download_writing_tags">Writing metadata</string>
     <string name="download_saving_file">Saving file</string>
     <string name="download_song_completed">Song completed</string>
+    <string name="download_song_skipped_exists">Already exists, skipped</string>
     <string name="download_status_waiting">Waiting</string>
     <string name="download_status_active">Downloading</string>
     <string name="download_status_paused">Paused</string>
