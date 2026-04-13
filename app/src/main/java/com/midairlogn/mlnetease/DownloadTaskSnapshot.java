@@ -27,6 +27,7 @@ public class DownloadTaskSnapshot {
     public final boolean canPause;
     public final boolean canResume;
     public final boolean canCancel;
+    public final boolean canRetry;
     public final List<String> failedSongTitles;
 
     public DownloadTaskSnapshot(DownloadTask task) {
@@ -53,6 +54,7 @@ public class DownloadTaskSnapshot {
         canPause = task.status == DownloadTaskStatus.ACTIVE;
         canResume = task.status == DownloadTaskStatus.PAUSED;
         canCancel = !task.status.isTerminal();
+        canRetry = task.status == DownloadTaskStatus.FAILED || task.status == DownloadTaskStatus.CANCELLED;
         failedSongTitles = new ArrayList<>(task.failedSongTitles);
     }
 }

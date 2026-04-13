@@ -38,6 +38,7 @@ public class DownloadTaskManager {
 
     private DownloadTaskManager(Context appContext) {
         this.appContext = appContext;
+        tasks.addAll(DownloadTaskStore.load(appContext));
     }
 
     public DownloadTaskSnapshot enqueue(DownloadRequest request) {
@@ -45,6 +46,7 @@ public class DownloadTaskManager {
         synchronized (lock) {
             tasks.add(task);
         }
+        persistTasks();
         notifyListeners();
         return task.snapshot();
     }
@@ -126,11 +128,12 @@ public class DownloadTaskManager {
     public boolean activateTask(String taskId) {
         synchronized (lock) {
             DownloadTask task = findTaskLocked(taskId);
-            if (task == null || task.status == DownloadTaskStatus.CANCELLED || task.status == DownloadTaskStatus.COMPLETED) {
+            if (task == null || task.status == DownloadTaskStatus.CANCELLED || task.status == DownloadTaskStatus.COMPLETED || task.status == DownloadTaskStatus.FAILED) {
                 return false;
             }
             task.status = DownloadTaskStatus.ACTIVE;
             task.pauseRequested = false;
+            task.cancelRequested = false;
             if (task.startedAt == 0L) {
                 task.startedAt = System.currentTimeMillis();
             }
@@ -143,6 +146,7 @@ public class DownloadTaskManager {
                 task.statusMessage = "Preparing download";
             }
         }
+        persistTasks();
         notifyListeners();
         return true;
     }
@@ -157,6 +161,7 @@ public class DownloadTaskManager {
             task.statusMessage = "Pausing after current step";
             task.updatedAt = System.currentTimeMillis();
         }
+        persistTasks();
         notifyListeners();
     }
 
@@ -169,10 +174,13 @@ public class DownloadTaskManager {
             task.status = DownloadTaskStatus.PAUSED;
             task.pauseRequested = false;
             task.pausedAt = System.currentTimeMillis();
+            task.currentSongBytesDownloaded = 0L;
+            task.currentSongBytesTotal = -1L;
             task.statusMessage = safeMessage(message, "Paused");
             task.etaMillis = -1L;
             task.updatedAt = System.currentTimeMillis();
         }
+        persistTasks();
         notifyListeners();
     }
 
@@ -184,9 +192,11 @@ public class DownloadTaskManager {
             }
             task.status = DownloadTaskStatus.WAITING;
             task.pauseRequested = false;
+            task.cancelRequested = false;
             task.statusMessage = "Queued to resume";
             task.updatedAt = System.currentTimeMillis();
         }
+        persistTasks();
         notifyListeners();
     }
 
@@ -201,12 +211,45 @@ public class DownloadTaskManager {
             if (task.status == DownloadTaskStatus.WAITING || task.status == DownloadTaskStatus.PAUSED) {
                 task.status = DownloadTaskStatus.CANCELLED;
                 task.statusMessage = "Cancelled";
+                task.currentSongBytesDownloaded = 0L;
+                task.currentSongBytesTotal = -1L;
                 task.etaMillis = -1L;
             } else {
                 task.statusMessage = "Cancelling";
             }
             task.updatedAt = System.currentTimeMillis();
         }
+        persistTasks();
+        notifyListeners();
+    }
+
+    public void retryTask(String taskId) {
+        synchronized (lock) {
+            DownloadTask task = findTaskLocked(taskId);
+            if (task == null || !task.status.isTerminal()) {
+                return;
+            }
+            task.status = DownloadTaskStatus.WAITING;
+            task.completedCount = 0;
+            task.successCount = 0;
+            task.failedCount = 0;
+            task.currentSongIndex = -1;
+            task.progressPercent = 0;
+            task.currentSongBytesDownloaded = 0L;
+            task.currentSongBytesTotal = -1L;
+            task.startedAt = 0L;
+            task.updatedAt = System.currentTimeMillis();
+            task.pausedAt = 0L;
+            task.totalPausedDuration = 0L;
+            task.etaMillis = -1L;
+            task.currentSongTitle = "";
+            task.statusMessage = "Queued";
+            task.lastError = "";
+            task.cancelRequested = false;
+            task.pauseRequested = false;
+            task.failedSongTitles.clear();
+        }
+        persistTasks();
         notifyListeners();
     }
 
@@ -218,6 +261,7 @@ public class DownloadTaskManager {
                 }
             }
         }
+        persistTasks();
         notifyListeners();
     }
 
@@ -230,6 +274,7 @@ public class DownloadTaskManager {
                 }
             }
         }
+        persistTasks();
         notifyListeners();
     }
 
@@ -254,6 +299,7 @@ public class DownloadTaskManager {
             task.etaMillis = estimateEtaLocked(task);
             task.updatedAt = System.currentTimeMillis();
         }
+        persistTasks();
         notifyListeners();
     }
 
@@ -278,6 +324,7 @@ public class DownloadTaskManager {
             task.etaMillis = estimateEtaLocked(task);
             task.updatedAt = System.currentTimeMillis();
         }
+        persistTasks();
         notifyListeners();
     }
 
@@ -293,8 +340,11 @@ public class DownloadTaskManager {
             task.currentSongBytesDownloaded = 0L;
             task.currentSongBytesTotal = -1L;
             task.etaMillis = 0L;
+            task.cancelRequested = false;
+            task.pauseRequested = false;
             task.updatedAt = System.currentTimeMillis();
         }
+        persistTasks();
         notifyListeners();
     }
 
@@ -307,9 +357,14 @@ public class DownloadTaskManager {
             task.status = DownloadTaskStatus.FAILED;
             task.lastError = safeMessage(errorMessage, task.lastError);
             task.statusMessage = safeMessage(errorMessage, "Download failed");
+            task.currentSongBytesDownloaded = 0L;
+            task.currentSongBytesTotal = -1L;
             task.etaMillis = -1L;
+            task.cancelRequested = false;
+            task.pauseRequested = false;
             task.updatedAt = System.currentTimeMillis();
         }
+        persistTasks();
         notifyListeners();
     }
 
@@ -321,9 +376,14 @@ public class DownloadTaskManager {
             }
             task.status = DownloadTaskStatus.CANCELLED;
             task.statusMessage = "Cancelled";
+            task.currentSongBytesDownloaded = 0L;
+            task.currentSongBytesTotal = -1L;
             task.etaMillis = -1L;
+            task.cancelRequested = false;
+            task.pauseRequested = false;
             task.updatedAt = System.currentTimeMillis();
         }
+        persistTasks();
         notifyListeners();
     }
 
@@ -354,6 +414,14 @@ public class DownloadTaskManager {
         for (Listener listener : listenerSnapshot) {
             listener.onDownloadTasksChanged(taskSnapshots);
         }
+    }
+
+    private void persistTasks() {
+        List<DownloadTask> snapshot;
+        synchronized (lock) {
+            snapshot = new ArrayList<>(tasks);
+        }
+        DownloadTaskStore.save(appContext, snapshot);
     }
 
     private DownloadTask findTaskLocked(String taskId) {

@@ -21,11 +21,16 @@ public class DownloadTaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         void onPauseClicked(DownloadTaskSnapshot task);
         void onResumeClicked(DownloadTaskSnapshot task);
         void onCancelClicked(DownloadTaskSnapshot task);
+        void onRetryClicked(DownloadTaskSnapshot task);
         void onRemoveClicked(DownloadTaskSnapshot task);
     }
 
     private final List<DownloadTaskListItem> items = new ArrayList<>();
     private Listener listener;
+
+    public DownloadTaskAdapter() {
+        setHasStableIds(true);
+    }
 
     public void setListener(Listener listener) {
         this.listener = listener;
@@ -42,6 +47,15 @@ public class DownloadTaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
     @Override
     public int getItemViewType(int position) {
         return items.get(position).type;
+    }
+
+    @Override
+    public long getItemId(int position) {
+        DownloadTaskListItem item = items.get(position);
+        if (item.type == DownloadTaskListItem.TYPE_SECTION) {
+            return ("section:" + item.title).hashCode();
+        }
+        return item.task == null ? RecyclerView.NO_ID : item.task.id.hashCode();
     }
 
     @NonNull
@@ -95,6 +109,7 @@ public class DownloadTaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         private final ProgressBar progressBar;
         private final Button pauseResume;
         private final Button cancel;
+        private final Button retry;
         private final Button remove;
 
         TaskViewHolder(@NonNull View itemView) {
@@ -109,6 +124,7 @@ public class DownloadTaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             progressBar = itemView.findViewById(R.id.progress_download_task);
             pauseResume = itemView.findViewById(R.id.btn_download_pause_resume);
             cancel = itemView.findViewById(R.id.btn_download_cancel);
+            retry = itemView.findViewById(R.id.btn_download_retry);
             remove = itemView.findViewById(R.id.btn_download_remove);
         }
 
@@ -158,6 +174,13 @@ public class DownloadTaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 }
             });
 
+            retry.setVisibility(task.canRetry ? View.VISIBLE : View.GONE);
+            retry.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onRetryClicked(task);
+                }
+            });
+
             remove.setVisibility(task.status.isTerminal() ? View.VISIBLE : View.GONE);
             remove.setOnClickListener(v -> {
                 if (listener != null) {
@@ -193,18 +216,26 @@ public class DownloadTaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         }
 
         private static String buildDetails(View itemView, DownloadTaskSnapshot task) {
-            List<String> parts = new ArrayList<>();
-            parts.add(itemView.getContext().getString(R.string.download_task_counts, task.completedCount, task.totalCount));
+            List<String> firstLineParts = new ArrayList<>();
+            firstLineParts.add(itemView.getContext().getString(R.string.download_task_counts, task.completedCount, task.totalCount));
+            if (task.etaMillis > 0L) {
+                firstLineParts.add(itemView.getContext().getString(R.string.download_eta_format, formatDuration(task.etaMillis)));
+            }
+
+            List<String> secondLineParts = new ArrayList<>();
             if (task.currentSongTitle != null && !task.currentSongTitle.trim().isEmpty()) {
-                parts.add(task.currentSongTitle);
+                secondLineParts.add(task.currentSongTitle.trim());
             }
             if (task.statusMessage != null && !task.statusMessage.trim().isEmpty()) {
-                parts.add(task.statusMessage);
+                secondLineParts.add(task.statusMessage.trim());
             }
-            if (task.etaMillis > 0L) {
-                parts.add(itemView.getContext().getString(R.string.download_eta_format, formatDuration(task.etaMillis)));
+
+            String firstLine = TextUtils.join(" • ", firstLineParts);
+            String secondLine = TextUtils.join(" • ", secondLineParts);
+            if (secondLine.isEmpty()) {
+                return firstLine;
             }
-            return TextUtils.join(" • ", parts);
+            return firstLine + "\n" + secondLine;
         }
 
         private static String formatDuration(long millis) {

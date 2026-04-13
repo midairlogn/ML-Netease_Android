@@ -23,6 +23,7 @@ public class DownloadsFragment extends Fragment implements DownloadTaskManager.L
     private TextView textSummary;
     private TextView textEmpty;
     private Button btnClearFinished;
+    private View emptyLayout;
 
     @Nullable
     @Override
@@ -38,6 +39,7 @@ public class DownloadsFragment extends Fragment implements DownloadTaskManager.L
         textSummary = view.findViewById(R.id.text_downloads_summary);
         textEmpty = view.findViewById(R.id.text_downloads_empty);
         btnClearFinished = view.findViewById(R.id.btn_clear_finished_downloads);
+        emptyLayout = view.findViewById(R.id.layout_downloads_empty);
         RecyclerView recyclerView = view.findViewById(R.id.recycler_download_tasks);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
@@ -56,6 +58,12 @@ public class DownloadsFragment extends Fragment implements DownloadTaskManager.L
             @Override
             public void onCancelClicked(DownloadTaskSnapshot task) {
                 SongDownloadService.cancelTask(requireContext(), task.id);
+            }
+
+            @Override
+            public void onRetryClicked(DownloadTaskSnapshot task) {
+                taskManager.retryTask(task.id);
+                taskManager.ensureServiceRunning();
             }
 
             @Override
@@ -113,7 +121,7 @@ public class DownloadsFragment extends Fragment implements DownloadTaskManager.L
 
         textSummary.setText(getString(R.string.downloads_summary_format, active, waiting, finished));
         btnClearFinished.setVisibility(finished > 0 ? View.VISIBLE : View.GONE);
-        textEmpty.setVisibility(tasks.isEmpty() ? View.VISIBLE : View.GONE);
+        emptyLayout.setVisibility(tasks.isEmpty() ? View.VISIBLE : View.GONE);
 
         List<DownloadTaskListItem> items = new ArrayList<>();
         if (!activeTasks.isEmpty()) {

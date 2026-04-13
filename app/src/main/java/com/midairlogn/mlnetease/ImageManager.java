@@ -43,10 +43,20 @@ public class ImageManager {
     public void load(final String url, final ImageView imageView, int placeholderResId) {
         if (url == null || url.isEmpty()) {
             imageView.setImageResource(placeholderResId);
+            imageView.setTag(null);
             return;
         }
 
         String normalizedUrl = ImageUtils.normalizeUrl(url);
+
+        if (normalizedUrl.equals(imageView.getTag())) {
+            Bitmap cachedBitmap = memoryCache.get(normalizedUrl);
+            if (cachedBitmap != null) {
+                imageView.setImageBitmap(cachedBitmap);
+            }
+            return;
+        }
+
         imageView.setTag(normalizedUrl);
 
         // Set placeholder immediately

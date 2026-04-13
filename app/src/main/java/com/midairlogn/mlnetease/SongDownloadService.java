@@ -127,6 +127,7 @@ public class SongDownloadService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent == null || intent.getAction() == null) {
+            recoverStaleActiveTasks();
             maybeScheduleWorker(startId);
             return START_STICKY;
         }
@@ -144,8 +145,18 @@ public class SongDownloadService extends Service {
         }
 
         updateNotificationForCurrentState();
+        recoverStaleActiveTasks();
         maybeScheduleWorker(startId);
         return START_STICKY;
+    }
+
+    private void recoverStaleActiveTasks() {
+        for (DownloadTaskSnapshot snapshot : taskManager.getTaskSnapshots()) {
+            if (snapshot.status == DownloadTaskStatus.ACTIVE) {
+                taskManager.retryTask(snapshot.id);
+            }
+        }
+        updateNotificationForCurrentState();
     }
 
     private void maybeScheduleWorker(int startId) {

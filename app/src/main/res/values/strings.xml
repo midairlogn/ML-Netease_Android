@@ -46,6 +46,7 @@
     <string name="download_paused">Paused</string>
     <string name="download_pause">Pause</string>
     <string name="download_resume">Resume</string>
+    <string name="download_retry">Retry</string>
     <string name="download_remove">Remove</string>
     <string name="download_clear_finished">Clear finished</string>
     <string name="download_fetching_metadata">Fetching metadata</string>
@@ -65,7 +66,7 @@
     <string name="download_percent_format">%1$d%%</string>
     <string name="downloads_summary_empty">No downloads yet</string>
     <string name="downloads_summary_format">Active %1$d • Waiting %2$d • Finished %3$d</string>
-    <string name="downloads_empty">Your download tasks will appear here.</string>
+    <string name="downloads_empty">Your queued and finished downloads will appear here.</string>
     <string name="download_section_active">In progress</string>
     <string name="download_section_waiting">Waiting and paused</string>
     <string name="download_section_finished">Finished</string>
