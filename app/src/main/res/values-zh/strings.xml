@@ -169,4 +169,24 @@
     <string name="download_customize_metadata_off">元数据关闭</string>
     <string name="download_customize_summary">%1$s | %2$s</string>
     <string name="disclaimer">本工具仅供学习交流使用，非网易云音乐官方应用。\n请支持正版音乐。\n使用本工具时请遵守相关法律法规，尊重音乐人的劳动成果。</string>
+    <string name="settings_backup">导入/导出数据</string>
+    <string name="settings_backup_content_description">导入或导出应用数据</string>
+    <string name="settings_backup_choose_action">应用数据文件</string>
+    <string name="settings_export">导出数据</string>
+    <string name="settings_import">导入数据</string>
+    <string name="settings_export_subtitle">创建一个加密的应用数据备份文件，其中包含首页快捷方式。</string>
+    <string name="settings_import_subtitle">解锁之前导出的应用数据文件并应用到当前设备。</string>
+    <string name="settings_password">密码</string>
+    <string name="settings_confirm_password">确认密码</string>
+    <string name="settings_export_note">导出文件包含个人账号信息和首页快捷方式，请妥善保管。</string>
+    <string name="settings_import_note">导入会覆盖当前已保存的应用数据，但不会恢复下载任务和其他运行时信息。</string>
+    <string name="settings_selected_file">已选择文件</string>
+    <string name="settings_password_required">密码不能为空</string>
+    <string name="settings_password_mismatch">二次输入密码不一致</string>
+    <string name="settings_export_success">数据导出成功</string>
+    <string name="settings_import_success">数据导入成功</string>
+    <string name="settings_backup_invalid_file">数据文件不受支持或已损坏</string>
+    <string name="settings_backup_wrong_password">密码错误或文件已被损坏</string>
+    <string name="settings_backup_read_error">无法打开文件</string>
+    <string name="settings_backup_write_error">无法写入数据文件</string>
 </resources>

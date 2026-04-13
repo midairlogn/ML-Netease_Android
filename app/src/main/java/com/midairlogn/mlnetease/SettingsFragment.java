@@ -1,12 +1,16 @@
 package com.midairlogn.mlnetease;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Typeface;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.InputType;
 import android.provider.Settings;
 import android.text.Html;
+import android.text.TextUtils;
 import android.text.method.LinkMovementMethod;
 import android.os.Handler;
 import android.os.Looper;
@@ -30,9 +34,19 @@ import android.widget.TextView;
 import android.widget.AdapterView;
 import android.widget.Toast;
 import android.content.SharedPreferences;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.text.SimpleDateFormat;
+import java.util.Locale;
+import java.util.Objects;
+import javax.crypto.AEADBadTagException;
 
 public class SettingsFragment extends Fragment {
 
@@ -45,6 +59,9 @@ public class SettingsFragment extends Fragment {
     private Spinner spinnerLanguage;
     private View layoutDownloadCustomize;
     private TextView textDownloadCustomizeSummary;
+    private ActivityResultLauncher<String> createSettingsBackupLauncher;
+    private ActivityResultLauncher<String[]> importSettingsBackupLauncher;
+    private PendingBackupAction pendingBackupAction;
 
     private final Handler debounceHandler = new Handler(Looper.getMainLooper());
     private Runnable saveRunnable;
@@ -64,10 +81,35 @@ public class SettingsFragment extends Fragment {
     private int tempColor = 0;
     private float tempSize = 16f;
 
+    private static class PendingBackupAction {
+        final boolean export;
+        final String password;
+        final Uri fileUri;
+
+        PendingBackupAction(boolean export, String password, @Nullable Uri fileUri) {
+            this.export = export;
+            this.password = password;
+            this.fileUri = fileUri;
+        }
+    }
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_settings, container, false);
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        createSettingsBackupLauncher = registerForActivityResult(
+                new ActivityResultContracts.CreateDocument("application/octet-stream"),
+                this::handleExportDestinationSelected
+        );
+        importSettingsBackupLauncher = registerForActivityResult(
+                new ActivityResultContracts.OpenDocument(),
+                this::handleImportSourceSelected
+        );
     }
 
     @Override
@@ -106,6 +148,7 @@ public class SettingsFragment extends Fragment {
         spinnerLanguage = view.findViewById(R.id.spinner_language);
         layoutDownloadCustomize = view.findViewById(R.id.layout_download_customize);
         textDownloadCustomizeSummary = view.findViewById(R.id.text_download_customize_summary);
+        View btnSettingsBackup = view.findViewById(R.id.btn_settings_backup);
         qualityGroup.setOnTouchListener(hideKeyboardTouchListener);
 
         // Floating Window Views
@@ -149,6 +192,7 @@ public class SettingsFragment extends Fragment {
         // Input Listeners
         setupInputListeners();
         layoutDownloadCustomize.setOnClickListener(v -> startActivity(new Intent(requireContext(), DownloadCustomizationActivity.class)));
+        btnSettingsBackup.setOnClickListener(v -> showDataBackupActions());
 
         String currentQuality = settingsManager.getQuality();
 
@@ -539,6 +583,235 @@ public class SettingsFragment extends Fragment {
                 ? getString(R.string.download_customize_metadata_on)
                 : getString(R.string.download_customize_metadata_off);
         textDownloadCustomizeSummary.setText(getString(R.string.download_customize_summary, previewName, metadataState));
+    }
+
+    private void showDataBackupActions() {
+        String[] actions = new String[] {
+                getString(R.string.settings_export),
+                getString(R.string.settings_import)
+        };
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.settings_backup_choose_action)
+                .setItems(actions, (dialog, which) -> {
+                    if (which == 0) {
+                        showExportPasswordDialog();
+                    } else if (which == 1) {
+                        importSettingsBackupLauncher.launch(new String[] {"application/octet-stream", "application/json", "*/*"});
+                    }
+                })
+                .show();
+    }
+
+    private void showExportPasswordDialog() {
+        showPasswordDialog(true, null);
+    }
+
+    private void showImportPasswordDialog(@NonNull Uri uri) {
+        showPasswordDialog(false, uri);
+    }
+
+    private void showPasswordDialog(boolean isExport, @Nullable Uri importUri) {
+        LinearLayout container = new LinearLayout(requireContext());
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(dpToPx(20), dpToPx(12), dpToPx(20), 0);
+
+        TextView subtitleView = createDialogBodyText(isExport
+                ? R.string.settings_export_subtitle
+                : R.string.settings_import_subtitle);
+        container.addView(subtitleView);
+
+        if (!isExport && importUri != null) {
+            TextView fileLabel = createDialogSectionLabel(R.string.settings_selected_file);
+            fileLabel.setPadding(0, dpToPx(16), 0, dpToPx(8));
+            container.addView(fileLabel);
+
+            TextView fileChip = createDialogValueChip(getReadableFileName(importUri));
+            container.addView(fileChip);
+
+            TextView importNote = createDialogBodyText(R.string.settings_import_note);
+            importNote.setPadding(0, dpToPx(12), 0, 0);
+            container.addView(importNote);
+        }
+
+        TextView passwordLabel = createDialogSectionLabel(R.string.settings_password);
+        passwordLabel.setPadding(0, dpToPx(16), 0, dpToPx(8));
+        container.addView(passwordLabel);
+
+        EditText passwordInput = createPasswordInput();
+        passwordInput.setHint(getString(R.string.settings_password));
+        container.addView(passwordInput);
+
+        EditText confirmInput = null;
+        if (isExport) {
+            TextView noteView = createDialogBodyText(R.string.settings_export_note);
+            noteView.setPadding(0, dpToPx(12), 0, 0);
+            container.addView(noteView);
+
+            TextView confirmLabel = createDialogSectionLabel(R.string.settings_confirm_password);
+            confirmLabel.setPadding(0, dpToPx(16), 0, dpToPx(8));
+            container.addView(confirmLabel);
+
+            confirmInput = createPasswordInput();
+            confirmInput.setHint(getString(R.string.settings_confirm_password));
+            container.addView(confirmInput);
+        }
+
+        EditText finalConfirmInput = confirmInput;
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                .setTitle(isExport ? R.string.settings_export : R.string.settings_import)
+                .setView(container)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(isExport ? R.string.settings_export : R.string.settings_import, null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    String password = passwordInput.getText().toString();
+                    if (password.trim().isEmpty()) {
+                        Toast.makeText(requireContext(), R.string.settings_password_required, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (isExport && finalConfirmInput != null && !Objects.equals(password, finalConfirmInput.getText().toString())) {
+                        Toast.makeText(requireContext(), R.string.settings_password_mismatch, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    pendingBackupAction = new PendingBackupAction(isExport, password, importUri);
+                    dialog.dismiss();
+                    if (isExport) {
+                        createSettingsBackupLauncher.launch(getDefaultBackupFilename());
+                    } else if (importUri != null) {
+                        handleImportSourceSelected(importUri);
+                    }
+                }));
+        dialog.show();
+    }
+
+    private TextView createDialogBodyText(int stringResId) {
+        TextView textView = new TextView(requireContext());
+        textView.setText(stringResId);
+        textView.setTextColor(getResources().getColor(R.color.text_secondary, null));
+        textView.setTextSize(14f);
+        textView.setLineSpacing(0f, 1.15f);
+        return textView;
+    }
+
+    private TextView createDialogSectionLabel(int stringResId) {
+        TextView textView = new TextView(requireContext());
+        textView.setText(stringResId);
+        textView.setTextColor(getResources().getColor(R.color.text_primary, null));
+        textView.setTypeface(Typeface.DEFAULT_BOLD);
+        textView.setTextSize(14f);
+        return textView;
+    }
+
+    private TextView createDialogValueChip(String text) {
+        TextView textView = new TextView(requireContext());
+        textView.setText(text);
+        textView.setTextColor(getResources().getColor(R.color.text_primary, null));
+        textView.setBackgroundResource(R.drawable.search_background);
+        textView.setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10));
+        textView.setMaxLines(2);
+        textView.setEllipsize(TextUtils.TruncateAt.END);
+        return textView;
+    }
+
+    private EditText createPasswordInput() {
+        EditText input = new EditText(requireContext());
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        input.setTextColor(getResources().getColor(R.color.text_primary, null));
+        input.setHintTextColor(getResources().getColor(R.color.text_secondary, null));
+        input.setBackgroundResource(R.drawable.search_background);
+        input.setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12));
+        return input;
+    }
+
+    private String getReadableFileName(Uri uri) {
+        String lastSegment = uri.getLastPathSegment();
+        if (lastSegment == null || lastSegment.trim().isEmpty()) {
+            return uri.toString();
+        }
+        int splitIndex = lastSegment.lastIndexOf('/');
+        String value = splitIndex >= 0 ? lastSegment.substring(splitIndex + 1) : lastSegment;
+        return value.replace(':', '/');
+    }
+
+    private void handleExportDestinationSelected(Uri uri) {
+        PendingBackupAction action = pendingBackupAction;
+        pendingBackupAction = null;
+        if (uri == null || action == null || !action.export) {
+            return;
+        }
+        try {
+            byte[] data = settingsManager.exportEncryptedData(action.password);
+            try (OutputStream outputStream = requireContext().getContentResolver().openOutputStream(uri, "w")) {
+                if (outputStream == null) {
+                    throw new IllegalStateException("Output stream unavailable");
+                }
+                outputStream.write(data);
+                outputStream.flush();
+            }
+            Toast.makeText(requireContext(), R.string.settings_export_success, Toast.LENGTH_SHORT).show();
+        } catch (IllegalArgumentException e) {
+            Toast.makeText(requireContext(), R.string.settings_password_required, Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(requireContext(), R.string.settings_backup_write_error, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void handleImportSourceSelected(Uri uri) {
+        if (pendingBackupAction == null) {
+            if (uri != null) {
+                showImportPasswordDialog(uri);
+            }
+            return;
+        }
+        PendingBackupAction action = pendingBackupAction;
+        pendingBackupAction = null;
+        Uri sourceUri = action == null ? uri : (action.fileUri != null ? action.fileUri : uri);
+        if (sourceUri == null || action == null || action.export) {
+            return;
+        }
+        try {
+            byte[] data = readAllBytes(sourceUri);
+            settingsManager.importEncryptedData(data, action.password);
+            refreshSettingsUI();
+            if (getActivity() instanceof MainActivity) {
+                ((MainActivity) getActivity()).setAppLocale(settingsManager.getAppLanguage());
+            }
+            notifySettingsChanged();
+            Toast.makeText(requireContext(), R.string.settings_import_success, Toast.LENGTH_SHORT).show();
+        } catch (IllegalArgumentException e) {
+            Toast.makeText(requireContext(), R.string.settings_backup_invalid_file, Toast.LENGTH_SHORT).show();
+        } catch (AEADBadTagException e) {
+            Toast.makeText(requireContext(), R.string.settings_backup_wrong_password, Toast.LENGTH_SHORT).show();
+        } catch (java.io.IOException e) {
+            Toast.makeText(requireContext(), R.string.settings_backup_read_error, Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(requireContext(), R.string.settings_backup_wrong_password, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private byte[] readAllBytes(Uri uri) throws java.io.IOException {
+        try (InputStream inputStream = requireContext().getContentResolver().openInputStream(uri)) {
+            if (inputStream == null) {
+                throw new java.io.IOException("Input stream unavailable");
+            }
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, read);
+            }
+            return outputStream.toByteArray();
+        }
+    }
+
+    private String getDefaultBackupFilename() {
+        String timestamp = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(new java.util.Date());
+        return getString(R.string.settings_backup_filename, timestamp);
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
     private void updateColorSelection() {

@@ -2,10 +2,19 @@ package com.midairlogn.mlnetease;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Base64;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.security.SecureRandom;
+import java.util.Arrays;
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -32,6 +41,14 @@ public class SettingsManager {
     private static final String KEY_DOWNLOAD_METADATA_LYRICS = "download_metadata_lyrics";
     private static final String KEY_DOWNLOAD_METADATA_COVER = "download_metadata_cover";
     private static final String KEY_DOWNLOAD_METADATA_EXTRA = "download_metadata_extra";
+    private static final String BACKUP_FORMAT = "mlnetease-settings";
+    private static final int BACKUP_VERSION = 1;
+    private static final int BACKUP_SALT_LENGTH = 16;
+    private static final int BACKUP_IV_LENGTH = 12;
+    private static final int BACKUP_PBKDF2_ITERATIONS = 120000;
+    private static final int BACKUP_KEY_LENGTH_BITS = 256;
+    private static final String BACKUP_KEY_ALGORITHM = "PBKDF2WithHmacSHA256";
+    private static final String BACKUP_CIPHER = "AES/GCM/NoPadding";
     public static final String DEFAULT_DOWNLOAD_FILENAME_TEMPLATE = "${title}_${artist}_${album}";
     public static final String DEFAULT_DOWNLOAD_FILENAME_SEPARATOR = "_";
     public static final int DEFAULT_APP_VOLUME = 80;
@@ -320,5 +337,198 @@ public class SettingsManager {
 
     public SharedPreferences getPrefs() {
         return prefs;
+    }
+
+    public byte[] exportEncryptedData(String password) throws Exception {
+        String normalizedPassword = normalizeBackupPassword(password);
+        JSONObject data = exportAppDataJson();
+
+        byte[] salt = new byte[BACKUP_SALT_LENGTH];
+        byte[] iv = new byte[BACKUP_IV_LENGTH];
+        SecureRandom secureRandom = new SecureRandom();
+        secureRandom.nextBytes(salt);
+        secureRandom.nextBytes(iv);
+
+        SecretKey key = deriveBackupKey(normalizedPassword.toCharArray(), salt);
+        Cipher cipher = Cipher.getInstance(BACKUP_CIPHER);
+        cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        byte[] encrypted = cipher.doFinal(data.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        JSONObject backup = new JSONObject();
+        backup.put("format", BACKUP_FORMAT);
+        backup.put("version", BACKUP_VERSION);
+        backup.put("salt", Base64.encodeToString(salt, Base64.NO_WRAP));
+        backup.put("iv", Base64.encodeToString(iv, Base64.NO_WRAP));
+        backup.put("payload", Base64.encodeToString(encrypted, Base64.NO_WRAP));
+        return backup.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    public void importEncryptedData(byte[] fileBytes, String password) throws Exception {
+        if (fileBytes == null || fileBytes.length == 0) {
+            throw new IllegalArgumentException("Empty data file");
+        }
+        String normalizedPassword = normalizeBackupPassword(password);
+        JSONObject backup = new JSONObject(new String(fileBytes, java.nio.charset.StandardCharsets.UTF_8));
+        if (!BACKUP_FORMAT.equals(backup.optString("format")) || backup.optInt("version", -1) != BACKUP_VERSION) {
+            throw new IllegalArgumentException("Unsupported data file");
+        }
+
+        byte[] salt = Base64.decode(backup.getString("salt"), Base64.DEFAULT);
+        byte[] iv = Base64.decode(backup.getString("iv"), Base64.DEFAULT);
+        byte[] payload = Base64.decode(backup.getString("payload"), Base64.DEFAULT);
+        if (salt.length != BACKUP_SALT_LENGTH || iv.length != BACKUP_IV_LENGTH || payload.length == 0) {
+            throw new IllegalArgumentException("Corrupted data file");
+        }
+
+        SecretKey key = deriveBackupKey(normalizedPassword.toCharArray(), salt);
+        Cipher cipher = Cipher.getInstance(BACKUP_CIPHER);
+        cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        byte[] decrypted = cipher.doFinal(payload);
+        JSONObject data = new JSONObject(new String(decrypted, java.nio.charset.StandardCharsets.UTF_8));
+        importAppDataJson(data);
+    }
+
+    private JSONObject exportAppDataJson() throws Exception {
+        JSONObject json = new JSONObject();
+        json.put(KEY_MUSIC_U, getMusicU());
+        json.put(KEY_QUALITY, getQuality());
+        json.put(KEY_SEARCH_LIMIT, getSearchLimit());
+        json.put(KEY_FLOATING_LYRICS_ENABLED, isFloatingLyricsEnabled());
+        json.put(KEY_LYRIC_COLOR, getLyricColor());
+        json.put(KEY_LYRIC_SIZE, getLyricSize());
+        json.put(KEY_PLAY_MODE, getPlayMode());
+        json.put(KEY_TRANSLATION_INTEGRATION_ENABLED, isTranslationIntegrationEnabled());
+        json.put(KEY_APP_VOLUME, getAppVolume());
+        json.put(KEY_HOME_SHORTCUTS, serializeHomeShortcuts());
+        json.put(KEY_APP_LANGUAGE, getAppLanguage());
+        json.put(KEY_DOWNLOAD_FILENAME_TEMPLATE, getDownloadFileNameTemplate());
+        json.put(KEY_DOWNLOAD_FILENAME_SEPARATOR, getDownloadFileNameSeparator());
+        json.put(KEY_DOWNLOAD_METADATA_ENABLED, isDownloadMetadataEnabled());
+        json.put(KEY_DOWNLOAD_METADATA_TITLE, isDownloadMetadataTitleEnabled());
+        json.put(KEY_DOWNLOAD_METADATA_ARTIST, isDownloadMetadataArtistEnabled());
+        json.put(KEY_DOWNLOAD_METADATA_ALBUM, isDownloadMetadataAlbumEnabled());
+        json.put(KEY_DOWNLOAD_METADATA_LYRICS, isDownloadMetadataLyricsEnabled());
+        json.put(KEY_DOWNLOAD_METADATA_COVER, isDownloadMetadataCoverEnabled());
+        json.put(KEY_DOWNLOAD_METADATA_EXTRA, isDownloadMetadataExtraEnabled());
+        return json;
+    }
+
+    private void importAppDataJson(JSONObject json) {
+        if (json == null) {
+            throw new IllegalArgumentException("Missing data payload");
+        }
+
+        setMusicU(json.optString(KEY_MUSIC_U, ""));
+        setQuality(normalizeQuality(json.optString(KEY_QUALITY, KEY_DEFAULT_QUALITY)));
+        setSearchLimit(clamp(json.optInt(KEY_SEARCH_LIMIT, 10), 1, 100));
+        setFloatingLyricsEnabled(json.optBoolean(KEY_FLOATING_LYRICS_ENABLED, false));
+        setLyricColor(json.optInt(KEY_LYRIC_COLOR, 0));
+        setLyricSize(clampFloat((float) json.optDouble(KEY_LYRIC_SIZE, 16f), 10f, 30f));
+        setPlayMode(normalizePlayMode(json.optInt(KEY_PLAY_MODE, 0)));
+        setTranslationIntegrationEnabled(json.optBoolean(KEY_TRANSLATION_INTEGRATION_ENABLED, false));
+        setAppVolume(clamp(json.optInt(KEY_APP_VOLUME, DEFAULT_APP_VOLUME), 0, 100));
+        importHomeShortcuts(json.optJSONArray(KEY_HOME_SHORTCUTS));
+        setAppLanguage(normalizeLanguage(json.optString(KEY_APP_LANGUAGE, "system")));
+
+        DownloadCustomizationSettings downloadSettings = new DownloadCustomizationSettings();
+        downloadSettings.fileNameTemplate = json.optString(KEY_DOWNLOAD_FILENAME_TEMPLATE, DEFAULT_DOWNLOAD_FILENAME_TEMPLATE);
+        downloadSettings.separator = json.optString(KEY_DOWNLOAD_FILENAME_SEPARATOR, DEFAULT_DOWNLOAD_FILENAME_SEPARATOR);
+        downloadSettings.metadataEnabled = json.optBoolean(KEY_DOWNLOAD_METADATA_ENABLED, true);
+        downloadSettings.writeTitle = json.optBoolean(KEY_DOWNLOAD_METADATA_TITLE, true);
+        downloadSettings.writeArtist = json.optBoolean(KEY_DOWNLOAD_METADATA_ARTIST, true);
+        downloadSettings.writeAlbum = json.optBoolean(KEY_DOWNLOAD_METADATA_ALBUM, true);
+        downloadSettings.writeLyrics = json.optBoolean(KEY_DOWNLOAD_METADATA_LYRICS, true);
+        downloadSettings.writeCover = json.optBoolean(KEY_DOWNLOAD_METADATA_COVER, true);
+        downloadSettings.writeExtra = json.optBoolean(KEY_DOWNLOAD_METADATA_EXTRA, true);
+        setDownloadCustomizationSettings(downloadSettings);
+    }
+
+    private JSONArray serializeHomeShortcuts() {
+        JSONArray array = new JSONArray();
+        List<HomeShortcut> shortcuts = getHomeShortcuts();
+        for (HomeShortcut shortcut : shortcuts) {
+            JSONObject item = new JSONObject();
+            try {
+                item.put("title", shortcut.title);
+                item.put("id", shortcut.id);
+                item.put("type", shortcut.type);
+                item.put("sequence", shortcut.sequence);
+                array.put(item);
+            } catch (Exception ignored) {
+            }
+        }
+        return array;
+    }
+
+    private void importHomeShortcuts(JSONArray array) {
+        List<HomeShortcut> shortcuts = new ArrayList<>();
+        if (array != null) {
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject item = array.optJSONObject(i);
+                if (item == null) {
+                    continue;
+                }
+                shortcuts.add(new HomeShortcut(
+                        item.optString("title", ""),
+                        item.optString("id", ""),
+                        item.optString("type", ""),
+                        item.optInt("sequence", i)
+                ));
+            }
+        }
+        setHomeShortcuts(shortcuts);
+    }
+
+    private SecretKey deriveBackupKey(char[] passwordChars, byte[] salt) throws Exception {
+        PBEKeySpec spec = new PBEKeySpec(passwordChars, salt, BACKUP_PBKDF2_ITERATIONS, BACKUP_KEY_LENGTH_BITS);
+        try {
+            SecretKeyFactory factory = SecretKeyFactory.getInstance(BACKUP_KEY_ALGORITHM);
+            byte[] keyBytes = factory.generateSecret(spec).getEncoded();
+            return new SecretKeySpec(keyBytes, "AES");
+        } finally {
+            spec.clearPassword();
+            Arrays.fill(passwordChars, '\0');
+        }
+    }
+
+    private String normalizeBackupPassword(String password) {
+        if (password == null || password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Password cannot be empty");
+        }
+        return password;
+    }
+
+    private String normalizeQuality(String quality) {
+        switch (quality) {
+            case "standard":
+            case "exhigh":
+            case "lossless":
+            case "hires":
+            case "jyeffect":
+            case "sky":
+            case "jymaster":
+                return quality;
+            default:
+                return KEY_DEFAULT_QUALITY;
+        }
+    }
+
+    private int normalizePlayMode(int mode) {
+        return clamp(mode, 0, 3);
+    }
+
+    private String normalizeLanguage(String language) {
+        if ("en".equals(language) || "zh".equals(language)) {
+            return language;
+        }
+        return "system";
+    }
+
+    private int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(value, max));
+    }
+
+    private float clampFloat(float value, float min, float max) {
+        return Math.max(min, Math.min(value, max));
     }
 }

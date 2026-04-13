@@ -4,6 +4,27 @@
     <string name="search">Search</string>
     <string name="parse">Parse</string>
     <string name="settings">Settings</string>
+    <string name="settings_backup">Import/Export data</string>
+    <string name="settings_backup_content_description">Import or export app data</string>
+    <string name="settings_backup_choose_action">App data file</string>
+    <string name="settings_export">Export data</string>
+    <string name="settings_import">Import data</string>
+    <string name="settings_export_subtitle">Create one encrypted backup file for app data, including homepage shortcuts.</string>
+    <string name="settings_import_subtitle">Unlock a previously exported app data file and apply it to this device.</string>
+    <string name="settings_password">Password</string>
+    <string name="settings_confirm_password">Confirm password</string>
+    <string name="settings_export_note">The exported file includes sensitive app data such as MUSIC_U and homepage shortcuts. Keep it safe.</string>
+    <string name="settings_import_note">Import will overwrite the current saved app data, but will not restore download tasks or other runtime information.</string>
+    <string name="settings_selected_file">Selected file</string>
+    <string name="settings_password_required">Password cannot be empty</string>
+    <string name="settings_password_mismatch">Passwords do not match</string>
+    <string name="settings_export_success">Data exported</string>
+    <string name="settings_import_success">Data imported</string>
+    <string name="settings_backup_invalid_file">Unsupported or corrupted data file</string>
+    <string name="settings_backup_wrong_password">Wrong password or damaged file</string>
+    <string name="settings_backup_read_error">Could not read the selected file</string>
+    <string name="settings_backup_write_error">Could not write the selected file</string>
+    <string name="settings_backup_filename" translatable="false">mlnetease-data-%1$s.mlns</string>
     <string name="playlist">Playlist</string>
     <string name="album">Album</string>
     <string name="back">Back</string>
@@ -102,6 +123,8 @@
     <string name="hint_no_homepage_shortcut">No homepage shortcuts yet</string>
     <string name="hint_homepage_add_shortcut">Add shortcuts for one-tap playback.</string>
     <string name="manage_shortcut">Manage Shortcuts</string>
+    <string name="delete_shortcut">Delete shortcut</string>
+    <string name="shortcut_meta_format">%1$s (ID: %2$s)</string>
     <string name="clear">Clear</string>
     <string name="type_audio_quality_standard">Standard</string>
     <string name="type_audio_quality_exhigh">Exhigh</string>

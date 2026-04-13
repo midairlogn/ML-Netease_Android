@@ -46,7 +46,7 @@ public class ShortcutAdapter extends RecyclerView.Adapter<ShortcutAdapter.ViewHo
         else{
             display_shortcut_type = shortcut.type;
         }
-        holder.tvMeta.setText(display_shortcut_type + " (ID: " + shortcut.id + ")");
+        holder.tvMeta.setText(holder.itemView.getContext().getString(R.string.shortcut_meta_format, display_shortcut_type, shortcut.id));
         holder.itemView.setOnClickListener(v -> listener.onEdit(shortcut));
         holder.btnDelete.setOnClickListener(v -> listener.onDelete(holder.getBindingAdapterPosition()));
     }
