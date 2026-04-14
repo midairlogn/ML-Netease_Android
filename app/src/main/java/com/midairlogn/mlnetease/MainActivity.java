@@ -7,6 +7,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.provider.Settings;
 import android.net.Uri;
 import android.content.pm.PackageManager;
@@ -524,9 +525,11 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
                 if (navView != null) {
                     navView.setSelectedItemId(R.id.navigation_local);
                 }
-                LocalFragment fragment = (LocalFragment) getOrCreateFragment(TAB_LOCAL);
-                if (fragment != null) {
-                    fragment.handleExternalAudio(data, true);
+                Song song = LocalAudioSongFactory.create(this, data);
+                if (song != null) {
+                    MusicPlayerManager.getInstance(this).addOrPlaySong(song);
+                } else {
+                    Toast.makeText(this, R.string.local_audio_open_failed, Toast.LENGTH_SHORT).show();
                 }
                 pendingExternalAudioIntent = false;
                 intent.setAction(null);
