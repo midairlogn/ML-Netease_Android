@@ -26,6 +26,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.SeekBar;
 import android.widget.Spinner;
@@ -53,7 +54,8 @@ public class SettingsFragment extends Fragment {
     private SettingsManager settingsManager;
     private EditText inputMusicU;
     private EditText inputSearchLimit;
-    private RadioGroup qualityGroup;
+    private View layoutAudioQuality;
+    private TextView textAudioQualityValue;
     private SeekBar seekbarAppVolume;
     private TextView textAppVolumeValue;
     private Spinner spinnerLanguage;
@@ -144,14 +146,15 @@ public class SettingsFragment extends Fragment {
             innerContainer.setOnTouchListener(hideKeyboardTouchListener);
         }
 
-        qualityGroup = view.findViewById(R.id.quality_group);
+        layoutAudioQuality = view.findViewById(R.id.layout_audio_quality);
+        textAudioQualityValue = view.findViewById(R.id.text_audio_quality_value);
         seekbarAppVolume = view.findViewById(R.id.seekbar_app_volume);
         textAppVolumeValue = view.findViewById(R.id.text_app_volume_value);
         spinnerLanguage = view.findViewById(R.id.spinner_language);
         layoutDownloadCustomize = view.findViewById(R.id.layout_download_customize);
         textDownloadCustomizeSummary = view.findViewById(R.id.text_download_customize_summary);
         View btnSettingsBackup = view.findViewById(R.id.btn_settings_backup);
-        qualityGroup.setOnTouchListener(hideKeyboardTouchListener);
+        layoutAudioQuality.setOnTouchListener(hideKeyboardTouchListener);
 
         // Floating Window Views
         switchFloatingLyrics = view.findViewById(R.id.switch_floating_lyrics);
@@ -196,30 +199,8 @@ public class SettingsFragment extends Fragment {
         layoutDownloadCustomize.setOnClickListener(v -> startActivity(new Intent(requireContext(), DownloadCustomizationActivity.class)));
         btnSettingsBackup.setOnClickListener(v -> showDataBackupActions());
 
-        String currentQuality = settingsManager.getQuality();
-
-        switch (currentQuality) {
-            case "standard": qualityGroup.check(R.id.quality_standard); break;
-            case "exhigh": qualityGroup.check(R.id.quality_exhigh); break;
-            case "lossless": qualityGroup.check(R.id.quality_lossless); break;
-            case "hires": qualityGroup.check(R.id.quality_hires); break;
-            case "jyeffect": qualityGroup.check(R.id.quality_jyeffect); break;
-            case "sky": qualityGroup.check(R.id.quality_sky); break;
-            case "jymaster": qualityGroup.check(R.id.quality_jymaster); break;
-            default: qualityGroup.check(R.id.quality_standard); break;
-        }
-
-        qualityGroup.setOnCheckedChangeListener((group, checkedId) -> {
-            String quality = "standard";
-            if (checkedId == R.id.quality_exhigh) quality = "exhigh";
-            else if (checkedId == R.id.quality_lossless) quality = "lossless";
-            else if (checkedId == R.id.quality_hires) quality = "hires";
-            else if (checkedId == R.id.quality_jyeffect) quality = "jyeffect";
-            else if (checkedId == R.id.quality_sky) quality = "sky";
-            else if (checkedId == R.id.quality_jymaster) quality = "jymaster";
-            settingsManager.setQuality(quality);
-            notifySettingsChanged();
-        });
+        updateAudioQualitySummary(settingsManager.getQuality());
+        layoutAudioQuality.setOnClickListener(v -> showAudioQualityDialog());
 
         spinnerLanguage.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -515,16 +496,7 @@ public class SettingsFragment extends Fragment {
         updateLanguageSpinnerSelection();
 
         String currentQuality = settingsManager.getQuality();
-        switch (currentQuality) {
-            case "standard": qualityGroup.check(R.id.quality_standard); break;
-            case "exhigh": qualityGroup.check(R.id.quality_exhigh); break;
-            case "lossless": qualityGroup.check(R.id.quality_lossless); break;
-            case "hires": qualityGroup.check(R.id.quality_hires); break;
-            case "jyeffect": qualityGroup.check(R.id.quality_jyeffect); break;
-            case "sky": qualityGroup.check(R.id.quality_sky); break;
-            case "jymaster": qualityGroup.check(R.id.quality_jymaster); break;
-            default: qualityGroup.check(R.id.quality_standard); break;
-        }
+        updateAudioQualitySummary(currentQuality);
 
         boolean isFloatingEnabled = settingsManager.isFloatingLyricsEnabled();
         boolean isTranslationEnabled = settingsManager.isTranslationIntegrationEnabled();
@@ -598,6 +570,93 @@ public class SettingsFragment extends Fragment {
                 ? getString(R.string.download_customize_metadata_on)
                 : getString(R.string.download_customize_metadata_off);
         textDownloadCustomizeSummary.setText(getString(R.string.download_customize_summary, previewName, metadataState));
+    }
+
+    private void showAudioQualityDialog() {
+        Context context = requireContext();
+        String currentQuality = settingsManager.getQuality();
+
+        RadioGroup radioGroup = new RadioGroup(context);
+        radioGroup.setOrientation(LinearLayout.VERTICAL);
+        radioGroup.setPadding(dpToPx(20), dpToPx(12), dpToPx(20), 0);
+
+        addAudioQualityOption(radioGroup, "standard", R.string.type_audio_quality_standard, currentQuality);
+        addAudioQualityOption(radioGroup, "exhigh", R.string.type_audio_quality_exhigh, currentQuality);
+        addAudioQualityOption(radioGroup, "lossless", R.string.type_audio_quality_lossless, currentQuality);
+        addAudioQualityOption(radioGroup, "hires", R.string.type_audio_quality_hires, currentQuality);
+        addAudioQualityOption(radioGroup, "jyeffect", R.string.type_audio_quality_jyeffect, currentQuality);
+        addAudioQualityOption(radioGroup, "sky", R.string.type_audio_quality_sky, currentQuality);
+        addAudioQualityOption(radioGroup, "jymaster", R.string.type_audio_quality_jymaster, currentQuality);
+
+        new AlertDialog.Builder(context)
+                .setTitle(R.string.title_audio_quality)
+                .setView(radioGroup)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.confirm, (dialog, which) -> {
+                    int checkedId = radioGroup.getCheckedRadioButtonId();
+                    View checkedView = radioGroup.findViewById(checkedId);
+                    Object tag = checkedView == null ? null : checkedView.getTag();
+                    String selectedQuality = tag instanceof String ? (String) tag : SettingsManager.DEFAULT_QUALITY;
+                    if (!selectedQuality.equals(settingsManager.getQuality())) {
+                        settingsManager.setQuality(selectedQuality);
+                        updateAudioQualitySummary(selectedQuality);
+                        notifySettingsChanged();
+                    }
+                })
+                .show();
+    }
+
+    private void addAudioQualityOption(RadioGroup radioGroup, String qualityValue, int labelResId, String currentQuality) {
+        RadioButton radioButton = new RadioButton(requireContext());
+        radioButton.setLayoutParams(new RadioGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        radioButton.setText(labelResId);
+        radioButton.setTextColor(getResources().getColor(R.color.text_primary, null));
+        radioButton.setButtonTintList(getResources().getColorStateList(R.color.brand_primary, null));
+        radioButton.setPadding(0, dpToPx(8), 0, dpToPx(8));
+        radioButton.setTag(qualityValue);
+        radioButton.setId(View.generateViewId());
+        radioGroup.addView(radioButton);
+        if (qualityValue.equals(currentQuality)) {
+            radioGroup.check(radioButton.getId());
+        }
+    }
+
+    private void updateAudioQualitySummary(String quality) {
+        if (textAudioQualityValue == null) {
+            return;
+        }
+        textAudioQualityValue.setText(getAudioQualityLabel(quality));
+    }
+
+    private String getAudioQualityLabel(String quality) {
+        int labelResId;
+        switch (quality) {
+            case "exhigh":
+                labelResId = R.string.type_audio_quality_exhigh;
+                break;
+            case "lossless":
+                labelResId = R.string.type_audio_quality_lossless;
+                break;
+            case "hires":
+                labelResId = R.string.type_audio_quality_hires;
+                break;
+            case "jyeffect":
+                labelResId = R.string.type_audio_quality_jyeffect;
+                break;
+            case "sky":
+                labelResId = R.string.type_audio_quality_sky;
+                break;
+            case "jymaster":
+                labelResId = R.string.type_audio_quality_jymaster;
+                break;
+            case "standard":
+            default:
+                labelResId = R.string.type_audio_quality_standard;
+                break;
+        }
+        return getString(labelResId);
     }
 
     private void showDataBackupActions() {

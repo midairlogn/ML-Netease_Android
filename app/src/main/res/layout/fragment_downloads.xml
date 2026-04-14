@@ -34,6 +34,7 @@
                 android:layout_marginTop="4dp"
                 android:text="@string/downloads_summary_empty"
                 android:textColor="@color/text_secondary"
+                android:textStyle="bold"
                 android:textSize="13sp" />
         </LinearLayout>
 

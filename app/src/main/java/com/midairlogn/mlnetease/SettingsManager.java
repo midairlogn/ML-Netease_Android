@@ -23,7 +23,7 @@ public class SettingsManager {
     private static final String PREF_NAME = "ml_netease_prefs";
     private static final String KEY_MUSIC_U = "music_u";
     private static final String KEY_QUALITY = "quality";
-    private static final String KEY_DEFAULT_QUALITY = "standard";
+    public static final String DEFAULT_QUALITY = "standard";
     private static final String KEY_SEARCH_LIMIT = "search_limit";
     private static final String KEY_FLOATING_LYRICS_ENABLED = "floating_lyrics_enabled";
     private static final String KEY_LYRIC_COLOR = "lyric_color";
@@ -75,7 +75,7 @@ public class SettingsManager {
     }
 
     public String getQuality() {
-        return prefs.getString(KEY_QUALITY, KEY_DEFAULT_QUALITY);
+        return prefs.getString(KEY_QUALITY, DEFAULT_QUALITY);
     }
 
     public void setSearchLimit(int limit) {
@@ -422,7 +422,7 @@ public class SettingsManager {
         }
 
         setMusicU(json.optString(KEY_MUSIC_U, ""));
-        setQuality(normalizeQuality(json.optString(KEY_QUALITY, KEY_DEFAULT_QUALITY)));
+        setQuality(normalizeQuality(json.optString(KEY_QUALITY, DEFAULT_QUALITY)));
         setSearchLimit(clamp(json.optInt(KEY_SEARCH_LIMIT, 10), 1, 100));
         boolean requestedFloatingLyrics = json.optBoolean(KEY_FLOATING_LYRICS_ENABLED, false);
         boolean canEnableFloatingLyrics = !requestedFloatingLyrics || Settings.canDrawOverlays(appContext);
@@ -515,7 +515,7 @@ public class SettingsManager {
             case "jymaster":
                 return quality;
             default:
-                return KEY_DEFAULT_QUALITY;
+                return DEFAULT_QUALITY;
         }
     }
 

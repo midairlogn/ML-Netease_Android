@@ -142,83 +142,49 @@
                 android:entries="@array/language_options"/>
         </LinearLayout>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/title_audio_quality"
-            android:textColor="@color/text_primary"
-            android:textStyle="bold"
-            android:layout_marginBottom="12dp"/>
-
-        <RadioGroup
-            android:id="@+id/quality_group"
+        <LinearLayout
+            android:id="@+id/layout_audio_quality"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp">
+            android:layout_marginBottom="24dp"
+            android:background="@drawable/search_background"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="16dp">
 
-            <RadioButton
-                android:id="@+id/quality_standard"
-                android:layout_width="match_parent"
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="@string/type_audio_quality_standard"
-                android:textColor="@color/text_primary"
-                android:buttonTint="@color/brand_primary"
-                android:paddingVertical="8dp"/>
+                android:layout_weight="1"
+                android:orientation="vertical">
 
-            <RadioButton
-                    android:id="@+id/quality_exhigh"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/type_audio_quality_exhigh"
-                android:textColor="@color/text_primary"
-                android:buttonTint="@color/brand_primary"
-                android:paddingVertical="8dp"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/title_audio_quality"
+                    android:textColor="@color/text_primary"
+                    android:textStyle="bold" />
 
-            <RadioButton
-                android:id="@+id/quality_lossless"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/type_audio_quality_lossless"
-                android:textColor="@color/text_primary"
-                android:buttonTint="@color/brand_primary"
-                android:paddingVertical="8dp"/>
+                <TextView
+                    android:id="@+id/text_audio_quality_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/type_audio_quality_standard"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
 
-            <RadioButton
-                android:id="@+id/quality_hires"
-                android:layout_width="match_parent"
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/type_audio_quality_hires"
-                android:textColor="@color/text_primary"
-                android:buttonTint="@color/brand_primary"
-                android:paddingVertical="8dp"/>
-
-            <RadioButton
-                android:id="@+id/quality_jyeffect"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/type_audio_quality_jyeffect"
-                android:textColor="@color/text_primary"
-                android:buttonTint="@color/brand_primary"
-                android:paddingVertical="8dp"/>
-
-            <RadioButton
-                android:id="@+id/quality_sky"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/type_audio_quality_sky"
-                android:textColor="@color/text_primary"
-                android:buttonTint="@color/brand_primary"
-                android:paddingVertical="8dp"/>
-
-            <RadioButton
-                android:id="@+id/quality_jymaster"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/type_audio_quality_jymaster"
-                android:textColor="@color/text_primary"
-                android:buttonTint="@color/brand_primary"
-                android:paddingVertical="8dp"/>
-        </RadioGroup>
+                android:text=">"
+                android:textColor="@color/text_secondary"
+                android:textSize="18sp" />
+        </LinearLayout>
 
         <LinearLayout
             android:id="@+id/layout_download_customize"
