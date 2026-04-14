@@ -12,7 +12,7 @@
 
     <item
         android:id="@+id/navigation_downloads"
-        android:icon="@android:drawable/stat_sys_download_done"
+        android:icon="@drawable/ic_download_padded"
         android:title="@string/download_manager_nav"/>
 
     <item
