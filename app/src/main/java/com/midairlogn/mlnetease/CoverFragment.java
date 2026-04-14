@@ -72,10 +72,9 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
     private void updateCover(Song song) {
         if (song.embeddedPicture != null && song.embeddedPicture.length > 0) {
             currentEmbeddedPicture = song.embeddedPicture;
-            albumCover.setImageBitmap(android.graphics.BitmapFactory.decodeByteArray(song.embeddedPicture, 0, song.embeddedPicture.length));
+            ImageManager.getInstance().loadEmbedded("embedded:" + song.id, song.embeddedPicture, albumCover, R.drawable.ic_ml_app_logo_foreground, true);
             currentUrl = null;
             isPlaceholder = false;
-            albumCover.setTag("embedded:" + song.id);
             return;
         }
 

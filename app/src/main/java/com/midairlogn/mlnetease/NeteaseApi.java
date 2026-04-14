@@ -32,7 +32,7 @@ public class NeteaseApi {
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public NeteaseApi(android.content.Context context, SettingsManager settingsManager) {
-        this.context = context;
+        this.context = context.getApplicationContext();
         this.settingsManager = settingsManager;
     }
 

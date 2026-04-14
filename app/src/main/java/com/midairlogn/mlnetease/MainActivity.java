@@ -20,6 +20,7 @@ import androidx.core.os.LocaleListCompat;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import java.util.ArrayList;
@@ -69,27 +70,12 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
 
         if (savedInstanceState == null) {
             homeFragment = new HomeFragment();
-            localFragment = new LocalFragment();
-            downloadsFragment = new DownloadsFragment();
-            settingsFragment = new SettingsFragment();
             activeFragment = homeFragment;
-
             getSupportFragmentManager().beginTransaction()
-                    .add(R.id.fragment_container, localFragment, "local")
-                    .hide(localFragment)
-                    .add(R.id.fragment_container, downloadsFragment, "downloads")
-                    .hide(downloadsFragment)
-                    .add(R.id.fragment_container, settingsFragment, "settings")
-                    .hide(settingsFragment)
-                    .add(R.id.fragment_container, homeFragment, "home")
+                    .add(R.id.fragment_container, homeFragment, TAB_HOME)
                     .commit();
         } else {
-            homeFragment = (HomeFragment) getSupportFragmentManager().findFragmentByTag("home");
-            localFragment = (LocalFragment) getSupportFragmentManager().findFragmentByTag("local");
-            downloadsFragment = (DownloadsFragment) getSupportFragmentManager().findFragmentByTag("downloads");
-            settingsFragment = (SettingsFragment) getSupportFragmentManager().findFragmentByTag("settings");
-
-            // FragmentManager restores the visible fragment after recreation.
+            restoreFragments();
             activeFragment = resolveActiveFragment();
         }
 
@@ -100,16 +86,16 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         navView.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
             if (itemId == R.id.navigation_home) {
-                switchToFragment(homeFragment);
+                switchToTab(TAB_HOME);
                 return true;
             } else if (itemId == R.id.navigation_local) {
-                switchToFragment(localFragment);
+                switchToTab(TAB_LOCAL);
                 return true;
             } else if (itemId == R.id.navigation_downloads) {
-                switchToFragment(downloadsFragment);
+                switchToTab(TAB_DOWNLOADS);
                 return true;
             } else if (itemId == R.id.navigation_settings) {
-                switchToFragment(settingsFragment);
+                switchToTab(TAB_SETTINGS);
                 return true;
             }
             return false;
@@ -153,11 +139,79 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         pendingExternalAudioIntent = hasIncomingAudioIntent(intent);
     }
 
-    private void switchToFragment(Fragment target) {
+    private void restoreFragments() {
+        homeFragment = findFragmentByTag(TAB_HOME, HomeFragment.class);
+        localFragment = findFragmentByTag(TAB_LOCAL, LocalFragment.class);
+        downloadsFragment = findFragmentByTag(TAB_DOWNLOADS, DownloadsFragment.class);
+        settingsFragment = findFragmentByTag(TAB_SETTINGS, SettingsFragment.class);
+    }
+
+    private <T extends Fragment> T findFragmentByTag(String tag, Class<T> fragmentClass) {
+        Fragment fragment = getSupportFragmentManager().findFragmentByTag(tag);
+        if (fragmentClass.isInstance(fragment)) {
+            return fragmentClass.cast(fragment);
+        }
+        return null;
+    }
+
+    private Fragment getOrCreateFragment(String tabTag) {
+        switch (tabTag) {
+            case TAB_LOCAL:
+                if (localFragment == null) {
+                    localFragment = findFragmentByTag(TAB_LOCAL, LocalFragment.class);
+                }
+                if (localFragment == null) {
+                    localFragment = new LocalFragment();
+                }
+                return localFragment;
+            case TAB_DOWNLOADS:
+                if (downloadsFragment == null) {
+                    downloadsFragment = findFragmentByTag(TAB_DOWNLOADS, DownloadsFragment.class);
+                }
+                if (downloadsFragment == null) {
+                    downloadsFragment = new DownloadsFragment();
+                }
+                return downloadsFragment;
+            case TAB_SETTINGS:
+                if (settingsFragment == null) {
+                    settingsFragment = findFragmentByTag(TAB_SETTINGS, SettingsFragment.class);
+                }
+                if (settingsFragment == null) {
+                    settingsFragment = new SettingsFragment();
+                }
+                return settingsFragment;
+            case TAB_HOME:
+            default:
+                if (homeFragment == null) {
+                    homeFragment = findFragmentByTag(TAB_HOME, HomeFragment.class);
+                }
+                if (homeFragment == null) {
+                    homeFragment = new HomeFragment();
+                }
+                return homeFragment;
+        }
+    }
+
+    private void switchToTab(String tabTag) {
+        Fragment target = getOrCreateFragment(tabTag);
+        switchToFragment(target, tabTag);
+    }
+
+    private void switchToFragment(Fragment target, String tabTag) {
         if (target == null || activeFragment == target) {
             return;
         }
-        getSupportFragmentManager().beginTransaction().hide(activeFragment).show(target).commit();
+
+        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+        if (activeFragment != null) {
+            transaction.hide(activeFragment);
+        }
+        if (target.isAdded()) {
+            transaction.show(target);
+        } else {
+            transaction.add(R.id.fragment_container, target, tabTag);
+        }
+        transaction.commit();
         activeFragment = target;
     }
 
@@ -195,8 +249,9 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     }
 
     public void reloadHomeShortcuts() {
-        if (homeFragment != null) {
-            homeFragment.reloadShortcuts();
+        HomeFragment fragment = homeFragment;
+        if (fragment != null) {
+            fragment.reloadShortcuts();
         }
     }
 
@@ -367,8 +422,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         miniPlayerArtist.setText(song.artists);
 
         if (song.embeddedPicture != null && song.embeddedPicture.length > 0) {
-            miniPlayerThumb.setImageBitmap(android.graphics.BitmapFactory.decodeByteArray(song.embeddedPicture, 0, song.embeddedPicture.length));
-            miniPlayerThumb.setTag("embedded:" + song.id);
+            ImageManager.getInstance().loadEmbedded("embedded:" + song.id, song.embeddedPicture, miniPlayerThumb, R.drawable.ic_ml_app_logo_foreground, false);
         } else if (song.picUrl != null && !song.picUrl.isEmpty()) {
             // Check if current view is showing placeholder (logo)
             boolean isPlaceholder = miniPlayerThumb.getTag() == null || miniPlayerThumb.getTag().equals(R.drawable.ic_ml_app_logo_foreground);
@@ -430,6 +484,9 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     @Override
     public void onProgressUpdate(int current, int total) {
         runOnUiThread(() -> {
+            if (miniPlayerProgress == null) {
+                return;
+            }
             int safeTotal = Math.max(0, total);
             int safeCurrent = Math.max(0, Math.min(current, safeTotal));
             miniPlayerProgress.setMax(safeTotal);
@@ -443,6 +500,9 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
             locales = LocaleListCompat.getEmptyLocaleList();
         } else {
             locales = LocaleListCompat.forLanguageTags(languageCode);
+        }
+        if (AppCompatDelegate.getApplicationLocales().equals(locales)) {
+            return;
         }
         AppCompatDelegate.setApplicationLocales(locales);
     }
@@ -464,8 +524,9 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
                 if (navView != null) {
                     navView.setSelectedItemId(R.id.navigation_local);
                 }
-                if (localFragment != null) {
-                    localFragment.handleExternalAudio(data, true);
+                LocalFragment fragment = (LocalFragment) getOrCreateFragment(TAB_LOCAL);
+                if (fragment != null) {
+                    fragment.handleExternalAudio(data, true);
                 }
                 pendingExternalAudioIntent = false;
                 intent.setAction(null);

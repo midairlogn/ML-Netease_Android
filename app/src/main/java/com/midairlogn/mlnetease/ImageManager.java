@@ -10,10 +10,14 @@ import android.widget.ImageView;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.lang.ref.WeakReference;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ImageManager {
+
+    private static final int MAX_MINI_ART_SIZE_PX = 192;
+    private static final int MAX_COVER_ART_SIZE_PX = 1024;
 
     private static ImageManager instance;
     private final LruCache<String, Bitmap> memoryCache;
@@ -69,24 +73,67 @@ public class ImageManager {
             return;
         }
 
+        WeakReference<ImageView> imageViewRef = new WeakReference<>(imageView);
         executorService.submit(() -> {
             Bitmap bitmap = fetchBitmapInternal(url);
             if (bitmap != null) {
                 mainHandler.post(() -> {
+                    ImageView targetView = imageViewRef.get();
+                    if (targetView == null) {
+                        return;
+                    }
                     // This is the critical part: ensure the UI is still expecting this image
-                    if (normalizedUrl.equals(imageView.getTag())) {
-                        imageView.setImageBitmap(bitmap);
+                    if (normalizedUrl.equals(targetView.getTag())) {
+                        targetView.setImageBitmap(bitmap);
                     }
                 });
             } else {
                 // If it failed, clear the tag so the next call is forced to reload
                 mainHandler.post(() -> {
-                    if (normalizedUrl.equals(imageView.getTag())) {
-                        imageView.setTag(null);
+                    ImageView targetView = imageViewRef.get();
+                    if (targetView == null) {
+                        return;
+                    }
+                    if (normalizedUrl.equals(targetView.getTag())) {
+                        targetView.setTag(null);
                     }
                 });
             }
         });
+    }
+
+    public Bitmap getEmbeddedBitmap(String cacheKey, byte[] imageData, boolean large) {
+        if (cacheKey == null || cacheKey.isEmpty() || imageData == null || imageData.length == 0) {
+            return null;
+        }
+        String sizedKey = cacheKey + (large ? ":large" : ":small");
+        Bitmap cachedBitmap = memoryCache.get(sizedKey);
+        if (cachedBitmap != null) {
+            return cachedBitmap;
+        }
+
+        Bitmap bitmap = decodeSampledBitmap(imageData, large ? MAX_COVER_ART_SIZE_PX : MAX_MINI_ART_SIZE_PX);
+        if (bitmap != null) {
+            memoryCache.put(sizedKey, bitmap);
+        }
+        return bitmap;
+    }
+
+    public void loadEmbedded(String cacheKey, byte[] imageData, ImageView imageView, int placeholderResId, boolean large) {
+        if (imageData == null || imageData.length == 0) {
+            imageView.setImageResource(placeholderResId);
+            imageView.setTag(null);
+            return;
+        }
+
+        String sizedKey = cacheKey + (large ? ":large" : ":small");
+        imageView.setTag(sizedKey);
+        Bitmap bitmap = getEmbeddedBitmap(cacheKey, imageData, large);
+        if (bitmap != null) {
+            imageView.setImageBitmap(bitmap);
+        } else {
+            imageView.setImageResource(placeholderResId);
+        }
     }
 
     public Bitmap fetchBitmap(final String url) {
@@ -101,16 +148,17 @@ public class ImageManager {
 
     private Bitmap fetchBitmapInternal(String url) {
         String normalizedUrl = ImageUtils.normalizeUrl(url);
+        HttpURLConnection connection = null;
+        InputStream is = null;
         try {
-            HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+            connection = (HttpURLConnection) new URL(url).openConnection();
             connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
             connection.setRequestProperty("Referer", "https://music.163.com/");
             connection.setConnectTimeout(5000);
             connection.setReadTimeout(5000);
 
-            InputStream is = connection.getInputStream();
+            is = connection.getInputStream();
             final Bitmap bitmap = BitmapFactory.decodeStream(is);
-            is.close();
             if (bitmap != null) {
                 memoryCache.put(normalizedUrl, bitmap);
             }
@@ -118,6 +166,49 @@ public class ImageManager {
         } catch (Exception e) {
             e.printStackTrace();
             return null;
+        } finally {
+            if (is != null) {
+                try {
+                    is.close();
+                } catch (Exception ignored) {
+                }
+            }
+            if (connection != null) {
+                connection.disconnect();
+            }
         }
+    }
+
+    private Bitmap decodeSampledBitmap(byte[] imageData, int maxDimensionPx) {
+        try {
+            BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
+            boundsOptions.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(imageData, 0, imageData.length, boundsOptions);
+
+            BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
+            decodeOptions.inSampleSize = calculateInSampleSize(boundsOptions, maxDimensionPx, maxDimensionPx);
+            decodeOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
+            return BitmapFactory.decodeByteArray(imageData, 0, imageData.length, decodeOptions);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
+        int height = options.outHeight;
+        int width = options.outWidth;
+        int inSampleSize = 1;
+
+        if (height > reqHeight || width > reqWidth) {
+            int halfHeight = height / 2;
+            int halfWidth = width / 2;
+
+            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2;
+            }
+        }
+
+        return Math.max(1, inSampleSize);
     }
 }

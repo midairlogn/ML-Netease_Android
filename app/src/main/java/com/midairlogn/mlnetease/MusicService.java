@@ -319,7 +319,7 @@ public class MusicService extends Service {
         lastSongId = song.id;
 
         if (song.embeddedPicture != null && song.embeddedPicture.length > 0) {
-            Bitmap embeddedBitmap = BitmapFactory.decodeByteArray(song.embeddedPicture, 0, song.embeddedPicture.length);
+            Bitmap embeddedBitmap = ImageManager.getInstance().getEmbeddedBitmap("embedded:" + song.id, song.embeddedPicture, true);
             if (embeddedBitmap != null) {
                 lastBitmap = embeddedBitmap;
                 lastPicUrl = "";

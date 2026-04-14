@@ -81,6 +81,7 @@ public class SettingsFragment extends Fragment {
 
     private SharedPreferences.OnSharedPreferenceChangeListener preferenceChangeListener;
     private boolean isUpdatingLanguageSpinner;
+    private boolean isRefreshingSettingsUi;
 
     private int tempColor = 0;
     private float tempSize = 16f;
@@ -358,9 +359,32 @@ public class SettingsFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
+        cancelPendingSave();
         if (settingsManager != null && preferenceChangeListener != null) {
             settingsManager.getPrefs().unregisterOnSharedPreferenceChangeListener(preferenceChangeListener);
         }
+        inputMusicU = null;
+        inputSearchLimit = null;
+        layoutAudioQuality = null;
+        textAudioQualityValue = null;
+        seekbarAppVolume = null;
+        textAppVolumeValue = null;
+        spinnerLanguage = null;
+        layoutDownloadCustomize = null;
+        textDownloadCustomizeSummary = null;
+        switchFloatingLyrics = null;
+        switchTranslationIntegration = null;
+        layoutFloatingSettings = null;
+        btnColorRed = null;
+        btnColorBlue = null;
+        btnColorGreen = null;
+        btnColorYellow = null;
+        btnColorPurple = null;
+        textFontSize = null;
+        btnSizePlus = null;
+        btnSizeMinus = null;
+        textLyricPreviewCurrent = null;
+        textLyricPreviewNext = null;
         super.onDestroyView();
     }
 
@@ -371,6 +395,9 @@ public class SettingsFragment extends Fragment {
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
             @Override
             public void afterTextChanged(Editable s) {
+                if (isRefreshingSettingsUi) {
+                    return;
+                }
                 scheduleSave(() -> settingsManager.setMusicU(s.toString().trim()));
             }
         });
@@ -393,6 +420,9 @@ public class SettingsFragment extends Fragment {
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
             @Override
             public void afterTextChanged(Editable s) {
+                if (isRefreshingSettingsUi) {
+                    return;
+                }
                 scheduleSave(() -> validateAndSaveSearchLimit(s.toString().trim(), false));
             }
         });
@@ -419,6 +449,14 @@ public class SettingsFragment extends Fragment {
             notifySettingsChanged();
         };
         debounceHandler.postDelayed(saveRunnable, 300); // 300ms debounce
+    }
+
+    private void cancelPendingSave() {
+        if (saveRunnable != null) {
+            debounceHandler.removeCallbacks(saveRunnable);
+            saveRunnable = null;
+        }
+        debounceHandler.removeCallbacksAndMessages(null);
     }
 
     private void saveAndClearFocus(EditText editText) {
@@ -485,56 +523,83 @@ public class SettingsFragment extends Fragment {
     }
 
     private void refreshSettingsUI() {
-        if (settingsManager == null) return;
+        if (settingsManager == null || getView() == null) return;
 
-        // Refresh values from SharedPreferences in case they were changed elsewhere (e.g. Floating Window)
-        inputMusicU.setText(settingsManager.getMusicU());
-        inputSearchLimit.setText(String.valueOf(settingsManager.getSearchLimit()));
-        int appVolume = settingsManager.getAppVolume();
-        seekbarAppVolume.setProgress(appVolume);
-        textAppVolumeValue.setText(appVolume + "%");
-        updateLanguageSpinnerSelection();
-
-        String currentQuality = settingsManager.getQuality();
-        updateAudioQualitySummary(currentQuality);
-
-        boolean isFloatingEnabled = settingsManager.isFloatingLyricsEnabled();
-        boolean isTranslationEnabled = settingsManager.isTranslationIntegrationEnabled();
-        // Avoid triggering listeners if value is same
-        switchFloatingLyrics.setOnCheckedChangeListener(null);
-        switchFloatingLyrics.setChecked(isFloatingEnabled);
-        switchFloatingLyrics.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                if (!Settings.canDrawOverlays(requireContext())) {
-                    Toast.makeText(requireContext(), R.string.hint_grant_overlay, Toast.LENGTH_LONG).show();
-                    Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:" + requireContext().getPackageName()));
-                    startActivity(intent);
-                    buttonView.setChecked(false);
-                    return;
+        isRefreshingSettingsUi = true;
+        try {
+            // Refresh values from SharedPreferences in case they were changed elsewhere (e.g. Floating Window)
+            if (inputMusicU != null) {
+                String musicU = settingsManager.getMusicU();
+                if (!musicU.equals(inputMusicU.getText().toString())) {
+                    inputMusicU.setText(musicU);
                 }
             }
-            settingsManager.setFloatingLyricsEnabled(isChecked);
-            layoutFloatingSettings.setVisibility(isChecked ? View.VISIBLE : View.GONE);
-            notifySettingsChanged();
-        });
+            if (inputSearchLimit != null) {
+                String searchLimit = String.valueOf(settingsManager.getSearchLimit());
+                if (!searchLimit.equals(inputSearchLimit.getText().toString())) {
+                    inputSearchLimit.setText(searchLimit);
+                }
+            }
+            int appVolume = settingsManager.getAppVolume();
+            if (seekbarAppVolume != null && seekbarAppVolume.getProgress() != appVolume) {
+                seekbarAppVolume.setProgress(appVolume);
+            }
+            if (textAppVolumeValue != null) {
+                textAppVolumeValue.setText(appVolume + "%");
+            }
+            updateLanguageSpinnerSelection();
 
-        switchTranslationIntegration.setOnCheckedChangeListener(null);
-        switchTranslationIntegration.setChecked(isTranslationEnabled);
-        switchTranslationIntegration.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            settingsManager.setTranslationIntegrationEnabled(isChecked);
-            notifySettingsChanged();
-        });
+            String currentQuality = settingsManager.getQuality();
+            updateAudioQualitySummary(currentQuality);
 
-        layoutFloatingSettings.setVisibility(isFloatingEnabled ? View.VISIBLE : View.GONE);
+            boolean isFloatingEnabled = settingsManager.isFloatingLyricsEnabled();
+            boolean isTranslationEnabled = settingsManager.isTranslationIntegrationEnabled();
+            // Avoid triggering listeners if value is same
+            if (switchFloatingLyrics != null) {
+                switchFloatingLyrics.setOnCheckedChangeListener(null);
+                switchFloatingLyrics.setChecked(isFloatingEnabled);
+                switchFloatingLyrics.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                    if (isChecked) {
+                        if (!Settings.canDrawOverlays(requireContext())) {
+                            Toast.makeText(requireContext(), R.string.hint_grant_overlay, Toast.LENGTH_LONG).show();
+                            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    Uri.parse("package:" + requireContext().getPackageName()));
+                            startActivity(intent);
+                            buttonView.setChecked(false);
+                            return;
+                        }
+                    }
+                    settingsManager.setFloatingLyricsEnabled(isChecked);
+                    layoutFloatingSettings.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+                    notifySettingsChanged();
+                });
+            }
 
-        tempColor = settingsManager.getLyricColor();
-        if (tempColor == 0) tempColor = getResources().getColor(R.color.lyrics_color_blue, null);
-        updateColorSelection();
+            if (switchTranslationIntegration != null) {
+                switchTranslationIntegration.setOnCheckedChangeListener(null);
+                switchTranslationIntegration.setChecked(isTranslationEnabled);
+                switchTranslationIntegration.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                    settingsManager.setTranslationIntegrationEnabled(isChecked);
+                    notifySettingsChanged();
+                });
+            }
 
-        tempSize = settingsManager.getLyricSize();
-        textFontSize.setText(String.valueOf((int)tempSize));
-        refreshDownloadCustomizeSummary();
+            if (layoutFloatingSettings != null) {
+                layoutFloatingSettings.setVisibility(isFloatingEnabled ? View.VISIBLE : View.GONE);
+            }
+
+            tempColor = settingsManager.getLyricColor();
+            if (tempColor == 0) tempColor = getResources().getColor(R.color.lyrics_color_blue, null);
+            updateColorSelection();
+
+            tempSize = settingsManager.getLyricSize();
+            if (textFontSize != null) {
+                textFontSize.setText(String.valueOf((int) tempSize));
+            }
+            refreshDownloadCustomizeSummary();
+        } finally {
+            isRefreshingSettingsUi = false;
+        }
     }
 
     private void updateLanguageSpinnerSelection() {
