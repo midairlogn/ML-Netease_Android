@@ -89,22 +89,14 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
             downloadsFragment = (DownloadsFragment) getSupportFragmentManager().findFragmentByTag("downloads");
             settingsFragment = (SettingsFragment) getSupportFragmentManager().findFragmentByTag("settings");
 
-            // Restore active fragment state
-            int selectedItemId = ((BottomNavigationView) findViewById(R.id.nav_view)).getSelectedItemId();
-            if (selectedItemId == R.id.navigation_home) {
-                activeFragment = homeFragment;
-            } else if (selectedItemId == R.id.navigation_local) {
-                activeFragment = localFragment;
-            } else if (selectedItemId == R.id.navigation_downloads) {
-                activeFragment = downloadsFragment;
-            } else {
-                activeFragment = settingsFragment;
-            }
+            // FragmentManager restores the visible fragment after recreation.
+            activeFragment = resolveActiveFragment();
         }
 
         checkAndRequestPermissions();
 
         BottomNavigationView navView = findViewById(R.id.nav_view);
+        syncNavigationSelection(navView);
         navView.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
             if (itemId == R.id.navigation_home) {
@@ -167,6 +159,39 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         }
         getSupportFragmentManager().beginTransaction().hide(activeFragment).show(target).commit();
         activeFragment = target;
+    }
+
+    private Fragment resolveActiveFragment() {
+        if (homeFragment != null && homeFragment.isAdded() && !homeFragment.isHidden()) {
+            return homeFragment;
+        }
+        if (localFragment != null && localFragment.isAdded() && !localFragment.isHidden()) {
+            return localFragment;
+        }
+        if (downloadsFragment != null && downloadsFragment.isAdded() && !downloadsFragment.isHidden()) {
+            return downloadsFragment;
+        }
+        if (settingsFragment != null && settingsFragment.isAdded() && !settingsFragment.isHidden()) {
+            return settingsFragment;
+        }
+        return homeFragment != null ? homeFragment : settingsFragment;
+    }
+
+    private void syncNavigationSelection(BottomNavigationView navView) {
+        if (navView == null || activeFragment == null) {
+            return;
+        }
+        int itemId = R.id.navigation_home;
+        if (activeFragment == localFragment) {
+            itemId = R.id.navigation_local;
+        } else if (activeFragment == downloadsFragment) {
+            itemId = R.id.navigation_downloads;
+        } else if (activeFragment == settingsFragment) {
+            itemId = R.id.navigation_settings;
+        }
+        if (navView.getSelectedItemId() != itemId) {
+            navView.setSelectedItemId(itemId);
+        }
     }
 
     public void reloadHomeShortcuts() {
