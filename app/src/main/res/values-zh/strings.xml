@@ -198,7 +198,7 @@
     <string name="local_music_not_scanned">本地音乐库尚未扫描。</string>
     <string name="local_music_scanning">正在扫描本地音乐...</string>
     <string name="local_music_scan_result">已发现 %1$d 个本地音频文件</string>
-    <string name="local_music_empty">还没有发现本地歌曲。可以先扫描，或直接选择文件。</string>
+    <string name="local_music_empty">未发现本地歌曲。可以先扫描，或直接选择文件。</string>
     <string name="local_music_permission_required">扫描媒体库需要本地音频权限。</string>
     <string name="local_music_search_hint">搜索已扫描到的本地音乐</string>
     <string name="local_music_search_empty">没有匹配当前搜索的本地歌曲。</string>
