@@ -7,6 +7,14 @@ import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.provider.OpenableColumns;
 
+import com.mpatric.mp3agic.ID3v2;
+import com.mpatric.mp3agic.Mp3File;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.RandomAccessFile;
+
 public final class LocalAudioMetadataReader {
     private static final int METADATA_KEY_LYRIC = resolveLyricMetadataKey();
 
@@ -29,10 +37,7 @@ public final class LocalAudioMetadataReader {
             metadata.album = safe(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM));
             metadata.durationMs = parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
 
-            String rawLyrics = safe(extractLyrics(retriever));
-            LyricsUtils.SplitLyricsResult splitLyrics = LyricsUtils.splitInlineTranslatedLyrics(rawLyrics);
-            metadata.lyric = splitLyrics.lyric;
-            metadata.translatedLyric = splitLyrics.translatedLyric;
+            applyLyrics(metadata, extractLyrics(retriever));
             metadata.artworkData = retriever.getEmbeddedPicture();
         } catch (RuntimeException ignored) {
         } finally {
@@ -45,6 +50,9 @@ public final class LocalAudioMetadataReader {
         String displayName = queryDisplayName(resolver, uri);
         if (metadata.title.isEmpty()) {
             metadata.title = stripExtension(displayName);
+        }
+        if (metadata.lyric.isEmpty()) {
+            applyLyrics(metadata, readLyricsFromTaggedFile(context, uri, metadata.mimeType, displayName));
         }
         if (metadata.artist.isEmpty()) {
             metadata.artist = context.getString(R.string.unknown_artist);
@@ -97,6 +105,183 @@ public final class LocalAudioMetadataReader {
         } catch (RuntimeException ignored) {
             return "";
         }
+    }
+
+    private static String readLyricsFromTaggedFile(Context context, Uri uri, String mimeType, String displayName) {
+        File tempFile = null;
+        try {
+            tempFile = copyUriToTempFile(context, uri, displayName);
+            if (tempFile == null) {
+                return "";
+            }
+            String extension = resolveExtension(mimeType, displayName);
+            if ("mp3".equals(extension)) {
+                return readMp3Lyrics(tempFile);
+            }
+            if ("flac".equals(extension)) {
+                return readFlacLyrics(tempFile);
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (tempFile != null && tempFile.exists()) {
+                tempFile.delete();
+            }
+        }
+        return "";
+    }
+
+    private static void applyLyrics(LocalAudioMetadata metadata, String rawLyrics) {
+        String normalizedLyrics = safe(rawLyrics);
+        if (normalizedLyrics.isEmpty()) {
+            metadata.lyric = "";
+            metadata.translatedLyric = "";
+            return;
+        }
+
+        if (LyricsUtils.hasTimestampedLyrics(normalizedLyrics)) {
+            LyricsUtils.SplitLyricsResult splitLyrics = LyricsUtils.splitInlineTranslatedLyrics(normalizedLyrics);
+            metadata.lyric = splitLyrics.lyric;
+            metadata.translatedLyric = splitLyrics.translatedLyric;
+            return;
+        }
+
+        metadata.lyric = LyricsUtils.normalizePlainLyrics(normalizedLyrics);
+        metadata.translatedLyric = "";
+    }
+
+    private static File copyUriToTempFile(Context context, Uri uri, String displayName) throws Exception {
+        if (context == null || uri == null) {
+            return null;
+        }
+        String suffix = resolveTempSuffix(displayName);
+        File tempFile = File.createTempFile("local_audio_metadata", suffix, context.getCacheDir());
+        try (InputStream inputStream = context.getContentResolver().openInputStream(uri);
+             FileOutputStream outputStream = new FileOutputStream(tempFile)) {
+            if (inputStream == null) {
+                return null;
+            }
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, read);
+            }
+            outputStream.flush();
+            return tempFile;
+        }
+    }
+
+    private static String resolveTempSuffix(String displayName) {
+        String safeName = safe(displayName);
+        int dotIndex = safeName.lastIndexOf('.');
+        if (dotIndex >= 0) {
+            return safeName.substring(dotIndex);
+        }
+        return ".tmp";
+    }
+
+    private static String resolveExtension(String mimeType, String displayName) {
+        String safeMimeType = safe(mimeType).toLowerCase();
+        if (safeMimeType.contains("mpeg") || safeMimeType.endsWith("mp3")) {
+            return "mp3";
+        }
+        if (safeMimeType.contains("flac")) {
+            return "flac";
+        }
+        String safeName = safe(displayName).toLowerCase();
+        if (safeName.endsWith(".mp3")) {
+            return "mp3";
+        }
+        if (safeName.endsWith(".flac")) {
+            return "flac";
+        }
+        return "";
+    }
+
+    private static String readMp3Lyrics(File file) {
+        try {
+            Mp3File mp3File = new Mp3File(file.getAbsolutePath());
+            if (!mp3File.hasId3v2Tag()) {
+                return "";
+            }
+            ID3v2 id3v2Tag = mp3File.getId3v2Tag();
+            return safe(id3v2Tag == null ? "" : id3v2Tag.getLyrics());
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private static String readFlacLyrics(File file) {
+        try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
+            if (raf.length() < 4) {
+                return "";
+            }
+            byte[] signature = new byte[4];
+            raf.readFully(signature);
+            if (signature[0] != 'f' || signature[1] != 'L' || signature[2] != 'a' || signature[3] != 'C') {
+                return "";
+            }
+
+            boolean lastBlock = false;
+            while (!lastBlock && raf.getFilePointer() < raf.length()) {
+                int header = raf.readUnsignedByte();
+                lastBlock = (header & 0x80) != 0;
+                int type = header & 0x7F;
+                int length = (raf.readUnsignedByte() << 16) | (raf.readUnsignedByte() << 8) | raf.readUnsignedByte();
+                if (length < 0 || raf.getFilePointer() + length > raf.length()) {
+                    return "";
+                }
+                if (type == 4) {
+                    byte[] block = new byte[length];
+                    raf.readFully(block);
+                    return parseVorbisLyrics(block);
+                }
+                raf.seek(raf.getFilePointer() + length);
+            }
+        } catch (Exception ignored) {
+        }
+        return "";
+    }
+
+    private static String parseVorbisLyrics(byte[] block) {
+        if (block == null || block.length < 8) {
+            return "";
+        }
+        try {
+            int offset = 0;
+            int vendorLength = readLeInt(block, offset);
+            offset += 4 + vendorLength;
+            if (offset + 4 > block.length) {
+                return "";
+            }
+            int commentCount = readLeInt(block, offset);
+            offset += 4;
+            for (int i = 0; i < commentCount && offset + 4 <= block.length; i++) {
+                int length = readLeInt(block, offset);
+                offset += 4;
+                if (length < 0 || offset + length > block.length) {
+                    return "";
+                }
+                String comment = new String(block, offset, length, java.nio.charset.StandardCharsets.UTF_8);
+                offset += length;
+                int separatorIndex = comment.indexOf('=');
+                if (separatorIndex <= 0) {
+                    continue;
+                }
+                String key = comment.substring(0, separatorIndex).trim();
+                if ("LYRICS".equalsIgnoreCase(key) || "UNSYNCEDLYRICS".equalsIgnoreCase(key)) {
+                    return safe(comment.substring(separatorIndex + 1));
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return "";
+    }
+
+    private static int readLeInt(byte[] bytes, int offset) {
+        return (bytes[offset] & 0xFF)
+                | ((bytes[offset + 1] & 0xFF) << 8)
+                | ((bytes[offset + 2] & 0xFF) << 16)
+                | ((bytes[offset + 3] & 0xFF) << 24);
     }
 
     private static int resolveLyricMetadataKey() {

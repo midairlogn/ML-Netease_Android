@@ -22,7 +22,8 @@ public class LyricsUtils {
     public static SplitLyricsResult splitInlineTranslatedLyrics(String lyrics) {
         String processedLyrics = preprocessLyrics(lyrics);
         if (processedLyrics.isEmpty()) {
-            return new SplitLyricsResult("", "");
+            String plainLyrics = normalizePlainLyrics(lyrics);
+            return new SplitLyricsResult(plainLyrics, "");
         }
 
         String[] rawLines = processedLyrics.split("\\n");
@@ -55,6 +56,20 @@ public class LyricsUtils {
 
         String original = originalBuilder.length() == 0 ? processedLyrics : originalBuilder.toString();
         return new SplitLyricsResult(resolveTimestampConflicts(original), resolveTimestampConflicts(translatedBuilder.toString()));
+    }
+
+    public static boolean hasTimestampedLyrics(String lyrics) {
+        String processedLyrics = preprocessLyrics(lyrics);
+        if (processedLyrics.isEmpty()) {
+            return false;
+        }
+        String[] rawLines = processedLyrics.split("\\n");
+        for (String line : rawLines) {
+            if (CANONICAL_TIMESTAMP_PATTERN.matcher(line).find()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static List<LyricLine> parseLyrics(String lyrics) {
@@ -328,6 +343,25 @@ public class LyricsUtils {
             sanitized = sanitized.substring(1).trim();
         }
         return sanitized;
+    }
+
+    public static String normalizePlainLyrics(String lyrics) {
+        if (lyrics == null || lyrics.trim().isEmpty()) {
+            return "";
+        }
+        String[] lines = lyrics.replace("\r\n", "\n").replace('\r', '\n').split("\\n");
+        StringBuilder builder = new StringBuilder();
+        for (String line : lines) {
+            String trimmed = line == null ? "" : line.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append('\n');
+            }
+            builder.append(trimmed);
+        }
+        return builder.toString();
     }
 
     private static boolean usesChineseTranslationLabel(Context context, SettingsManager settingsManager) {

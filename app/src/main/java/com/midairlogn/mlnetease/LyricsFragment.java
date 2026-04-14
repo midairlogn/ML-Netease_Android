@@ -239,18 +239,43 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
 
         getActivity().runOnUiThread(() -> {
             boolean showTranslation = settingsManager.isTranslationIntegrationEnabled();
-            if (showTranslation) {
+            boolean hasTimestampedLyrics = LyricsUtils.hasTimestampedLyrics(lyrics);
+            if (showTranslation && hasTimestampedLyrics) {
                 lyricLines = LyricsUtils.mergeLyricsWithTranslation(lyrics, tlyrics);
-            } else {
+            } else if (hasTimestampedLyrics) {
                 lyricLines = LyricsUtils.parseLyrics(lyrics);
+            } else {
+                lyricLines = buildPlainLyricLines(lyrics, showTranslation ? tlyrics : "");
             }
-            adapter.setShowTranslation(showTranslation);
+            adapter.setShowTranslation(showTranslation && hasTimestampedLyrics && !tlyrics.trim().isEmpty());
             adapter.setLyrics(lyricLines);
             currentLineIndex = -1;
             if (!lyricLines.isEmpty()) {
                 syncLyrics();
             }
         });
+    }
+
+    private List<LyricLine> buildPlainLyricLines(String lyrics, String translatedLyrics) {
+        List<LyricLine> lines = new ArrayList<>();
+        String normalizedLyrics = LyricsUtils.normalizePlainLyrics(lyrics);
+        if (normalizedLyrics.isEmpty()) {
+            return lines;
+        }
+        String[] originalLines = normalizedLyrics.split("\\n");
+        String normalizedTranslatedLyrics = LyricsUtils.normalizePlainLyrics(translatedLyrics);
+        String[] translatedLines = normalizedTranslatedLyrics.isEmpty()
+                ? new String[0]
+                : normalizedTranslatedLyrics.split("\\n");
+        for (int i = 0; i < originalLines.length; i++) {
+            String original = originalLines[i].trim();
+            if (original.isEmpty()) {
+                continue;
+            }
+            String translation = i < translatedLines.length ? translatedLines[i].trim() : "";
+            lines.add(new LyricLine(i, original, translation));
+        }
+        return lines;
     }
 
     private void startUpdateTask() {
@@ -277,6 +302,17 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
 
         MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
         if (manager == null) return;
+
+        if (!LyricsUtils.hasTimestampedLyrics(manager.getCurrentLyric())) {
+            if (currentLineIndex != 0) {
+                currentLineIndex = 0;
+                adapter.setActiveIndex(currentLineIndex);
+                if (!isUserScrolling) {
+                    scrollToPosition(currentLineIndex);
+                }
+            }
+            return;
+        }
 
         int position = manager.getCurrentPosition();
 

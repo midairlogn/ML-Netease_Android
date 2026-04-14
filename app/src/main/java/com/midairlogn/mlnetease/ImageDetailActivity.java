@@ -19,6 +19,7 @@ public class ImageDetailActivity extends AppCompatActivity {
 
     private ZoomImageView imageView;
     private String imageUrl;
+    private byte[] imageBytes;
     private Bitmap currentBitmap;
 
     @Override
@@ -32,8 +33,14 @@ public class ImageDetailActivity extends AppCompatActivity {
         ImageButton btnClose = findViewById(R.id.btn_close);
 
         imageUrl = getIntent().getStringExtra("url");
+        imageBytes = getIntent().getByteArrayExtra("image_bytes");
 
-        if (imageUrl != null) {
+        if (imageBytes != null && imageBytes.length > 0) {
+            currentBitmap = android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+            if (currentBitmap != null) {
+                imageView.setImageBitmap(currentBitmap);
+            }
+        } else if (imageUrl != null) {
             loadImage(imageUrl);
         }
 
