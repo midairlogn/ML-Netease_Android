@@ -13,16 +13,22 @@ import java.net.URL;
 import java.lang.ref.WeakReference;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.io.ByteArrayOutputStream;
 
 public class ImageManager {
 
     private static final int MAX_MINI_ART_SIZE_PX = 192;
     private static final int MAX_COVER_ART_SIZE_PX = 1024;
+    private static final int MAX_NOTIFICATION_ART_SIZE_PX = 512;
 
     private static ImageManager instance;
     private final LruCache<String, Bitmap> memoryCache;
     private final ExecutorService executorService;
     private final Handler mainHandler;
+
+    private static String remoteCacheKey(String url, int maxDimensionPx) {
+        return ImageUtils.normalizeUrl(url) + ":remote:" + Math.max(1, maxDimensionPx);
+    }
 
     private ImageManager() {
         final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
@@ -52,9 +58,10 @@ public class ImageManager {
         }
 
         String normalizedUrl = ImageUtils.normalizeUrl(url);
+        String cacheKey = remoteCacheKey(url, MAX_COVER_ART_SIZE_PX);
 
         if (normalizedUrl.equals(imageView.getTag())) {
-            Bitmap cachedBitmap = memoryCache.get(normalizedUrl);
+            Bitmap cachedBitmap = memoryCache.get(cacheKey);
             if (cachedBitmap != null) {
                 imageView.setImageBitmap(cachedBitmap);
             }
@@ -67,7 +74,7 @@ public class ImageManager {
         imageView.setImageResource(placeholderResId);
 
         // Check cache
-        Bitmap cachedBitmap = memoryCache.get(normalizedUrl);
+        Bitmap cachedBitmap = memoryCache.get(cacheKey);
         if (cachedBitmap != null) {
             imageView.setImageBitmap(cachedBitmap);
             return;
@@ -75,7 +82,7 @@ public class ImageManager {
 
         WeakReference<ImageView> imageViewRef = new WeakReference<>(imageView);
         executorService.submit(() -> {
-            Bitmap bitmap = fetchBitmapInternal(url);
+            Bitmap bitmap = fetchBitmap(url, MAX_COVER_ART_SIZE_PX);
             if (bitmap != null) {
                 mainHandler.post(() -> {
                     ImageView targetView = imageViewRef.get();
@@ -137,17 +144,24 @@ public class ImageManager {
     }
 
     public Bitmap fetchBitmap(final String url) {
+        return fetchBitmap(url, MAX_COVER_ART_SIZE_PX);
+    }
+
+    public Bitmap fetchBitmap(final String url, int maxDimensionPx) {
         if (url == null || url.isEmpty()) return null;
-        String normalizedUrl = ImageUtils.normalizeUrl(url);
-        Bitmap cachedBitmap = memoryCache.get(normalizedUrl);
+        String cacheKey = remoteCacheKey(url, maxDimensionPx);
+        Bitmap cachedBitmap = memoryCache.get(cacheKey);
         if (cachedBitmap != null) {
             return cachedBitmap;
         }
-        return fetchBitmapInternal(url);
+        return fetchBitmapInternal(url, cacheKey, maxDimensionPx);
     }
 
-    private Bitmap fetchBitmapInternal(String url) {
-        String normalizedUrl = ImageUtils.normalizeUrl(url);
+    public Bitmap fetchNotificationBitmap(final String url) {
+        return fetchBitmap(url, MAX_NOTIFICATION_ART_SIZE_PX);
+    }
+
+    private Bitmap fetchBitmapInternal(String url, String cacheKey, int maxDimensionPx) {
         HttpURLConnection connection = null;
         InputStream is = null;
         try {
@@ -158,9 +172,9 @@ public class ImageManager {
             connection.setReadTimeout(5000);
 
             is = connection.getInputStream();
-            final Bitmap bitmap = BitmapFactory.decodeStream(is);
+            final Bitmap bitmap = decodeSampledBitmap(readAllBytes(is), maxDimensionPx);
             if (bitmap != null) {
-                memoryCache.put(normalizedUrl, bitmap);
+                memoryCache.put(cacheKey, bitmap);
             }
             return bitmap;
         } catch (Exception e) {
@@ -193,6 +207,16 @@ public class ImageManager {
             e.printStackTrace();
             return null;
         }
+    }
+
+    private byte[] readAllBytes(InputStream inputStream) throws java.io.IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int count;
+        while ((count = inputStream.read(buffer)) != -1) {
+            outputStream.write(buffer, 0, count);
+        }
+        return outputStream.toByteArray();
     }
 
     private int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {

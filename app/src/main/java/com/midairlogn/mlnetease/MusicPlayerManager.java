@@ -41,6 +41,7 @@ public class MusicPlayerManager {
     private boolean isCompletionListenerEnabled = false;
     private final AtomicLong playRequestIdGenerator = new AtomicLong(0);
     private volatile long activePlayRequestId = 0;
+    private volatile NeteaseApi.CancelableRequest activeFullInfoRequest = NeteaseApi.CancelableRequest.NONE;
 
     private volatile boolean isAutoSkipping = false;
     private int continuousSkipCount = 0;
@@ -346,6 +347,7 @@ public class MusicPlayerManager {
 
         final long requestId = playRequestIdGenerator.incrementAndGet();
         activePlayRequestId = requestId;
+        cancelActiveFullInfoRequest();
         forceNextPlaybackStateDispatch = true;
 
         if (!isRetry) {
@@ -397,11 +399,15 @@ public class MusicPlayerManager {
         }
 
         // Fetch full info
-        neteaseApi.getSongFullInfo(song.id, new NeteaseApi.ApiCallback() {
+        activeFullInfoRequest = neteaseApi.getSongFullInfo(song.id, new NeteaseApi.ApiCallback() {
             @Override
             public void onSuccess(String result) {
                 // Ignore stale callback from previous play request.
                 if (requestId != activePlayRequestId || currentIndex != index) return;
+                if (activeFullInfoRequest != null && activeFullInfoRequest.isCanceled()) {
+                    return;
+                }
+                activeFullInfoRequest = NeteaseApi.CancelableRequest.NONE;
 
                 try {
                     JSONObject root = new JSONObject(result);
@@ -438,9 +444,19 @@ public class MusicPlayerManager {
 
             @Override
             public void onError(String error) {
+                activeFullInfoRequest = NeteaseApi.CancelableRequest.NONE;
+                if (requestId != activePlayRequestId || currentIndex != index) return;
                 handlePlaybackFailure(index, requestId, "API Network Error: " + error);
             }
         });
+    }
+
+    private void cancelActiveFullInfoRequest() {
+        NeteaseApi.CancelableRequest request = activeFullInfoRequest;
+        activeFullInfoRequest = NeteaseApi.CancelableRequest.NONE;
+        if (request != null) {
+            request.cancel();
+        }
     }
 
     private void playLocalSong(Song song, int index, long requestId) {
