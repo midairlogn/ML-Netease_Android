@@ -200,6 +200,9 @@
     <string name="local_music_scan_result">已发现 %1$d 个本地音频文件</string>
     <string name="local_music_empty">还没有发现本地歌曲。可以先扫描，或直接选择文件。</string>
     <string name="local_music_permission_required">扫描媒体库需要本地音频权限。</string>
+    <string name="local_music_search_hint">搜索已扫描到的本地音乐</string>
+    <string name="local_music_search_empty">没有匹配当前搜索的本地歌曲。</string>
+    <string name="local_music_search_result">显示 %1$d / %2$d 首本地歌曲</string>
     <string name="local_audio_open_failed">无法打开所选音频文件</string>
     <string name="unknown_artist">未知歌手</string>
     <string name="unknown_title">未知标题</string>
