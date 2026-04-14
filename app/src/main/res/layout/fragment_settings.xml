@@ -38,7 +38,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/settings_backup_content_description"
                 android:padding="10dp"
-                android:src="@android:drawable/ic_menu_save"
+                android:src="@drawable/ic_backup_change"
                 app:tint="@color/text_primary" />
         </LinearLayout>
 

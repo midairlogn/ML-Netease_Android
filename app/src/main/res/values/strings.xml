@@ -208,7 +208,7 @@
     <string name="local_music_not_scanned">Local library has not been scanned yet.</string>
     <string name="local_music_scanning">Scanning local music...</string>
     <string name="local_music_scan_result">Found %1$d local audio files</string>
-    <string name="local_music_empty">No local songs found yet. Run a scan or pick a file.</string>
+    <string name="local_music_empty">No local songs found yet.\nRun a scan or pick a file.</string>
     <string name="local_music_permission_required">Library scan requires local audio permission.</string>
     <string name="local_music_search_hint">Search scanned local music</string>
     <string name="local_music_search_empty">No local songs matched your search.</string>
