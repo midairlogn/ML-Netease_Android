@@ -18,10 +18,22 @@ import java.util.List;
 
 public class DownloadCustomizationActivity extends AppCompatActivity {
 
+    private static final String VARIABLE_TITLE = "${title}";
+    private static final String VARIABLE_ARTIST = "${artist}";
+    private static final String VARIABLE_ALBUM = "${album}";
+    private static final String TEMPLATE_PRESET_DEFAULT = VARIABLE_TITLE + "_" + VARIABLE_ARTIST + "_" + VARIABLE_ALBUM;
+    private static final String TEMPLATE_PRESET_TITLE_ARTIST = VARIABLE_TITLE + "_" + VARIABLE_ARTIST;
+    private static final String TEMPLATE_PRESET_ARTIST_TITLE = VARIABLE_ARTIST + "_" + VARIABLE_TITLE;
+    private static final String TEMPLATE_PRESET_TITLE_ONLY = VARIABLE_TITLE;
+
     private SettingsManager settingsManager;
     private EditText inputTemplate;
     private RadioGroup separatorGroup;
     private TextView textFilenamePreview;
+    private TextView chipPresetTitleArtistAlbum;
+    private TextView chipPresetTitleArtist;
+    private TextView chipPresetArtistTitle;
+    private TextView chipPresetTitle;
     private Switch switchMetadataEnabled;
     private CheckBox checkboxMetadataTitle;
     private CheckBox checkboxMetadataArtist;
@@ -31,6 +43,8 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
     private CheckBox checkboxMetadataExtra;
     private TextView textMetadataPreview;
     private boolean isBinding;
+    private boolean isUpdatingTemplateText;
+    private String lastSelectedSeparator = SettingsManager.DEFAULT_DOWNLOAD_FILENAME_SEPARATOR;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -45,6 +59,10 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         inputTemplate = findViewById(R.id.input_filename_template);
         separatorGroup = findViewById(R.id.separator_group);
         textFilenamePreview = findViewById(R.id.text_filename_preview);
+        chipPresetTitleArtistAlbum = findViewById(R.id.chip_preset_title_artist_album);
+        chipPresetTitleArtist = findViewById(R.id.chip_preset_title_artist);
+        chipPresetArtistTitle = findViewById(R.id.chip_preset_artist_title);
+        chipPresetTitle = findViewById(R.id.chip_preset_title);
         switchMetadataEnabled = findViewById(R.id.switch_metadata_enabled);
         checkboxMetadataTitle = findViewById(R.id.checkbox_metadata_title);
         checkboxMetadataArtist = findViewById(R.id.checkbox_metadata_artist);
@@ -62,15 +80,17 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         isBinding = true;
         DownloadCustomizationSettings settings = settingsManager.getDownloadCustomizationSettings();
         String template = settings.fileNameTemplate;
-        if (SettingsManager.DEFAULT_DOWNLOAD_FILENAME_TEMPLATE.equals(template)) {
-            inputTemplate.setText("");
+        if (isBuiltInDefaultTemplate(template)) {
+            setTemplateText("");
         } else {
-            inputTemplate.setText(template);
+            setTemplateText(template);
         }
 
         separatorGroup.check("-".equals(settings.separator)
                 ? R.id.separator_hyphen
                 : R.id.separator_underscore);
+        lastSelectedSeparator = getSelectedSeparator();
+        refreshFilenameUi();
 
         switchMetadataEnabled.setChecked(settings.metadataEnabled);
         checkboxMetadataTitle.setChecked(settings.writeTitle);
@@ -94,31 +114,36 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
 
             @Override
             public void afterTextChanged(Editable s) {
+                if (isBinding || isUpdatingTemplateText) {
+                    return;
+                }
                 persistSettings();
             }
         });
 
         inputTemplate.setOnFocusChangeListener((v, hasFocus) -> {
             if (!hasFocus) {
-                maybeAppendFallbackVariable();
                 persistSettings();
             }
         });
 
         separatorGroup.setOnCheckedChangeListener((group, checkedId) -> {
-            maybeAppendFallbackVariable();
+            if (isBinding) {
+                return;
+            }
+            handleSeparatorChanged(getSelectedSeparator());
             persistSettings();
         });
 
-        findViewById(R.id.chip_variable_title).setOnClickListener(v -> insertVariable("${title}"));
-        findViewById(R.id.chip_variable_artist).setOnClickListener(v -> insertVariable("${artist}"));
-        findViewById(R.id.chip_variable_album).setOnClickListener(v -> insertVariable("${album}"));
-        findViewById(R.id.chip_preset_title_artist_album).setOnClickListener(v -> applyPreset("${title}_${artist}_${album}"));
-        findViewById(R.id.chip_preset_title_artist).setOnClickListener(v -> applyPreset("${title}_${artist}"));
-        findViewById(R.id.chip_preset_artist_title).setOnClickListener(v -> applyPreset("${artist}_${title}"));
-        findViewById(R.id.chip_preset_title).setOnClickListener(v -> applyPreset("${title}"));
+        findViewById(R.id.chip_variable_title).setOnClickListener(v -> insertVariable(VARIABLE_TITLE));
+        findViewById(R.id.chip_variable_artist).setOnClickListener(v -> insertVariable(VARIABLE_ARTIST));
+        findViewById(R.id.chip_variable_album).setOnClickListener(v -> insertVariable(VARIABLE_ALBUM));
+        chipPresetTitleArtistAlbum.setOnClickListener(v -> applyPreset(TEMPLATE_PRESET_DEFAULT));
+        chipPresetTitleArtist.setOnClickListener(v -> applyPreset(TEMPLATE_PRESET_TITLE_ARTIST));
+        chipPresetArtistTitle.setOnClickListener(v -> applyPreset(TEMPLATE_PRESET_ARTIST_TITLE));
+        chipPresetTitle.setOnClickListener(v -> applyPreset(TEMPLATE_PRESET_TITLE_ONLY));
         findViewById(R.id.btn_clear_template).setOnClickListener(v -> {
-            inputTemplate.setText("");
+            setTemplateText("");
             persistSettings();
         });
         findViewById(R.id.btn_reset_download_customize).setOnClickListener(v -> {
@@ -146,34 +171,54 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
     }
 
     private void applyPreset(String preset) {
-        inputTemplate.setText(rewritePresetWithSeparator(preset, getSelectedSeparator()));
-        inputTemplate.setSelection(inputTemplate.getText().length());
+        setTemplateText(rewritePresetWithSeparator(preset, getSelectedSeparator()));
+        persistSettings();
     }
 
     private String rewritePresetWithSeparator(String preset, String separator) {
         return preset.replace("_", separator);
     }
 
-    private void maybeAppendFallbackVariable() {
+    private void handleSeparatorChanged(String newSeparator) {
+        String previousSeparator = lastSelectedSeparator;
+        lastSelectedSeparator = newSeparator;
+        rewriteBuiltInTemplateForSeparatorChange(previousSeparator, newSeparator);
+        refreshFilenameUi();
+    }
+
+    private void rewriteBuiltInTemplateForSeparatorChange(String previousSeparator, String newSeparator) {
         String currentValue = inputTemplate.getText().toString().trim();
-        if (currentValue.isEmpty()) {
+        if (currentValue.isEmpty() || previousSeparator.equals(newSeparator)) {
             return;
         }
-        if (currentValue.matches(".*\\$\\{(title|artist|album)}.*")) {
-            return;
+        String rewritten = rewriteBuiltInTemplate(currentValue, previousSeparator, newSeparator);
+        if (!currentValue.equals(rewritten)) {
+            setTemplateText(rewritten);
         }
-        String separator = getSelectedSeparator();
-        String nextValue = currentValue + separator + "${title}";
-        inputTemplate.setText(nextValue);
-        inputTemplate.setSelection(nextValue.length());
+    }
+
+    private String rewriteBuiltInTemplate(String template, String previousSeparator, String newSeparator) {
+        String[][] builtInTemplates = new String[][]{
+                {TEMPLATE_PRESET_DEFAULT, TEMPLATE_PRESET_DEFAULT},
+                {TEMPLATE_PRESET_TITLE_ARTIST, TEMPLATE_PRESET_TITLE_ARTIST},
+                {TEMPLATE_PRESET_ARTIST_TITLE, TEMPLATE_PRESET_ARTIST_TITLE},
+                {TEMPLATE_PRESET_TITLE_ONLY, TEMPLATE_PRESET_TITLE_ONLY}
+        };
+        for (String[] builtInTemplate : builtInTemplates) {
+            String currentBuiltIn = rewritePresetWithSeparator(builtInTemplate[0], previousSeparator);
+            if (currentBuiltIn.equals(template)) {
+                return rewritePresetWithSeparator(builtInTemplate[1], newSeparator);
+            }
+        }
+        return template;
     }
 
     private void persistSettings() {
-        if (isBinding) {
+        if (isBinding || isUpdatingTemplateText) {
             return;
         }
         DownloadCustomizationSettings settings = new DownloadCustomizationSettings();
-        settings.fileNameTemplate = inputTemplate.getText().toString().trim();
+        settings.fileNameTemplate = resolveCurrentTemplate();
         settings.separator = getSelectedSeparator();
         settings.metadataEnabled = switchMetadataEnabled.isChecked();
         settings.writeTitle = checkboxMetadataTitle.isChecked();
@@ -213,11 +258,11 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
     }
 
     private String buildFilenamePreview() {
-        String template = settingsManager.getDownloadFileNameTemplate();
+        String template = resolveCurrentTemplate();
         String preview = template
-                .replace("${title}", "Example Song")
-                .replace("${artist}", "Example Artist")
-                .replace("${album}", "Example Album");
+                .replace(VARIABLE_TITLE, "Example Song")
+                .replace(VARIABLE_ARTIST, "Example Artist")
+                .replace(VARIABLE_ALBUM, "Example Album");
         preview = DownloadFileUtils.sanitizeFileName(preview);
         if (preview.isEmpty()) {
             preview = "netease_example";
@@ -252,5 +297,35 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
             return getString(R.string.download_metadata_preview_none);
         }
         return getString(R.string.download_metadata_preview_format, android.text.TextUtils.join(" / ", items));
+    }
+
+    private void refreshFilenameUi() {
+        String separator = getSelectedSeparator();
+        inputTemplate.setHint(getString(R.string.download_filename_hint).replace("_", separator));
+        chipPresetTitleArtistAlbum.setText(getString(R.string.download_preset_title_artist_album).replace("_", separator));
+        chipPresetTitleArtist.setText(getString(R.string.download_preset_title_artist).replace("_", separator));
+        chipPresetArtistTitle.setText(getString(R.string.download_preset_artist_title).replace("_", separator));
+        chipPresetTitle.setText(getString(R.string.download_preset_title));
+        updatePreviews();
+    }
+
+    private String resolveCurrentTemplate() {
+        String currentValue = inputTemplate.getText().toString().trim();
+        if (currentValue.isEmpty()) {
+            return rewritePresetWithSeparator(TEMPLATE_PRESET_DEFAULT, getSelectedSeparator());
+        }
+        return currentValue;
+    }
+
+    private boolean isBuiltInDefaultTemplate(String template) {
+        return rewritePresetWithSeparator(TEMPLATE_PRESET_DEFAULT, SettingsManager.DEFAULT_DOWNLOAD_FILENAME_SEPARATOR).equals(template)
+                || rewritePresetWithSeparator(TEMPLATE_PRESET_DEFAULT, "-").equals(template);
+    }
+
+    private void setTemplateText(String value) {
+        isUpdatingTemplateText = true;
+        inputTemplate.setText(value);
+        inputTemplate.setSelection(inputTemplate.getText().length());
+        isUpdatingTemplateText = false;
     }
 }
