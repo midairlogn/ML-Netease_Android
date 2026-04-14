@@ -39,6 +39,7 @@ public final class LocalAudioMetadataReader {
 
             applyLyrics(metadata, extractLyrics(retriever));
             metadata.artworkData = retriever.getEmbeddedPicture();
+            metadata.isPlayable = isReadableAudio(metadata);
         } catch (RuntimeException ignored) {
         } finally {
             try {
@@ -61,6 +62,19 @@ public final class LocalAudioMetadataReader {
             metadata.album = "";
         }
         return metadata;
+    }
+
+    private static boolean isReadableAudio(LocalAudioMetadata metadata) {
+        if (metadata == null) {
+            return false;
+        }
+        if (metadata.durationMs > 0L) {
+            return true;
+        }
+        return !safe(metadata.title).isEmpty()
+                || !safe(metadata.artist).isEmpty()
+                || !safe(metadata.album).isEmpty()
+                || metadata.artworkData != null;
     }
 
     private static String queryDisplayName(ContentResolver resolver, Uri uri) {

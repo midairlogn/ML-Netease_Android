@@ -15,6 +15,9 @@ public final class LocalAudioSongFactory {
         }
 
         LocalAudioMetadata metadata = LocalAudioMetadataReader.read(context, uri);
+        if (!metadata.isPlayable) {
+            return null;
+        }
         String uriValue = uri.toString();
         Song song = new Song(
                 "local-uri:" + uriValue.hashCode(),

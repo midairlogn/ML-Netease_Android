@@ -1,6 +1,7 @@
 package com.midairlogn.mlnetease;
 
 public class LocalAudioMetadata {
+    public boolean isPlayable = false;
     public String title = "";
     public String artist = "";
     public String album = "";

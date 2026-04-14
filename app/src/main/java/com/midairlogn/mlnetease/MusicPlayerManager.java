@@ -468,6 +468,10 @@ public class MusicPlayerManager {
 
         try {
             LocalAudioMetadata metadata = LocalAudioMetadataReader.read(context, mediaUri);
+            if (!metadata.isPlayable) {
+                handlePlaybackFailure(index, requestId, "Local file is not a readable audio source");
+                return;
+            }
             if (!metadata.title.isEmpty()) {
                 song.name = metadata.title;
             }
