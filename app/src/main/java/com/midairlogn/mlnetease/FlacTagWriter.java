@@ -1,6 +1,10 @@
 package com.midairlogn.mlnetease;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -10,30 +14,46 @@ import java.util.Map;
 public final class FlacTagWriter {
     private FlacTagWriter() {}
 
-    public static byte[] writeTaggedBytes(byte[] audioBytes, DownloadTagData tagData) throws Exception {
-        if (audioBytes == null || audioBytes.length < 4 || audioBytes[0] != 'f' || audioBytes[1] != 'L' || audioBytes[2] != 'a' || audioBytes[3] != 'C') {
-            return audioBytes;
+    public static void writeTaggedFile(File input, File output, DownloadTagData tagData) throws Exception {
+        if (input == null || output == null) {
+            throw new IllegalArgumentException("Input and output files are required");
         }
 
+        try (FileInputStream inputStream = new FileInputStream(input);
+             FileOutputStream outputStream = new FileOutputStream(output)) {
+            writeTaggedFile(inputStream, outputStream, tagData);
+        }
+    }
+
+    private static void writeTaggedFile(InputStream inputStream, FileOutputStream outputStream, DownloadTagData tagData) throws Exception {
+        byte[] signature = new byte[4];
+        if (readFully(inputStream, signature, 0, signature.length) != signature.length
+                || signature[0] != 'f'
+                || signature[1] != 'L'
+                || signature[2] != 'a'
+                || signature[3] != 'C') {
+            throw new IllegalArgumentException("Invalid FLAC file");
+        }
+
+        outputStream.write(signature);
+
         List<MetadataBlock> keptBlocks = new ArrayList<>();
-        int offset = 4;
-        int audioStart = 4;
-        while (offset < audioBytes.length) {
-            int header = audioBytes[offset] & 0xFF;
-            boolean isLast = (header & 0x80) != 0;
-            int type = header & 0x7F;
-            int length = ((audioBytes[offset + 1] & 0xFF) << 16) | ((audioBytes[offset + 2] & 0xFF) << 8) | (audioBytes[offset + 3] & 0xFF);
-            int dataStart = offset + 4;
-            int end = dataStart + length;
-            if (type != 4 && type != 6) {
-                byte[] data = new byte[length];
-                System.arraycopy(audioBytes, dataStart, data, 0, length);
-                keptBlocks.add(new MetadataBlock(type, data));
+        byte[] header = new byte[4];
+        boolean reachedLastBlock = false;
+        while (!reachedLastBlock) {
+            if (readFully(inputStream, header, 0, header.length) != header.length) {
+                throw new IllegalArgumentException("Invalid FLAC metadata header");
             }
-            offset = end;
-            if (isLast) {
-                audioStart = end;
-                break;
+            int blockHeader = header[0] & 0xFF;
+            reachedLastBlock = (blockHeader & 0x80) != 0;
+            int type = blockHeader & 0x7F;
+            int length = ((header[1] & 0xFF) << 16) | ((header[2] & 0xFF) << 8) | (header[3] & 0xFF);
+            byte[] data = new byte[length];
+            if (readFully(inputStream, data, 0, length) != length) {
+                throw new IllegalArgumentException("Invalid FLAC metadata block");
+            }
+            if (type != 4 && type != 6) {
+                keptBlocks.add(new MetadataBlock(type, data));
             }
         }
 
@@ -42,19 +62,34 @@ public final class FlacTagWriter {
             keptBlocks.add(new MetadataBlock(6, buildPictureBlock(tagData.coverData, tagData.coverMimeType)));
         }
 
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        output.write(audioBytes, 0, 4);
         for (int i = 0; i < keptBlocks.size(); i++) {
             MetadataBlock block = keptBlocks.get(i);
-            boolean last = i == keptBlocks.size() - 1;
-            output.write((last ? 0x80 : 0) | block.type);
-            output.write((block.data.length >> 16) & 0xFF);
-            output.write((block.data.length >> 8) & 0xFF);
-            output.write(block.data.length & 0xFF);
-            output.write(block.data);
+            boolean isLast = i == keptBlocks.size() - 1;
+            outputStream.write((isLast ? 0x80 : 0) | block.type);
+            outputStream.write((block.data.length >> 16) & 0xFF);
+            outputStream.write((block.data.length >> 8) & 0xFF);
+            outputStream.write(block.data.length & 0xFF);
+            outputStream.write(block.data);
         }
-        output.write(audioBytes, audioStart, audioBytes.length - audioStart);
-        return output.toByteArray();
+
+        byte[] buffer = new byte[32 * 1024];
+        int read;
+        while ((read = inputStream.read(buffer)) != -1) {
+            outputStream.write(buffer, 0, read);
+        }
+        outputStream.flush();
+    }
+
+    private static int readFully(InputStream inputStream, byte[] buffer, int offset, int length) throws Exception {
+        int totalRead = 0;
+        while (totalRead < length) {
+            int read = inputStream.read(buffer, offset + totalRead, length - totalRead);
+            if (read == -1) {
+                break;
+            }
+            totalRead += read;
+        }
+        return totalRead;
     }
 
     private static byte[] buildVorbisComment(DownloadTagData tagData) throws Exception {

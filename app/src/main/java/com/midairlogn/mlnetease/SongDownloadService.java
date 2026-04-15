@@ -19,7 +19,8 @@ import androidx.core.app.NotificationCompat;
 
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -322,86 +323,101 @@ public class SongDownloadService extends Service {
         );
         updateNotificationForCurrentState();
 
-        byte[] audioBytes = fetchBytesWithProgress(task, title, audioUrl, index);
-        throwIfServiceStopping();
-        throwIfCancelled(task.id);
-        throwIfPauseRequested(task.id);
-
-        taskManager.updateTaskProgress(
-                task.id,
-                index,
-                title,
-                getString(R.string.download_cover_progress),
-                computeOverallProgress(task, index, 82),
-                0L,
-                -1L
-        );
-
-        byte[] coverBytes = pic == null || pic.isEmpty() ? null : fetchBytesSimple(pic);
-        throwIfServiceStopping();
-        if (coverBytes != null && coverBytes.length > 0) {
-            coverBytes = CoverUtils.resizeCover(coverBytes);
-        }
-
-        DownloadTagData tagData = new DownloadTagData();
-        if (customizationSettings.metadataEnabled) {
-            tagData.title = customizationSettings.writeTitle ? title : null;
-            tagData.artist = customizationSettings.writeArtist ? artist : null;
-            tagData.album = customizationSettings.writeAlbum ? album : null;
-            tagData.lyrics = customizationSettings.writeLyrics ? lyric : null;
-            tagData.coverData = customizationSettings.writeCover ? coverBytes : null;
-            tagData.coverMimeType = customizationSettings.writeCover ? CoverUtils.getCoverMimeType() : null;
-            if (customizationSettings.writeExtra) {
-                tagData.quality = quality;
-                tagData.songId = song.id;
-                tagData.comment = "Downloaded by ML Netease Android | Netease Song ID: " + song.id;
-            }
-        }
-
-        taskManager.updateTaskProgress(
-                task.id,
-                index,
-                title,
-                getString(R.string.download_writing_tags),
-                computeOverallProgress(task, index, 90),
-                0L,
-                -1L
-        );
-
-        byte[] taggedBytes = audioBytes;
-        if (customizationSettings.metadataEnabled) {
-            taggedBytes = "mp3".equals(extension)
-                    ? Mp3TagWriter.writeTaggedBytes(audioBytes, tagData)
-                    : FlacTagWriter.writeTaggedBytes(audioBytes, tagData);
-        }
-
-        throwIfServiceStopping();
-        throwIfCancelled(task.id);
-        throwIfPauseRequested(task.id);
-
-        taskManager.updateTaskProgress(
-                task.id,
-                index,
-                title,
-                getString(R.string.download_saving_file),
-                computeOverallProgress(task, index, 96),
-                0L,
-                -1L
-        );
-
-        String mimeType = "mp3".equals(extension) ? "audio/mpeg" : "audio/flac";
-        Uri savedUri = DownloadFileUtils.createPendingAudio(this, displayName, mimeType, relativePath);
-        boolean publishSuccess = false;
+        File downloadedAudio = File.createTempFile("ml_song_download", "." + extension, getCacheDir());
+        File taggedAudio = null;
         try {
-            DownloadFileUtils.writeAudio(this, savedUri, taggedBytes);
+            fetchFileWithProgress(task, title, audioUrl, index, downloadedAudio);
             throwIfServiceStopping();
             throwIfCancelled(task.id);
             throwIfPauseRequested(task.id);
-            DownloadFileUtils.publishAudio(this, savedUri);
-            publishSuccess = true;
+
+            taskManager.updateTaskProgress(
+                    task.id,
+                    index,
+                    title,
+                    getString(R.string.download_cover_progress),
+                    computeOverallProgress(task, index, 82),
+                    0L,
+                    -1L
+            );
+
+            byte[] coverBytes = pic == null || pic.isEmpty() ? null : fetchBytesSimple(pic);
+            throwIfServiceStopping();
+            if (coverBytes != null && coverBytes.length > 0) {
+                coverBytes = CoverUtils.resizeCover(coverBytes);
+            }
+
+            DownloadTagData tagData = new DownloadTagData();
+            if (customizationSettings.metadataEnabled) {
+                tagData.title = customizationSettings.writeTitle ? title : null;
+                tagData.artist = customizationSettings.writeArtist ? artist : null;
+                tagData.album = customizationSettings.writeAlbum ? album : null;
+                tagData.lyrics = customizationSettings.writeLyrics ? lyric : null;
+                tagData.coverData = customizationSettings.writeCover ? coverBytes : null;
+                tagData.coverMimeType = customizationSettings.writeCover ? CoverUtils.getCoverMimeType() : null;
+                if (customizationSettings.writeExtra) {
+                    tagData.quality = quality;
+                    tagData.songId = song.id;
+                    tagData.comment = "Downloaded by ML Netease Android | Netease Song ID: " + song.id;
+                }
+            }
+
+            taskManager.updateTaskProgress(
+                    task.id,
+                    index,
+                    title,
+                    getString(R.string.download_writing_tags),
+                    computeOverallProgress(task, index, 90),
+                    0L,
+                    -1L
+            );
+
+            File outputAudio = downloadedAudio;
+            if (customizationSettings.metadataEnabled) {
+                taggedAudio = File.createTempFile("ml_song_tagged", "." + extension, getCacheDir());
+                if ("mp3".equals(extension)) {
+                    Mp3TagWriter.writeTaggedFile(downloadedAudio, taggedAudio, tagData);
+                } else {
+                    FlacTagWriter.writeTaggedFile(downloadedAudio, taggedAudio, tagData);
+                }
+                outputAudio = taggedAudio;
+            }
+
+            throwIfServiceStopping();
+            throwIfCancelled(task.id);
+            throwIfPauseRequested(task.id);
+
+            taskManager.updateTaskProgress(
+                    task.id,
+                    index,
+                    title,
+                    getString(R.string.download_saving_file),
+                    computeOverallProgress(task, index, 96),
+                    0L,
+                    -1L
+            );
+
+            String mimeType = "mp3".equals(extension) ? "audio/mpeg" : "audio/flac";
+            Uri savedUri = DownloadFileUtils.createPendingAudio(this, displayName, mimeType, relativePath);
+            boolean publishSuccess = false;
+            try {
+                DownloadFileUtils.writeAudio(this, savedUri, outputAudio);
+                throwIfServiceStopping();
+                throwIfCancelled(task.id);
+                throwIfPauseRequested(task.id);
+                DownloadFileUtils.publishAudio(this, savedUri);
+                publishSuccess = true;
+            } finally {
+                if (!publishSuccess) {
+                    DownloadFileUtils.deleteAudio(this, savedUri);
+                }
+            }
         } finally {
-            if (!publishSuccess) {
-                DownloadFileUtils.deleteAudio(this, savedUri);
+            if (downloadedAudio.exists()) {
+                downloadedAudio.delete();
+            }
+            if (taggedAudio != null && taggedAudio.exists()) {
+                taggedAudio.delete();
             }
         }
 
@@ -460,7 +476,7 @@ public class SongDownloadService extends Service {
         return new JSONObject(resultHolder[0]);
     }
 
-    private byte[] fetchBytesWithProgress(DownloadTask task, String songTitle, String url, int songIndex) throws Exception {
+    private void fetchFileWithProgress(DownloadTask task, String songTitle, String url, int songIndex, File destinationFile) throws Exception {
         Request request = new Request.Builder()
                 .url(url)
                 .addHeader("User-Agent", "Mozilla/5.0")
@@ -473,7 +489,7 @@ public class SongDownloadService extends Service {
             }
             long totalBytes = body.contentLength();
             try (InputStream inputStream = body.byteStream();
-                 ByteArrayOutputStream outputStream = new ByteArrayOutputStream(totalBytes > 0 && totalBytes < Integer.MAX_VALUE ? (int) totalBytes : 32 * 1024)) {
+                 FileOutputStream outputStream = new FileOutputStream(destinationFile)) {
                 byte[] buffer = new byte[16 * 1024];
                 long downloaded = 0L;
                 int read;
@@ -505,7 +521,7 @@ public class SongDownloadService extends Service {
                         lastUpdateAt = now;
                     }
                 }
-                return outputStream.toByteArray();
+                outputStream.flush();
             }
         }
     }

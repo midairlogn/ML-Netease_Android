@@ -11,6 +11,9 @@ import android.provider.MediaStore;
 
 import androidx.annotation.Nullable;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Locale;
 
@@ -61,11 +64,11 @@ public final class DownloadFileUtils {
         return fileName + "." + extension;
     }
 
-    public static Uri saveAudio(Context context, byte[] data, String displayName, String mimeType, String relativePath) throws Exception {
+    public static Uri saveAudio(Context context, File sourceFile, String displayName, String mimeType, String relativePath) throws Exception {
         Uri uri = createPendingAudio(context, displayName, mimeType, relativePath);
         boolean publishSuccess = false;
         try {
-            writeAudio(context, uri, data);
+            writeAudio(context, uri, sourceFile);
             publishAudio(context, uri);
             publishSuccess = true;
             return uri;
@@ -155,13 +158,26 @@ public final class DownloadFileUtils {
         return uri;
     }
 
-    public static void writeAudio(Context context, Uri uri, byte[] data) throws Exception {
+    public static void writeAudio(Context context, Uri uri, File sourceFile) throws Exception {
+        if (sourceFile == null) {
+            throw new IllegalArgumentException("Source file is required");
+        }
+        try (InputStream inputStream = new FileInputStream(sourceFile)) {
+            writeAudio(context, uri, inputStream);
+        }
+    }
+
+    public static void writeAudio(Context context, Uri uri, InputStream inputStream) throws Exception {
         ContentResolver resolver = context.getContentResolver();
         try (OutputStream outputStream = resolver.openOutputStream(uri)) {
             if (outputStream == null) {
                 throw new IllegalStateException("Failed to open output stream");
             }
-            outputStream.write(data);
+            byte[] buffer = new byte[32 * 1024];
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, read);
+            }
             outputStream.flush();
         }
     }
