@@ -61,6 +61,13 @@ public class SettingsFragment extends Fragment {
     private Spinner spinnerLanguage;
     private View layoutDownloadCustomize;
     private TextView textDownloadCustomizeSummary;
+    private Switch switchHearingProtection;
+    private View layoutHearingProtectionSettings;
+    private View layoutHearingProtectionListenDuration;
+    private View layoutHearingProtectionRestDuration;
+    private TextView textHearingProtectionSummary;
+    private TextView textHearingProtectionListenDurationValue;
+    private TextView textHearingProtectionRestDurationValue;
     private ActivityResultLauncher<String> createSettingsBackupLauncher;
     private ActivityResultLauncher<String[]> importSettingsBackupLauncher;
     private PendingBackupAction pendingBackupAction;
@@ -154,6 +161,13 @@ public class SettingsFragment extends Fragment {
         spinnerLanguage = view.findViewById(R.id.spinner_language);
         layoutDownloadCustomize = view.findViewById(R.id.layout_download_customize);
         textDownloadCustomizeSummary = view.findViewById(R.id.text_download_customize_summary);
+        switchHearingProtection = view.findViewById(R.id.switch_hearing_protection);
+        layoutHearingProtectionSettings = view.findViewById(R.id.layout_hearing_protection_settings);
+        layoutHearingProtectionListenDuration = view.findViewById(R.id.layout_hearing_protection_listen_duration);
+        layoutHearingProtectionRestDuration = view.findViewById(R.id.layout_hearing_protection_rest_duration);
+        textHearingProtectionSummary = view.findViewById(R.id.text_hearing_protection_summary);
+        textHearingProtectionListenDurationValue = view.findViewById(R.id.text_hearing_protection_listen_duration_value);
+        textHearingProtectionRestDurationValue = view.findViewById(R.id.text_hearing_protection_rest_duration_value);
         View btnSettingsBackup = view.findViewById(R.id.btn_settings_backup);
         layoutAudioQuality.setOnTouchListener(hideKeyboardTouchListener);
 
@@ -270,6 +284,27 @@ public class SettingsFragment extends Fragment {
             notifySettingsChanged();
         });
 
+        boolean hearingProtectionEnabled = settingsManager.isHearingProtectionEnabled();
+        switchHearingProtection.setChecked(hearingProtectionEnabled);
+        if (layoutHearingProtectionSettings != null) {
+            layoutHearingProtectionSettings.setVisibility(hearingProtectionEnabled ? View.VISIBLE : View.GONE);
+        }
+        refreshHearingProtectionSummary();
+        switchHearingProtection.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            settingsManager.setHearingProtectionEnabled(isChecked);
+            if (layoutHearingProtectionSettings != null) {
+                layoutHearingProtectionSettings.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+            }
+            refreshHearingProtectionSummary();
+            notifySettingsChanged();
+        });
+        if (layoutHearingProtectionListenDuration != null) {
+            layoutHearingProtectionListenDuration.setOnClickListener(v -> showHearingProtectionListenDurationDialog());
+        }
+        if (layoutHearingProtectionRestDuration != null) {
+            layoutHearingProtectionRestDuration.setOnClickListener(v -> showHearingProtectionRestDurationDialog());
+        }
+
         // Floating Window Init
         boolean isFloatingEnabled = settingsManager.isFloatingLyricsEnabled();
         switchFloatingLyrics.setChecked(isFloatingEnabled);
@@ -372,6 +407,13 @@ public class SettingsFragment extends Fragment {
         spinnerLanguage = null;
         layoutDownloadCustomize = null;
         textDownloadCustomizeSummary = null;
+        switchHearingProtection = null;
+        layoutHearingProtectionSettings = null;
+        layoutHearingProtectionListenDuration = null;
+        layoutHearingProtectionRestDuration = null;
+        textHearingProtectionSummary = null;
+        textHearingProtectionListenDurationValue = null;
+        textHearingProtectionRestDurationValue = null;
         switchFloatingLyrics = null;
         switchTranslationIntegration = null;
         layoutFloatingSettings = null;
@@ -552,6 +594,24 @@ public class SettingsFragment extends Fragment {
             String currentQuality = settingsManager.getQuality();
             updateAudioQualitySummary(currentQuality);
 
+            boolean hearingProtectionEnabled = settingsManager.isHearingProtectionEnabled();
+            if (switchHearingProtection != null) {
+                switchHearingProtection.setOnCheckedChangeListener(null);
+                switchHearingProtection.setChecked(hearingProtectionEnabled);
+                switchHearingProtection.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                    settingsManager.setHearingProtectionEnabled(isChecked);
+                    if (layoutHearingProtectionSettings != null) {
+                        layoutHearingProtectionSettings.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+                    }
+                    refreshHearingProtectionSummary();
+                    notifySettingsChanged();
+                });
+            }
+            if (layoutHearingProtectionSettings != null) {
+                layoutHearingProtectionSettings.setVisibility(hearingProtectionEnabled ? View.VISIBLE : View.GONE);
+            }
+            refreshHearingProtectionSummary();
+
             boolean isFloatingEnabled = settingsManager.isFloatingLyricsEnabled();
             boolean isTranslationEnabled = settingsManager.isTranslationIntegrationEnabled();
             // Avoid triggering listeners if value is same
@@ -635,6 +695,192 @@ public class SettingsFragment extends Fragment {
                 ? getString(R.string.download_customize_metadata_on)
                 : getString(R.string.download_customize_metadata_off);
         textDownloadCustomizeSummary.setText(getString(R.string.download_customize_summary, previewName, metadataState));
+    }
+
+    private void refreshHearingProtectionSummary() {
+        if (settingsManager == null) {
+            return;
+        }
+        int listenMinutes = settingsManager.getHearingProtectionListenMinutes();
+        int restMinutes = settingsManager.getHearingProtectionRestMinutes();
+        String listenLabel = formatMinutes(listenMinutes);
+        String restLabel = formatMinutes(restMinutes);
+        if (textHearingProtectionListenDurationValue != null) {
+            textHearingProtectionListenDurationValue.setText(listenLabel);
+        }
+        if (textHearingProtectionRestDurationValue != null) {
+            textHearingProtectionRestDurationValue.setText(restLabel);
+        }
+        if (textHearingProtectionSummary != null) {
+            textHearingProtectionSummary.setText(getString(
+                    R.string.hearing_protection_schedule_summary,
+                    restLabel,
+                    listenLabel
+            ));
+        }
+    }
+
+    private void showHearingProtectionListenDurationDialog() {
+        showMinuteChoiceDialog(
+                R.string.hearing_protection_listen_dialog_title,
+                new int[] {30, 45, 60, 90, 120, 150, 180},
+                settingsManager.getHearingProtectionListenMinutes(),
+                15,
+                240,
+                selectedMinutes -> {
+                    if (selectedMinutes != settingsManager.getHearingProtectionListenMinutes()) {
+                        settingsManager.setHearingProtectionListenMinutes(selectedMinutes);
+                        refreshHearingProtectionSummary();
+                        notifySettingsChanged();
+                    }
+                }
+        );
+    }
+
+    private void showHearingProtectionRestDurationDialog() {
+        showMinuteChoiceDialog(
+                R.string.hearing_protection_rest_dialog_title,
+                new int[] {5, 10, 15, 20, 30, 45, 60},
+                settingsManager.getHearingProtectionRestMinutes(),
+                5,
+                60,
+                selectedMinutes -> {
+                    if (selectedMinutes != settingsManager.getHearingProtectionRestMinutes()) {
+                        settingsManager.setHearingProtectionRestMinutes(selectedMinutes);
+                        refreshHearingProtectionSummary();
+                        notifySettingsChanged();
+                    }
+                }
+        );
+    }
+
+    private void showMinuteChoiceDialog(int titleResId, int[] options, int currentValue, int minValue, int maxValue, MinuteChoiceListener listener) {
+        if (options == null || options.length == 0 || listener == null) {
+            return;
+        }
+        Context context = requireContext();
+        String[] labels = new String[options.length + 1];
+        int selectedIndex = 0;
+        for (int i = 0; i < options.length; i++) {
+            labels[i] = formatMinutes(options[i]);
+            if (options[i] == currentValue) {
+                selectedIndex = i;
+            }
+        }
+        labels[options.length] = getString(R.string.hearing_protection_custom_option);
+        boolean isCustomValue = true;
+        for (int option : options) {
+            if (option == currentValue) {
+                isCustomValue = false;
+                break;
+            }
+        }
+        if (isCustomValue) {
+            selectedIndex = options.length;
+        }
+        final boolean currentValueIsCustom = isCustomValue;
+
+        LinearLayout container = new LinearLayout(context);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(dpToPx(20), dpToPx(12), dpToPx(20), 0);
+
+        RadioGroup radioGroup = new RadioGroup(context);
+        radioGroup.setOrientation(LinearLayout.VERTICAL);
+        container.addView(radioGroup);
+
+        for (int i = 0; i < labels.length; i++) {
+            RadioButton radioButton = new RadioButton(context);
+            radioButton.setLayoutParams(new RadioGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
+            radioButton.setText(labels[i]);
+            radioButton.setTextColor(getResources().getColor(R.color.text_primary, null));
+            radioButton.setButtonTintList(getResources().getColorStateList(R.color.brand_primary, null));
+            radioButton.setPadding(0, dpToPx(8), 0, dpToPx(8));
+            radioButton.setId(View.generateViewId());
+            radioGroup.addView(radioButton);
+            if (i == selectedIndex) {
+                radioGroup.check(radioButton.getId());
+            }
+        }
+
+        EditText customInput = new EditText(context);
+        customInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        customInput.setHint(getString(R.string.hearing_protection_custom_minutes_hint));
+        customInput.setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12));
+        customInput.setSelectAllOnFocus(true);
+        if (isCustomValue) {
+            customInput.setText(String.valueOf(currentValue));
+        }
+        container.addView(customInput, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        final int[] checkedIndex = {selectedIndex};
+        updateCustomMinuteInputState(customInput, checkedIndex[0] == options.length);
+        radioGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            for (int i = 0; i < group.getChildCount(); i++) {
+                if (group.getChildAt(i).getId() == checkedId) {
+                    checkedIndex[0] = i;
+                    break;
+                }
+            }
+            boolean customSelected = checkedIndex[0] == options.length;
+            updateCustomMinuteInputState(customInput, customSelected);
+            if (customSelected && customInput.getText() != null && customInput.getText().length() == 0 && currentValueIsCustom) {
+                customInput.setText(String.valueOf(currentValue));
+            }
+        });
+
+        AlertDialog dialog = new AlertDialog.Builder(context)
+                .setTitle(titleResId)
+                .setView(container)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.confirm, null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
+            int selected = checkedIndex[0];
+            if (selected >= 0 && selected < options.length) {
+                listener.onMinuteSelected(options[selected]);
+                dialog.dismiss();
+                return;
+            }
+            String rawValue = customInput.getText() == null ? "" : customInput.getText().toString().trim();
+            if (rawValue.isEmpty()) {
+                Toast.makeText(context, getString(R.string.hearing_protection_custom_invalid, minValue, maxValue), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            int customMinutes;
+            try {
+                customMinutes = Integer.parseInt(rawValue);
+            } catch (NumberFormatException ignored) {
+                Toast.makeText(context, getString(R.string.hearing_protection_custom_invalid, minValue, maxValue), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (customMinutes < minValue || customMinutes > maxValue) {
+                Toast.makeText(context, getString(R.string.hearing_protection_custom_invalid, minValue, maxValue), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            listener.onMinuteSelected(customMinutes);
+            dialog.dismiss();
+        }));
+        dialog.show();
+    }
+
+    private void updateCustomMinuteInputState(EditText customInput, boolean enabled) {
+        customInput.setEnabled(enabled);
+        customInput.setFocusable(enabled);
+        customInput.setFocusableInTouchMode(enabled);
+        customInput.setClickable(enabled);
+        customInput.setAlpha(enabled ? 1f : 0.5f);
+    }
+
+    private String formatMinutes(int minutes) {
+        return getString(R.string.hearing_protection_option_minutes, minutes);
+    }
+
+    private interface MinuteChoiceListener {
+        void onMinuteSelected(int minutes);
     }
 
     private void showAudioQualityDialog() {

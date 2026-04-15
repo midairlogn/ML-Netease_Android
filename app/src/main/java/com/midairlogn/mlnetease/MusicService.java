@@ -41,6 +41,7 @@ public class MusicService extends Service {
     private MusicPlayerManager musicPlayerManager;
     private NotificationManager notificationManager;
     private FloatingLyricsManager floatingLyricsManager;
+    private HearingProtectionController hearingProtectionController;
     private AudioManager audioManager;
     private AudioFocusRequest audioFocusRequest;
     private boolean hasAudioFocus = false;
@@ -163,6 +164,8 @@ public class MusicService extends Service {
                     .build();
         }
         floatingLyricsManager = new FloatingLyricsManager(this);
+        hearingProtectionController = new HearingProtectionController(this, musicPlayerManager);
+        hearingProtectionController.start();
 
         if (getApplication() instanceof MainApplication) {
             MainApplication app = (MainApplication) getApplication();
@@ -725,6 +728,9 @@ public class MusicService extends Service {
             } else if ("ACTION_UPDATE_SETTINGS".equals(action)) {
                 SettingsManager sm = new SettingsManager(this);
                 musicPlayerManager.setAppVolume(sm.getAppVolume());
+                if (hearingProtectionController != null) {
+                    hearingProtectionController.onSettingsChanged();
+                }
                 if (floatingLyricsManager != null) {
                     floatingLyricsManager.onSettingChanged();
                 }
@@ -759,6 +765,9 @@ public class MusicService extends Service {
         musicPlayerManager.removeOnSeekListener(seekListener);
         cancelActiveArtworkTask();
         artworkExecutor.shutdownNow();
+        if (hearingProtectionController != null) {
+            hearingProtectionController.stop();
+        }
         if (floatingLyricsManager != null) {
             floatingLyricsManager.release();
         }

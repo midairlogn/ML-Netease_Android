@@ -34,6 +34,11 @@ public class SettingsManager {
     private static final String KEY_HOME_SHORTCUTS = "home_shortcuts";
     private static final String KEY_FAVOURITE_SONGS = "favourite_songs";
     private static final String KEY_APP_LANGUAGE = "app_language";
+    private static final String KEY_HEARING_PROTECTION_ENABLED = "hearing_protection_enabled";
+    private static final String KEY_HEARING_PROTECTION_LISTEN_MINUTES = "hearing_protection_listen_minutes";
+    private static final String KEY_HEARING_PROTECTION_REST_MINUTES = "hearing_protection_rest_minutes";
+    private static final String KEY_HEARING_PROTECTION_REST_ACTIVE = "hearing_protection_rest_active";
+    private static final String KEY_HEARING_PROTECTION_REST_END_ELAPSED_MS = "hearing_protection_rest_end_elapsed_ms";
     private static final String KEY_DOWNLOAD_FILENAME_TEMPLATE = "download_filename_template";
     private static final String KEY_DOWNLOAD_FILENAME_SEPARATOR = "download_filename_separator";
     private static final String KEY_DOWNLOAD_METADATA_ENABLED = "download_metadata_enabled";
@@ -54,6 +59,8 @@ public class SettingsManager {
     public static final String DEFAULT_DOWNLOAD_FILENAME_TEMPLATE = "${title}_${artist}_${album}";
     public static final String DEFAULT_DOWNLOAD_FILENAME_SEPARATOR = "_";
     public static final int DEFAULT_APP_VOLUME = 80;
+    public static final int DEFAULT_HEARING_PROTECTION_LISTEN_MINUTES = 90;
+    public static final int DEFAULT_HEARING_PROTECTION_REST_MINUTES = 15;
 
     private final Context appContext;
     private SharedPreferences prefs;
@@ -390,6 +397,64 @@ public class SettingsManager {
 
     public String getAppLanguage() {
         return prefs.getString(KEY_APP_LANGUAGE, "system"); // Default to system language
+    }
+
+    public void setHearingProtectionEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_HEARING_PROTECTION_ENABLED, enabled).apply();
+    }
+
+    public boolean isHearingProtectionEnabled() {
+        return prefs.getBoolean(KEY_HEARING_PROTECTION_ENABLED, false);
+    }
+
+    public void setHearingProtectionListenMinutes(int minutes) {
+        prefs.edit().putInt(KEY_HEARING_PROTECTION_LISTEN_MINUTES, clampHearingProtectionListenMinutes(minutes)).apply();
+    }
+
+    public int getHearingProtectionListenMinutes() {
+        return clampHearingProtectionListenMinutes(
+                prefs.getInt(KEY_HEARING_PROTECTION_LISTEN_MINUTES, DEFAULT_HEARING_PROTECTION_LISTEN_MINUTES)
+        );
+    }
+
+    public void setHearingProtectionRestMinutes(int minutes) {
+        prefs.edit().putInt(KEY_HEARING_PROTECTION_REST_MINUTES, clampHearingProtectionRestMinutes(minutes)).apply();
+    }
+
+    public int getHearingProtectionRestMinutes() {
+        return clampHearingProtectionRestMinutes(
+                prefs.getInt(KEY_HEARING_PROTECTION_REST_MINUTES, DEFAULT_HEARING_PROTECTION_REST_MINUTES)
+        );
+    }
+
+    public void setHearingProtectionRestState(boolean active, long restEndWallClockMs) {
+        prefs.edit()
+                .putBoolean(KEY_HEARING_PROTECTION_REST_ACTIVE, active)
+                .putLong(KEY_HEARING_PROTECTION_REST_END_ELAPSED_MS, Math.max(0L, restEndWallClockMs))
+                .apply();
+    }
+
+    public boolean isHearingProtectionRestActive() {
+        return prefs.getBoolean(KEY_HEARING_PROTECTION_REST_ACTIVE, false);
+    }
+
+    public long getHearingProtectionRestEndWallClockMs() {
+        return Math.max(0L, prefs.getLong(KEY_HEARING_PROTECTION_REST_END_ELAPSED_MS, 0L));
+    }
+
+    public void clearHearingProtectionRestState() {
+        prefs.edit()
+                .remove(KEY_HEARING_PROTECTION_REST_ACTIVE)
+                .remove(KEY_HEARING_PROTECTION_REST_END_ELAPSED_MS)
+                .apply();
+    }
+
+    private int clampHearingProtectionListenMinutes(int minutes) {
+        return Math.max(15, Math.min(minutes, 240));
+    }
+
+    private int clampHearingProtectionRestMinutes(int minutes) {
+        return Math.max(5, Math.min(minutes, 60));
     }
 
     public DownloadCustomizationSettings getDownloadCustomizationSettings() {

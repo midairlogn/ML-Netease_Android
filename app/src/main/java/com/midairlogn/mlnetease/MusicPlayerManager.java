@@ -57,6 +57,8 @@ public class MusicPlayerManager {
     private List<OnFullInfoAvailableListener> fullInfoAvailableListeners = new ArrayList<>();
     private List<OnSeekListener> seekListeners = new ArrayList<>();
     private List<OnProgressUpdateListener> progressUpdateListeners = new ArrayList<>();
+    private List<OnSongCompletionListener> songCompletionListeners = new ArrayList<>();
+    private List<OnPlaybackActionListener> playbackActionListeners = new ArrayList<>();
     private boolean isProgressDispatcherRunning = false;
     private final Runnable progressUpdateRunnable = new Runnable() {
         @Override
@@ -107,6 +109,20 @@ public class MusicPlayerManager {
         void onProgressUpdate(int current, int total);
     }
 
+    public interface OnSongCompletionListener {
+        boolean onSongCompleted(Song song, int completedIndex);
+    }
+
+    public interface OnPlaybackActionListener {
+        void onPlaybackAction(boolean userInitiated, String action);
+    }
+
+    public static final String PLAYBACK_ACTION_PLAY = "play";
+    public static final String PLAYBACK_ACTION_PAUSE = "pause";
+    public static final String PLAYBACK_ACTION_RESUME = "resume";
+    public static final String PLAYBACK_ACTION_NEXT = "next";
+    public static final String PLAYBACK_ACTION_PREVIOUS = "previous";
+
     private MusicPlayerManager(Context context) {
         this.context = context.getApplicationContext();
         this.settingsManager = new SettingsManager(this.context);
@@ -123,7 +139,11 @@ public class MusicPlayerManager {
 
         mediaPlayer.setOnCompletionListener(mp -> {
             if (isCompletionListenerEnabled) {
-                playNext();
+                Song completedSong = getCurrentSong();
+                int completedIndex = currentIndex;
+                if (!notifySongCompleted(completedSong, completedIndex)) {
+                    playNext(false, false);
+                }
             }
         });
     }
@@ -280,6 +300,7 @@ public class MusicPlayerManager {
 
 
     public void play(int index) {
+        notifyPlaybackAction(true, PLAYBACK_ACTION_PLAY);
         isAutoSkipping = false;
         continuousSkipCount = 0;
         if (pendingSongNotifyRunnable != null) {
@@ -560,6 +581,7 @@ public class MusicPlayerManager {
     }
 
     public void pause() {
+        notifyPlaybackAction(true, PLAYBACK_ACTION_PAUSE);
         if (mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
             isPaused = true;
@@ -569,6 +591,7 @@ public class MusicPlayerManager {
     }
 
     public void resume() {
+        notifyPlaybackAction(true, PLAYBACK_ACTION_RESUME);
         if (isPaused && !mediaPlayer.isPlaying()) {
             mediaPlayer.start();
             isPaused = false;
@@ -586,10 +609,17 @@ public class MusicPlayerManager {
     }
 
     public void playNext() {
-        playNext(false);
+        playNext(false, true);
     }
 
     public void playNext(boolean force) {
+        playNext(force, true);
+    }
+
+    private void playNext(boolean force, boolean userInitiated) {
+        if (userInitiated) {
+            notifyPlaybackAction(true, PLAYBACK_ACTION_NEXT);
+        }
         if (playlist.isEmpty()) return;
 
         int nextIndex = currentIndex;
@@ -630,6 +660,7 @@ public class MusicPlayerManager {
     }
 
     public void playPrevious() {
+        notifyPlaybackAction(true, PLAYBACK_ACTION_PREVIOUS);
         if (playlist.isEmpty()) return;
 
         int prevIndex = currentIndex;
@@ -800,6 +831,26 @@ public class MusicPlayerManager {
         seekListeners.remove(listener);
     }
 
+    public void addOnSongCompletionListener(OnSongCompletionListener listener) {
+        if (!songCompletionListeners.contains(listener)) {
+            songCompletionListeners.add(listener);
+        }
+    }
+
+    public void removeOnSongCompletionListener(OnSongCompletionListener listener) {
+        songCompletionListeners.remove(listener);
+    }
+
+    public void addOnPlaybackActionListener(OnPlaybackActionListener listener) {
+        if (!playbackActionListeners.contains(listener)) {
+            playbackActionListeners.add(listener);
+        }
+    }
+
+    public void removeOnPlaybackActionListener(OnPlaybackActionListener listener) {
+        playbackActionListeners.remove(listener);
+    }
+
     public void addOnProgressUpdateListener(OnProgressUpdateListener listener) {
         if (!progressUpdateListeners.contains(listener)) {
             progressUpdateListeners.add(listener);
@@ -923,6 +974,27 @@ public class MusicPlayerManager {
         mainHandler.post(() -> {
             for (OnProgressUpdateListener listener : progressUpdateListeners) {
                 listener.onProgressUpdate(safeCurrent, safeTotal);
+            }
+        });
+    }
+
+    private boolean notifySongCompleted(Song song, int completedIndex) {
+        boolean consumed = false;
+        for (OnSongCompletionListener listener : songCompletionListeners) {
+            if (listener.onSongCompleted(song, completedIndex)) {
+                consumed = true;
+            }
+        }
+        return consumed;
+    }
+
+    private void notifyPlaybackAction(boolean userInitiated, String action) {
+        if (playbackActionListeners.isEmpty()) {
+            return;
+        }
+        mainHandler.post(() -> {
+            for (OnPlaybackActionListener listener : playbackActionListeners) {
+                listener.onPlaybackAction(userInitiated, action);
             }
         });
     }
