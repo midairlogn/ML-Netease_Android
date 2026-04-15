@@ -25,6 +25,7 @@ public class FavouriteSongsBottomSheetFragment extends BottomSheetDialogFragment
     private FavouriteAdapter adapter;
     private TextView titleView;
     private SettingsManager settingsManager;
+    private MusicPlayerManager musicPlayerManager;
     private final List<FavouriteSong> favourites = new ArrayList<>();
     private Runnable onDismissListener;
 
@@ -42,6 +43,7 @@ public class FavouriteSongsBottomSheetFragment extends BottomSheetDialogFragment
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         settingsManager = new SettingsManager(requireContext());
+        musicPlayerManager = MusicPlayerManager.getInstance(requireContext());
         favourites.clear();
         favourites.addAll(settingsManager.getFavouriteSongs());
 
@@ -134,6 +136,11 @@ public class FavouriteSongsBottomSheetFragment extends BottomSheetDialogFragment
             holder.sequence.setText(String.valueOf(position + 1));
             holder.title.setText(song.name);
             holder.artist.setText(song.artists);
+            holder.itemView.setOnClickListener(v -> {
+                Song playableSong = song.toSong();
+                musicPlayerManager.addOrPlaySong(playableSong);
+                dismiss();
+            });
             holder.btnRemove.setOnClickListener(v -> {
                 int adapterPosition = holder.getBindingAdapterPosition();
                 if (adapterPosition < 0 || adapterPosition >= favourites.size()) {
