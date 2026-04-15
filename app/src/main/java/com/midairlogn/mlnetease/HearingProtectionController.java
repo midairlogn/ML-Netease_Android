@@ -75,7 +75,7 @@ class HearingProtectionController implements
         }
 
         if (restActive) {
-            long remainingMs = restEndElapsedMs - SystemClock.elapsedRealtime();
+            long remainingMs = restEndElapsedMs - System.currentTimeMillis();
             if (remainingMs <= 0L) {
                 completeRestAndResume();
             } else {

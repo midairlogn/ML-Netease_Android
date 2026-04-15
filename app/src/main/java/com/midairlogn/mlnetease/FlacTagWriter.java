@@ -5,10 +5,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 public final class FlacTagWriter {
@@ -37,47 +36,37 @@ public final class FlacTagWriter {
 
         outputStream.write(signature);
 
-        List<MetadataBlock> keptBlocks = new ArrayList<>();
-        byte[] header = new byte[4];
-        boolean reachedLastBlock = false;
-        while (!reachedLastBlock) {
-            if (readFully(inputStream, header, 0, header.length) != header.length) {
-                throw new IllegalArgumentException("Invalid FLAC metadata header");
+        File preservedMetadata = File.createTempFile("ml_flac_metadata", ".bin");
+        try {
+            try (FileOutputStream preservedOutput = new FileOutputStream(preservedMetadata)) {
+                copyPreservedMetadataBlocks(inputStream, preservedOutput);
             }
-            int blockHeader = header[0] & 0xFF;
-            reachedLastBlock = (blockHeader & 0x80) != 0;
-            int type = blockHeader & 0x7F;
-            int length = ((header[1] & 0xFF) << 16) | ((header[2] & 0xFF) << 8) | (header[3] & 0xFF);
-            byte[] data = new byte[length];
-            if (readFully(inputStream, data, 0, length) != length) {
-                throw new IllegalArgumentException("Invalid FLAC metadata block");
+
+            try (FileInputStream preservedInput = new FileInputStream(preservedMetadata)) {
+                copyStream(preservedInput, outputStream);
             }
-            if (type != 4 && type != 6) {
-                keptBlocks.add(new MetadataBlock(type, data));
+
+            byte[] vorbisComment = buildVorbisComment(tagData);
+            byte[] pictureBlock = tagData.coverData != null && tagData.coverData.length > 0
+                    ? buildPictureBlock(tagData.coverData, tagData.coverMimeType)
+                    : null;
+
+            writeMetadataBlock(outputStream, 4, vorbisComment, pictureBlock == null);
+            if (pictureBlock != null) {
+                writeMetadataBlock(outputStream, 6, pictureBlock, true);
+            }
+
+            byte[] buffer = new byte[32 * 1024];
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, read);
+            }
+            outputStream.flush();
+        } finally {
+            if (preservedMetadata.exists()) {
+                preservedMetadata.delete();
             }
         }
-
-        keptBlocks.add(new MetadataBlock(4, buildVorbisComment(tagData)));
-        if (tagData.coverData != null && tagData.coverData.length > 0) {
-            keptBlocks.add(new MetadataBlock(6, buildPictureBlock(tagData.coverData, tagData.coverMimeType)));
-        }
-
-        for (int i = 0; i < keptBlocks.size(); i++) {
-            MetadataBlock block = keptBlocks.get(i);
-            boolean isLast = i == keptBlocks.size() - 1;
-            outputStream.write((isLast ? 0x80 : 0) | block.type);
-            outputStream.write((block.data.length >> 16) & 0xFF);
-            outputStream.write((block.data.length >> 8) & 0xFF);
-            outputStream.write(block.data.length & 0xFF);
-            outputStream.write(block.data);
-        }
-
-        byte[] buffer = new byte[32 * 1024];
-        int read;
-        while ((read = inputStream.read(buffer)) != -1) {
-            outputStream.write(buffer, 0, read);
-        }
-        outputStream.flush();
     }
 
     private static int readFully(InputStream inputStream, byte[] buffer, int offset, int length) throws Exception {
@@ -90,6 +79,71 @@ public final class FlacTagWriter {
             totalRead += read;
         }
         return totalRead;
+    }
+
+    private static void copyPreservedMetadataBlocks(InputStream inputStream, OutputStream outputStream) throws Exception {
+        byte[] header = new byte[4];
+        boolean reachedLastBlock = false;
+        while (!reachedLastBlock) {
+            if (readFully(inputStream, header, 0, header.length) != header.length) {
+                throw new IllegalArgumentException("Invalid FLAC metadata header");
+            }
+            int blockHeader = header[0] & 0xFF;
+            reachedLastBlock = (blockHeader & 0x80) != 0;
+            int type = blockHeader & 0x7F;
+            int length = ((header[1] & 0xFF) << 16) | ((header[2] & 0xFF) << 8) | (header[3] & 0xFF);
+            if (type != 4 && type != 6) {
+                outputStream.write(type);
+                outputStream.write(header[1] & 0xFF);
+                outputStream.write(header[2] & 0xFF);
+                outputStream.write(header[3] & 0xFF);
+                copyExactly(inputStream, outputStream, length);
+            } else {
+                skipExactly(inputStream, length);
+            }
+        }
+    }
+
+    private static void copyStream(InputStream inputStream, OutputStream outputStream) throws Exception {
+        byte[] buffer = new byte[32 * 1024];
+        int read;
+        while ((read = inputStream.read(buffer)) != -1) {
+            outputStream.write(buffer, 0, read);
+        }
+    }
+
+    private static void copyExactly(InputStream inputStream, OutputStream outputStream, int length) throws Exception {
+        byte[] buffer = new byte[32 * 1024];
+        int remaining = length;
+        while (remaining > 0) {
+            int chunkSize = Math.min(buffer.length, remaining);
+            int read = inputStream.read(buffer, 0, chunkSize);
+            if (read == -1) {
+                throw new IllegalArgumentException("Invalid FLAC metadata block");
+            }
+            outputStream.write(buffer, 0, read);
+            remaining -= read;
+        }
+    }
+
+    private static void skipExactly(InputStream inputStream, int length) throws Exception {
+        byte[] buffer = new byte[32 * 1024];
+        int remaining = length;
+        while (remaining > 0) {
+            int read = inputStream.read(buffer, 0, Math.min(buffer.length, remaining));
+            if (read == -1) {
+                throw new IllegalArgumentException("Invalid FLAC metadata block");
+            }
+            remaining -= read;
+        }
+    }
+
+    private static void writeMetadataBlock(OutputStream outputStream, int type, byte[] data, boolean isLast) throws Exception {
+        outputStream.write((isLast ? 0x80 : 0) | type);
+        outputStream.write((data.length >> 16) & 0xFF);
+        outputStream.write((data.length >> 8) & 0xFF);
+        outputStream.write(data.length & 0xFF);
+        outputStream.write(data);
     }
 
     private static byte[] buildVorbisComment(DownloadTagData tagData) throws Exception {
@@ -151,15 +205,5 @@ public final class FlacTagWriter {
         output.write((value >> 16) & 0xFF);
         output.write((value >> 8) & 0xFF);
         output.write(value & 0xFF);
-    }
-
-    private static final class MetadataBlock {
-        final int type;
-        final byte[] data;
-
-        MetadataBlock(int type, byte[] data) {
-            this.type = type;
-            this.data = data;
-        }
     }
 }

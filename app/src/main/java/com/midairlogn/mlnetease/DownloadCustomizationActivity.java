@@ -25,6 +25,7 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
     private static final String TEMPLATE_PRESET_TITLE_ARTIST = VARIABLE_TITLE + "_" + VARIABLE_ARTIST;
     private static final String TEMPLATE_PRESET_ARTIST_TITLE = VARIABLE_ARTIST + "_" + VARIABLE_TITLE;
     private static final String TEMPLATE_PRESET_TITLE_ONLY = VARIABLE_TITLE;
+    private static final String[] FALLBACK_VARIABLES = new String[]{VARIABLE_TITLE, VARIABLE_ARTIST, VARIABLE_ALBUM};
 
     private SettingsManager settingsManager;
     private EditText inputTemplate;
@@ -314,7 +315,20 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         if (currentValue.isEmpty()) {
             return rewritePresetWithSeparator(TEMPLATE_PRESET_DEFAULT, getSelectedSeparator());
         }
-        return currentValue;
+        return maybeAppendFallbackVariable(currentValue);
+    }
+
+    private String maybeAppendFallbackVariable(String template) {
+        for (String variable : FALLBACK_VARIABLES) {
+            if (template.contains(variable)) {
+                return template;
+            }
+        }
+        String normalized = template.trim();
+        if (normalized.isEmpty()) {
+            return VARIABLE_TITLE;
+        }
+        return normalized + getSelectedSeparator() + VARIABLE_TITLE;
     }
 
     private boolean isBuiltInDefaultTemplate(String template) {

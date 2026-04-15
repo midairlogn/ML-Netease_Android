@@ -635,6 +635,9 @@ public class SettingsManager {
         json.put(KEY_PLAY_MODE, getPlayMode());
         json.put(KEY_TRANSLATION_INTEGRATION_ENABLED, isTranslationIntegrationEnabled());
         json.put(KEY_APP_VOLUME, getAppVolume());
+        json.put(KEY_HEARING_PROTECTION_ENABLED, isHearingProtectionEnabled());
+        json.put(KEY_HEARING_PROTECTION_LISTEN_MINUTES, getHearingProtectionListenMinutes());
+        json.put(KEY_HEARING_PROTECTION_REST_MINUTES, getHearingProtectionRestMinutes());
         json.put(KEY_HOME_SHORTCUTS, serializeHomeShortcuts());
         json.put(KEY_FAVOURITE_SONGS, serializeFavouriteSongs());
         json.put(KEY_APP_LANGUAGE, getAppLanguage());
@@ -666,6 +669,15 @@ public class SettingsManager {
         setPlayMode(normalizePlayMode(json.optInt(KEY_PLAY_MODE, 0)));
         setTranslationIntegrationEnabled(json.optBoolean(KEY_TRANSLATION_INTEGRATION_ENABLED, false));
         setAppVolume(clamp(json.optInt(KEY_APP_VOLUME, DEFAULT_APP_VOLUME), 0, 100));
+        setHearingProtectionEnabled(json.optBoolean(KEY_HEARING_PROTECTION_ENABLED, false));
+        setHearingProtectionListenMinutes(json.optInt(
+                KEY_HEARING_PROTECTION_LISTEN_MINUTES,
+                DEFAULT_HEARING_PROTECTION_LISTEN_MINUTES
+        ));
+        setHearingProtectionRestMinutes(json.optInt(
+                KEY_HEARING_PROTECTION_REST_MINUTES,
+                DEFAULT_HEARING_PROTECTION_REST_MINUTES
+        ));
         importHomeShortcuts(json.optJSONArray(KEY_HOME_SHORTCUTS));
         importFavouriteSongs(json.optJSONArray(KEY_FAVOURITE_SONGS));
         setAppLanguage(normalizeLanguage(json.optString(KEY_APP_LANGUAGE, "system")));
