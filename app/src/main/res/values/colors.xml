@@ -34,6 +34,7 @@
     <color name="lyrics_preview_text_color">#DDDDDD</color>
 
     <!-- Floating Lyrics Window -->
+    <color name="floating_window_music_note_color">#F5F5F5</color>
     <color name="floating_window_title_color">#FFFFFF</color>
     <color name="floating_window_artist_color">#DDDDDD</color>
     <color name="floating_window_lyrics_main_current_color">#FFFFFF</color>
