@@ -171,6 +171,11 @@ public class MusicPlayerManager {
         notifyPlaybackModeChanged(mode);
     }
 
+    public void reloadPlaybackModeFromSettings() {
+        currentMode = settingsManager.getPlayMode();
+        notifyPlaybackModeChanged(currentMode);
+    }
+
     public void togglePlaybackMode() {
         int nextMode;
         switch (currentMode) {

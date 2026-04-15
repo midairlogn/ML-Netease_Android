@@ -656,6 +656,12 @@ public class SettingsFragment extends Fragment {
             if (textFontSize != null) {
                 textFontSize.setText(String.valueOf((int) tempSize));
             }
+            if (textLyricPreviewCurrent != null) {
+                textLyricPreviewCurrent.setTextSize(tempSize);
+            }
+            if (textLyricPreviewNext != null) {
+                textLyricPreviewNext.setTextSize(Math.max(10f, tempSize - 2f));
+            }
             refreshDownloadCustomizeSummary();
         } finally {
             isRefreshingSettingsUi = false;
@@ -1158,6 +1164,7 @@ public class SettingsFragment extends Fragment {
         try {
             byte[] data = readAllBytes(sourceUri);
             lastImportSkippedFloatingLyrics = settingsManager.importEncryptedData(data, action.password);
+            MusicPlayerManager.getInstance(requireContext()).reloadPlaybackModeFromSettings();
             refreshSettingsUI();
             if (getActivity() instanceof MainActivity) {
                 ((MainActivity) getActivity()).setAppLocale(settingsManager.getAppLanguage());
