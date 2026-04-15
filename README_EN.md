@@ -42,7 +42,7 @@ An Android music player application that integrates with Netease Cloud Music.<br
 - **Required Permissions**:
   - "Display over other apps" for Floating Lyrics.
   - "Notifications", "Read device audio", and "Overlay" permissions for full functionality.
-- **Network**: A relatively stable internet connection is required.
+- **Network**: Internet connection is required for fetching Netease music.
 
 ## 🛠️ Tech Stack
 
