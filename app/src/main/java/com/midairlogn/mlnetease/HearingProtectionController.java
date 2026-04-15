@@ -200,7 +200,7 @@ class HearingProtectionController implements
         scheduleRestFinished(restDurationMs);
         Toast.makeText(appContext, appContext.getString(
                 R.string.hearing_protection_rest_started,
-                formatMinutes(settingsManager.getHearingProtectionRestMinutes())
+                settingsManager.getHearingProtectionRestMinutes()
         ), Toast.LENGTH_LONG).show();
     }
 
@@ -353,7 +353,4 @@ class HearingProtectionController implements
         return 1.0d;
     }
 
-    private String formatMinutes(int minutes) {
-        return appContext.getString(R.string.hearing_protection_option_minutes, minutes);
-    }
 }

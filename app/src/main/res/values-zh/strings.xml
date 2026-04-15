@@ -33,7 +33,7 @@
     <string name="hearing_protection_custom_option">自定义</string>
     <string name="hearing_protection_custom_minutes_hint">请输入分钟数</string>
     <string name="hearing_protection_custom_invalid">请输入 %1$d 到 %2$d 分钟之间的数值</string>
-    <string name="hearing_protection_rest_started">现在该让耳朵休息一下了。播放将在 %1$s 后继续。</string>
+    <string name="hearing_protection_rest_started">现在该让耳朵休息一下了。播放将在 %1$d 分钟后继续。</string>
     <string name="hearing_protection_rest_cancelled">已取消听力保护休息计时。</string>
     <string name="hearing_protection_rest_finished">休息结束，正在恢复播放。</string>
     <string name="title_lyric_highlight_color">悬浮窗歌词颜色</string>
