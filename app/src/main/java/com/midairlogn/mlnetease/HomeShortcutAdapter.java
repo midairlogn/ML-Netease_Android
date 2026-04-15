@@ -4,6 +4,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -50,7 +51,15 @@ public class HomeShortcutAdapter extends RecyclerView.Adapter<HomeShortcutAdapte
         holder.title.setText(entry.title);
         holder.subtitle.setText(entry.subtitle);
         holder.type.setText(entry.badge);
-        holder.sequence.setText(String.valueOf(position + 1));
+        if (entry.isFavourites()) {
+            holder.sequence.setVisibility(View.INVISIBLE);
+            holder.sequenceIcon.setVisibility(View.VISIBLE);
+        } else {
+            holder.sequence.setVisibility(View.VISIBLE);
+            holder.sequenceIcon.setVisibility(View.GONE);
+            int displayIndex = position;
+            holder.sequence.setText(String.valueOf(displayIndex));
+        }
         holder.btnManage.setVisibility(entry.showManageIcon ? View.VISIBLE : View.GONE);
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
@@ -75,10 +84,12 @@ public class HomeShortcutAdapter extends RecyclerView.Adapter<HomeShortcutAdapte
         TextView subtitle;
         TextView type;
         ImageButton btnManage;
+        ImageView sequenceIcon;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
             sequence = itemView.findViewById(R.id.shortcut_sequence);
+            sequenceIcon = itemView.findViewById(R.id.shortcut_sequence_icon);
             title = itemView.findViewById(R.id.shortcut_title);
             subtitle = itemView.findViewById(R.id.shortcut_subtitle);
             type = itemView.findViewById(R.id.shortcut_type);
