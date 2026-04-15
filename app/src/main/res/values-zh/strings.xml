@@ -106,6 +106,7 @@
     <string name="favourites_empty_hint">还没有收藏歌曲</string>
     <string name="favourites_count_format">%1$d 首收藏歌曲</string>
     <string name="favourites_sheet_title">我喜欢的音乐（%1$d）</string>
+    <string name="favourites_cleanup_removed">已自动移除失效的本地收藏</string>
     <string name="shortcut_id_format">ID：%1$s</string>
     <string name="clear">清空</string>
     <string name="confirm">确认</string>

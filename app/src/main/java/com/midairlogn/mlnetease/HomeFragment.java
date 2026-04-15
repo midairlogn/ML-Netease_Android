@@ -522,7 +522,13 @@ public class HomeFragment extends Fragment {
         for (FavouriteSong favourite : favourites) {
             songs.add(favourite.toSong());
         }
+        if (songs.isEmpty()) {
+            Toast.makeText(getContext(), R.string.favourites_cleanup_removed, Toast.LENGTH_SHORT).show();
+            loadShortcuts();
+            return;
+        }
         MusicPlayerManager.getInstance(getContext()).addPlaylistAndPlayFirstNew(songs);
+        loadShortcuts();
     }
 
     private void showFavouriteManager() {

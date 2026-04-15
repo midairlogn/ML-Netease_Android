@@ -1,5 +1,8 @@
 package com.midairlogn.mlnetease;
 
+import android.content.Context;
+import android.net.Uri;
+
 import java.io.Serializable;
 
 public class FavouriteSong implements Serializable {
@@ -53,5 +56,22 @@ public class FavouriteSong implements Serializable {
             return false;
         }
         return id.equals(song.id);
+    }
+
+    public boolean isPlayable(Context context) {
+        if (!Song.isLocalSourceType(sourceType)) {
+            return true;
+        }
+        if (context == null || mediaUri == null || mediaUri.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            Uri uri = Uri.parse(mediaUri);
+            try (android.content.res.AssetFileDescriptor ignored = context.getContentResolver().openAssetFileDescriptor(uri, "r")) {
+                return ignored != null;
+            }
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 }

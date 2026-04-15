@@ -255,6 +255,10 @@ public class SettingsManager {
 
         Collections.sort(favourites, Comparator.comparingInt(song -> song.sequence));
         normalizeFavouriteSequences(favourites);
+        boolean removedMissingLocalFiles = removeUnavailableLocalFavourites(favourites);
+        if (removedMissingLocalFiles) {
+            setFavouriteSongs(favourites);
+        }
         return favourites;
     }
 
@@ -316,6 +320,21 @@ public class SettingsManager {
         for (int i = 0; i < favourites.size(); i++) {
             favourites.get(i).sequence = i;
         }
+    }
+
+    private boolean removeUnavailableLocalFavourites(List<FavouriteSong> favourites) {
+        boolean changed = false;
+        for (int i = favourites.size() - 1; i >= 0; i--) {
+            FavouriteSong favourite = favourites.get(i);
+            if (favourite != null && !favourite.isPlayable(appContext)) {
+                favourites.remove(i);
+                changed = true;
+            }
+        }
+        if (changed) {
+            normalizeFavouriteSequences(favourites);
+        }
+        return changed;
     }
 
     public boolean isFavouriteSong(Song song) {

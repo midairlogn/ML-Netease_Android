@@ -133,6 +133,7 @@
     <string name="favourites_empty_hint">No favourite songs yet</string>
     <string name="favourites_count_format">%1$d favourite songs</string>
     <string name="favourites_sheet_title">Favourites (%1$d)</string>
+    <string name="favourites_cleanup_removed">Missing local favourites were removed automatically</string>
     <string name="shortcut_id_format">ID: %1$s</string>
     <string name="delete_shortcut">Delete shortcut</string>
     <string name="shortcut_meta_format" translatable="false">%1$s (ID: %2$s)</string>
