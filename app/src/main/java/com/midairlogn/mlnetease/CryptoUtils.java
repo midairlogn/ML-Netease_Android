@@ -106,7 +106,7 @@ public class CryptoUtils {
             }
 
             json.put("level", level);
-            json.put("encodeType", "flac");
+            json.put("encodeType", requiresFlacEncoding(level) ? "flac" : "mp3");
 
             json.put("header", headerConfig);
 
@@ -118,6 +118,24 @@ public class CryptoUtils {
         } catch (Exception e) {
             e.printStackTrace();
             return "{}";
+        }
+    }
+
+    private static boolean requiresFlacEncoding(String level) {
+        if (level == null) {
+            return false;
+        }
+        switch (level) {
+            case "lossless":
+            case "hires":
+            case "jyeffect":
+            case "sky":
+            case "jymaster":
+                return true;
+            case "standard":
+            case "exhigh":
+            default:
+                return false;
         }
     }
 }

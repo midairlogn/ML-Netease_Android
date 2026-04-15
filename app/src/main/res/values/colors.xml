@@ -50,4 +50,5 @@
     <color name="nav_bar_background">#F9F9F9</color>
     <color name="nav_item_selected">#FA233B</color>
     <color name="nav_item_unselected">#8E8E93</color>
+    <color name="download_failed">#D14343</color>
 </resources>

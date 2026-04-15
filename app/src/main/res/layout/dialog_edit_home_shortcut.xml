@@ -24,7 +24,7 @@
         app:tint="@color/text_primary"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
-        android:contentDescription="Close" />
+        android:contentDescription="@string/close" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -53,7 +53,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@android:drawable/ic_menu_close_clear_cancel"
                 app:tint="?android:attr/textColorHint"
-                android:contentDescription="Clear"
+                android:contentDescription="@string/clear"
                 android:visibility="gone" />
         </RelativeLayout>
 
@@ -100,7 +100,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@android:drawable/ic_menu_close_clear_cancel"
                 app:tint="?android:attr/textColorHint"
-                android:contentDescription="Clear"
+                android:contentDescription="@string/clear"
                 android:visibility="gone" />
         </RelativeLayout>
 

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
@@ -7,15 +8,30 @@
     android:gravity="center_vertical"
     android:background="?android:attr/selectableItemBackground">
 
-    <TextView
-        android:id="@+id/shortcut_sequence"
+    <FrameLayout
         android:layout_width="40dp"
         android:layout_height="wrap_content"
-        android:text="1"
-        android:textColor="@color/text_secondary"
-        android:textSize="14sp"
-        android:gravity="center"
-        android:layout_marginEnd="8dp" />
+        android:layout_marginEnd="8dp"
+        android:foregroundGravity="center">
+
+        <TextView
+            android:id="@+id/shortcut_sequence"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="1"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp" />
+
+        <ImageView
+            android:id="@+id/shortcut_sequence_icon"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_heart_filled"
+            android:visibility="gone"
+            app:tint="@color/brand_primary" />
+    </FrameLayout>
 
     <LinearLayout
         android:layout_width="0dp"
@@ -23,15 +39,23 @@
         android:layout_weight="1"
         android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/shortcut_title"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="16sp"
-            android:textColor="@color/text_primary"
-            android:textStyle="bold"
-            android:maxLines="1"
-            android:ellipsize="end" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/shortcut_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="16sp"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/shortcut_subtitle"
@@ -43,6 +67,18 @@
             android:ellipsize="end"
             android:layout_marginTop="2dp" />
     </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/btn_shortcut_manage"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_marginStart="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:padding="8dp"
+        android:src="@drawable/ic_edit"
+        app:tint="@color/text_secondary"
+        android:visibility="gone"
+        android:contentDescription="@string/manage_favourites" />
 
     <TextView
         android:id="@+id/shortcut_type"

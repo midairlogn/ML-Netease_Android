@@ -10,8 +10,76 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class NeteaseApi {
+
+    public interface CancelableRequest {
+        CancelableRequest NONE = new CancelableRequest() {
+            @Override
+            public void cancel() {
+            }
+
+            @Override
+            public boolean isCanceled() {
+                return false;
+            }
+        };
+
+        void cancel();
+
+        boolean isCanceled();
+    }
+
+    private static final class CallGroup implements CancelableRequest {
+        private final AtomicBoolean canceled = new AtomicBoolean(false);
+        private final List<Call> calls = new ArrayList<>();
+
+        @Override
+        public void cancel() {
+            if (!canceled.compareAndSet(false, true)) {
+                return;
+            }
+            synchronized (calls) {
+                for (Call call : calls) {
+                    call.cancel();
+                }
+                calls.clear();
+            }
+        }
+
+        @Override
+        public boolean isCanceled() {
+            return canceled.get();
+        }
+
+        public Call register(Call call) {
+            if (call == null) {
+                return null;
+            }
+            if (canceled.get()) {
+                call.cancel();
+                return call;
+            }
+            synchronized (calls) {
+                if (canceled.get()) {
+                    call.cancel();
+                } else {
+                    calls.add(call);
+                }
+            }
+            return call;
+        }
+
+        public void unregister(Call call) {
+            if (call == null) {
+                return;
+            }
+            synchronized (calls) {
+                calls.remove(call);
+            }
+        }
+    }
 
     private static final OkHttpClient client = new OkHttpClient.Builder()
             .cookieJar(new CookieJar() {
@@ -32,7 +100,7 @@ public class NeteaseApi {
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public NeteaseApi(android.content.Context context, SettingsManager settingsManager) {
-        this.context = context;
+        this.context = context.getApplicationContext();
         this.settingsManager = settingsManager;
     }
 
@@ -323,9 +391,13 @@ public class NeteaseApi {
         }).start();
     }
 
-    public void getSongFullInfo(String id, ApiCallback callback) {
+    public CancelableRequest getSongFullInfo(String id, ApiCallback callback) {
+        CallGroup callGroup = new CallGroup();
         new Thread(() -> {
             try {
+                if (callGroup.isCanceled()) {
+                    return;
+                }
                 // 1. Get Song URL
                 String level = settingsManager.getQuality();
 
@@ -341,8 +413,10 @@ public class NeteaseApi {
                 FormBody bodyUrl = new FormBody.Builder().add("params", params).build();
                 // Override Referer for songUrl
                 Request reqUrl = getDesktopBuilder(url).post(bodyUrl).header("Referer", "").build();
-                Response resUrl = client.newCall(reqUrl).execute();
-                String resUrlStr = resUrl.body().string();
+                String resUrlStr = executeSync(reqUrl, callGroup);
+                if (callGroup.isCanceled()) {
+                    return;
+                }
                 android.util.Log.d("NeteaseApi", "songUrl response: " + resUrlStr);
 
                 JSONObject jsonUrl = new JSONObject(resUrlStr);
@@ -359,8 +433,10 @@ public class NeteaseApi {
                 jsonIds.put(objId);
                 FormBody bodyDetail = new FormBody.Builder().add("c", jsonIds.toString()).build();
                 Request reqDetail = getBrowserBuilder("https://interface3.music.163.com/api/v3/song/detail").post(bodyDetail).build();
-                Response resDetail = client.newCall(reqDetail).execute();
-                JSONObject jsonDetail = new JSONObject(resDetail.body().string());
+                JSONObject jsonDetail = new JSONObject(executeSync(reqDetail, callGroup));
+                if (callGroup.isCanceled()) {
+                    return;
+                }
 
                 // 3. Get Lyrics
                 FormBody bodyLyric = new FormBody.Builder()
@@ -378,8 +454,10 @@ public class NeteaseApi {
                         .post(bodyLyric)
                         .removeHeader("Referer")
                         .build();
-                Response resLyric = client.newCall(reqLyric).execute();
-                JSONObject jsonLyric = new JSONObject(resLyric.body().string());
+                JSONObject jsonLyric = new JSONObject(executeSync(reqLyric, callGroup));
+                if (callGroup.isCanceled()) {
+                    return;
+                }
 
                 // Combine results
                 JSONObject result = new JSONObject();
@@ -432,9 +510,28 @@ public class NeteaseApi {
                 postSuccess(callback, result.toString());
 
             } catch (Exception e) {
-                postError(callback, e.getMessage());
+                if (!callGroup.isCanceled()) {
+                    postError(callback, e.getMessage());
+                }
             }
         }).start();
+        return callGroup;
+    }
+
+    private String executeSync(Request request, CallGroup callGroup) throws IOException {
+        Call call = callGroup.register(client.newCall(request));
+        try (Response response = call.execute()) {
+            if (!response.isSuccessful()) {
+                throw new IOException(context.getString(R.string.title_http_error) + response.code());
+            }
+            ResponseBody body = response.body();
+            if (body == null) {
+                throw new IOException("Empty response body");
+            }
+            return body.string();
+        } finally {
+            callGroup.unregister(call);
+        }
     }
 
     private void execute(Request request, ApiCallback callback) {

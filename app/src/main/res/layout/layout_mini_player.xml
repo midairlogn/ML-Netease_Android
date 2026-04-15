@@ -23,6 +23,7 @@
         android:layout_width="40dp"
         android:layout_height="40dp"
         android:layout_marginStart="16dp"
+        android:contentDescription="@string/mini_player_album_art"
         android:scaleType="centerCrop"
         android:src="@drawable/ic_music_note"
         android:background="@android:color/transparent"
@@ -95,6 +96,7 @@
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
+                android:contentDescription="@string/playback_progress"
                 android:indeterminate="false"
                 android:max="100"
                 android:progress="0"
@@ -105,6 +107,7 @@
                 android:layout_width="14dp"
                 android:layout_height="14dp"
                 android:layout_gravity="center"
+                android:contentDescription="@string/mini_player_play_pause"
                 android:src="@android:drawable/ic_media_play"
                 app:tint="@color/text_primary" />
         </FrameLayout>
@@ -116,6 +119,7 @@
             android:layout_height="32dp"
             android:padding="4dp"
             android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/open_playlist"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_playlist"
             app:tint="@color/text_primary" />

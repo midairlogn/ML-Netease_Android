@@ -21,6 +21,10 @@ public class MainApplication extends Application implements Application.Activity
     public void onCreate() {
         super.onCreate();
         registerActivityLifecycleCallbacks(this);
+        DownloadTaskManager taskManager = DownloadTaskManager.getInstance(this);
+        if (taskManager.hasWaitingOrActiveWork()) {
+            taskManager.ensureServiceRunning();
+        }
     }
 
     public void addAppVisibilityListener(AppVisibilityListener listener) {

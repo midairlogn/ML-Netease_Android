@@ -57,9 +57,10 @@
             android:layout_height="24dp"
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
-            android:src="@android:drawable/ic_media_play"
             android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/play_from_lyric_timeline"
             android:scaleType="fitCenter"
+            android:src="@android:drawable/ic_media_play"
             app:tint="@color/text_primary"/>
 
     </RelativeLayout>

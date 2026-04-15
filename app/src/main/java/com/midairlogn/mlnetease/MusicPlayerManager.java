@@ -1,6 +1,7 @@
 package com.midairlogn.mlnetease;
 
 import android.content.Context;
+import android.net.Uri;
 import android.media.MediaPlayer;
 import android.os.Handler;
 import android.os.Looper;
@@ -40,6 +41,7 @@ public class MusicPlayerManager {
     private boolean isCompletionListenerEnabled = false;
     private final AtomicLong playRequestIdGenerator = new AtomicLong(0);
     private volatile long activePlayRequestId = 0;
+    private volatile NeteaseApi.CancelableRequest activeFullInfoRequest = NeteaseApi.CancelableRequest.NONE;
 
     private volatile boolean isAutoSkipping = false;
     private int continuousSkipCount = 0;
@@ -55,6 +57,8 @@ public class MusicPlayerManager {
     private List<OnFullInfoAvailableListener> fullInfoAvailableListeners = new ArrayList<>();
     private List<OnSeekListener> seekListeners = new ArrayList<>();
     private List<OnProgressUpdateListener> progressUpdateListeners = new ArrayList<>();
+    private List<OnSongCompletionListener> songCompletionListeners = new ArrayList<>();
+    private List<OnPlaybackActionListener> playbackActionListeners = new ArrayList<>();
     private boolean isProgressDispatcherRunning = false;
     private final Runnable progressUpdateRunnable = new Runnable() {
         @Override
@@ -105,6 +109,20 @@ public class MusicPlayerManager {
         void onProgressUpdate(int current, int total);
     }
 
+    public interface OnSongCompletionListener {
+        boolean onSongCompleted(Song song, int completedIndex);
+    }
+
+    public interface OnPlaybackActionListener {
+        void onPlaybackAction(boolean userInitiated, String action);
+    }
+
+    public static final String PLAYBACK_ACTION_PLAY = "play";
+    public static final String PLAYBACK_ACTION_PAUSE = "pause";
+    public static final String PLAYBACK_ACTION_RESUME = "resume";
+    public static final String PLAYBACK_ACTION_NEXT = "next";
+    public static final String PLAYBACK_ACTION_PREVIOUS = "previous";
+
     private MusicPlayerManager(Context context) {
         this.context = context.getApplicationContext();
         this.settingsManager = new SettingsManager(this.context);
@@ -121,7 +139,11 @@ public class MusicPlayerManager {
 
         mediaPlayer.setOnCompletionListener(mp -> {
             if (isCompletionListenerEnabled) {
-                playNext();
+                Song completedSong = getCurrentSong();
+                int completedIndex = currentIndex;
+                if (!notifySongCompleted(completedSong, completedIndex)) {
+                    playNext(false, false);
+                }
             }
         });
     }
@@ -278,6 +300,7 @@ public class MusicPlayerManager {
 
 
     public void play(int index) {
+        notifyPlaybackAction(true, PLAYBACK_ACTION_PLAY);
         isAutoSkipping = false;
         continuousSkipCount = 0;
         if (pendingSongNotifyRunnable != null) {
@@ -293,6 +316,17 @@ public class MusicPlayerManager {
 
     private static final int RETRY_DELAY_MS = 2000;
     private static final int AUTO_SKIP_DELAY_MS = 1000;
+
+    public void replacePlaylistAndPlay(List<Song> songs, int startIndex) {
+        if (songs == null || songs.isEmpty()) {
+            setPlaylist(new ArrayList<>());
+            return;
+        }
+        this.playlist = new ArrayList<>(songs);
+        this.currentIndex = -1;
+        notifyPlaylistChanged();
+        play(Math.max(0, Math.min(startIndex, this.playlist.size() - 1)));
+    }
 
     private void handlePlaybackFailure(int index, long requestId, String reason) {
         if (requestId != activePlayRequestId || currentIndex != index) return;
@@ -334,6 +368,7 @@ public class MusicPlayerManager {
 
         final long requestId = playRequestIdGenerator.incrementAndGet();
         activePlayRequestId = requestId;
+        cancelActiveFullInfoRequest();
         forceNextPlaybackStateDispatch = true;
 
         if (!isRetry) {
@@ -379,12 +414,21 @@ public class MusicPlayerManager {
         currentLyric = context.getString(R.string.hint_loading);
         currentTLyric = "";
 
+        if (song.isLocal()) {
+            playLocalSong(song, index, requestId);
+            return;
+        }
+
         // Fetch full info
-        neteaseApi.getSongFullInfo(song.id, new NeteaseApi.ApiCallback() {
+        activeFullInfoRequest = neteaseApi.getSongFullInfo(song.id, new NeteaseApi.ApiCallback() {
             @Override
             public void onSuccess(String result) {
                 // Ignore stale callback from previous play request.
                 if (requestId != activePlayRequestId || currentIndex != index) return;
+                if (activeFullInfoRequest != null && activeFullInfoRequest.isCanceled()) {
+                    return;
+                }
+                activeFullInfoRequest = NeteaseApi.CancelableRequest.NONE;
 
                 try {
                     JSONObject root = new JSONObject(result);
@@ -421,9 +465,53 @@ public class MusicPlayerManager {
 
             @Override
             public void onError(String error) {
+                activeFullInfoRequest = NeteaseApi.CancelableRequest.NONE;
+                if (requestId != activePlayRequestId || currentIndex != index) return;
                 handlePlaybackFailure(index, requestId, "API Network Error: " + error);
             }
         });
+    }
+
+    private void cancelActiveFullInfoRequest() {
+        NeteaseApi.CancelableRequest request = activeFullInfoRequest;
+        activeFullInfoRequest = NeteaseApi.CancelableRequest.NONE;
+        if (request != null) {
+            request.cancel();
+        }
+    }
+
+    private void playLocalSong(Song song, int index, long requestId) {
+        Uri mediaUri = song.getMediaUri();
+        if (mediaUri == null) {
+            handlePlaybackFailure(index, requestId, "Missing local media uri");
+            return;
+        }
+
+        try {
+            LocalAudioMetadata metadata = LocalAudioMetadataReader.read(context, mediaUri);
+            if (!metadata.isPlayable) {
+                handlePlaybackFailure(index, requestId, "Local file is not a readable audio source");
+                return;
+            }
+            if (!metadata.title.isEmpty()) {
+                song.name = metadata.title;
+            }
+            if (!metadata.artist.isEmpty()) {
+                song.artists = metadata.artist;
+            }
+            song.album = metadata.album;
+            song.mimeType = metadata.mimeType;
+            song.durationMs = metadata.durationMs;
+            song.lyric = metadata.lyric;
+            song.translatedLyric = metadata.translatedLyric;
+            song.embeddedPicture = metadata.artworkData;
+            currentLyric = metadata.lyric;
+            currentTLyric = metadata.translatedLyric;
+            notifyFullInfoAvailable(song);
+            playUri(mediaUri, index, requestId, false);
+        } catch (Exception e) {
+            handlePlaybackFailure(index, requestId, "Local metadata/read failure: " + e.getMessage());
+        }
     }
 
     private void playUrl(String url, int expectedIndex, long requestId) {
@@ -434,16 +522,29 @@ public class MusicPlayerManager {
             }
             return;
         }
+        java.util.Map<String, String> headers = new java.util.HashMap<>();
+        headers.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/91.0.4472.164 NeteaseMusicDesktop/2.10.2.200154");
+        headers.put("Referer", "https://music.163.com/");
+        playUri(Uri.parse(url), expectedIndex, requestId, true, headers);
+    }
+
+    private void playUri(Uri uri, int expectedIndex, long requestId, boolean remote) {
+        playUri(uri, expectedIndex, requestId, remote, null);
+    }
+
+    private void playUri(Uri uri, int expectedIndex, long requestId, boolean remote, Map<String, String> headers) {
+        if (uri == null) {
+            handlePlaybackFailure(expectedIndex, requestId, "Invalid media uri");
+            return;
+        }
         try {
             mediaPlayer.reset();
             setAppVolume(settingsManager.getAppVolume());
-            // Use headers to mimic browser/desktop client to avoid 403 Forbidden from CDN
-            java.util.Map<String, String> headers = new java.util.HashMap<>();
-            headers.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/91.0.4472.164 NeteaseMusicDesktop/2.10.2.200154");
-            headers.put("Referer", "https://music.163.com/");
-
-            android.net.Uri uri = android.net.Uri.parse(url);
-            mediaPlayer.setDataSource(context, uri, headers);
+            if (remote && headers != null && !headers.isEmpty()) {
+                mediaPlayer.setDataSource(context, uri, headers);
+            } else {
+                mediaPlayer.setDataSource(context, uri);
+            }
 
             mediaPlayer.setOnPreparedListener(mp -> {
                 if (requestId != activePlayRequestId || currentIndex != expectedIndex) {
@@ -459,7 +560,6 @@ public class MusicPlayerManager {
                 }
                 mp.start();
                 isPaused = false;
-                // Enable completion listener only after successful preparation and start
                 isCompletionListenerEnabled = true;
                 notifyPlaybackStateChanged(true);
             });
@@ -470,17 +570,18 @@ public class MusicPlayerManager {
             });
 
             mediaPlayer.prepareAsync();
-
         } catch (Exception e) {
             if (requestId == activePlayRequestId) {
                 isSwitchingSong = false;
             }
             e.printStackTrace();
-            android.util.Log.e("MusicPlayerManager", "playUrl exception", e);
+            android.util.Log.e("MusicPlayerManager", remote ? "playUrl exception" : "playUri exception", e);
+            handlePlaybackFailure(expectedIndex, requestId, e.getMessage() == null ? "playback exception" : e.getMessage());
         }
     }
 
     public void pause() {
+        notifyPlaybackAction(true, PLAYBACK_ACTION_PAUSE);
         if (mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
             isPaused = true;
@@ -490,6 +591,7 @@ public class MusicPlayerManager {
     }
 
     public void resume() {
+        notifyPlaybackAction(true, PLAYBACK_ACTION_RESUME);
         if (isPaused && !mediaPlayer.isPlaying()) {
             mediaPlayer.start();
             isPaused = false;
@@ -507,10 +609,17 @@ public class MusicPlayerManager {
     }
 
     public void playNext() {
-        playNext(false);
+        playNext(false, true);
     }
 
     public void playNext(boolean force) {
+        playNext(force, true);
+    }
+
+    private void playNext(boolean force, boolean userInitiated) {
+        if (userInitiated) {
+            notifyPlaybackAction(true, PLAYBACK_ACTION_NEXT);
+        }
         if (playlist.isEmpty()) return;
 
         int nextIndex = currentIndex;
@@ -551,6 +660,7 @@ public class MusicPlayerManager {
     }
 
     public void playPrevious() {
+        notifyPlaybackAction(true, PLAYBACK_ACTION_PREVIOUS);
         if (playlist.isEmpty()) return;
 
         int prevIndex = currentIndex;
@@ -721,6 +831,26 @@ public class MusicPlayerManager {
         seekListeners.remove(listener);
     }
 
+    public void addOnSongCompletionListener(OnSongCompletionListener listener) {
+        if (!songCompletionListeners.contains(listener)) {
+            songCompletionListeners.add(listener);
+        }
+    }
+
+    public void removeOnSongCompletionListener(OnSongCompletionListener listener) {
+        songCompletionListeners.remove(listener);
+    }
+
+    public void addOnPlaybackActionListener(OnPlaybackActionListener listener) {
+        if (!playbackActionListeners.contains(listener)) {
+            playbackActionListeners.add(listener);
+        }
+    }
+
+    public void removeOnPlaybackActionListener(OnPlaybackActionListener listener) {
+        playbackActionListeners.remove(listener);
+    }
+
     public void addOnProgressUpdateListener(OnProgressUpdateListener listener) {
         if (!progressUpdateListeners.contains(listener)) {
             progressUpdateListeners.add(listener);
@@ -844,6 +974,27 @@ public class MusicPlayerManager {
         mainHandler.post(() -> {
             for (OnProgressUpdateListener listener : progressUpdateListeners) {
                 listener.onProgressUpdate(safeCurrent, safeTotal);
+            }
+        });
+    }
+
+    private boolean notifySongCompleted(Song song, int completedIndex) {
+        boolean consumed = false;
+        for (OnSongCompletionListener listener : songCompletionListeners) {
+            if (listener.onSongCompleted(song, completedIndex)) {
+                consumed = true;
+            }
+        }
+        return consumed;
+    }
+
+    private void notifyPlaybackAction(boolean userInitiated, String action) {
+        if (playbackActionListeners.isEmpty()) {
+            return;
+        }
+        mainHandler.post(() -> {
+            for (OnPlaybackActionListener listener : playbackActionListeners) {
+                listener.onPlaybackAction(userInitiated, action);
             }
         });
     }

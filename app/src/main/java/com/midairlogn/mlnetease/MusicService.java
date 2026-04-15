@@ -28,17 +28,20 @@ import androidx.media.session.MediaButtonReceiver;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class MusicService extends Service {
     private static final String TAG = "MusicService";
     private static final String CHANNEL_ID = "music_channel";
     private static final int NOTIFICATION_ID = 1;
-    private static final int MAX_NOTIFICATION_ART_SIZE_PX = 512;
-
     private MediaSessionCompat mediaSession;
     private MusicPlayerManager musicPlayerManager;
     private NotificationManager notificationManager;
     private FloatingLyricsManager floatingLyricsManager;
+    private HearingProtectionController hearingProtectionController;
     private AudioManager audioManager;
     private AudioFocusRequest audioFocusRequest;
     private boolean hasAudioFocus = false;
@@ -48,6 +51,10 @@ public class MusicService extends Service {
     private String lastPicUrl = "";
     private Bitmap lastBitmap = null;
     private String fetchingPicUrl = null;
+    private final ExecutorService artworkExecutor = Executors.newSingleThreadExecutor();
+    private final AtomicLong artworkRequestIdGenerator = new AtomicLong(0);
+    private volatile long activeArtworkRequestId = 0;
+    private volatile Future<?> activeArtworkTask;
 
     // State tracking to prevent redundant notification updates
     private String lastNotifiedSongId = "";
@@ -157,6 +164,8 @@ public class MusicService extends Service {
                     .build();
         }
         floatingLyricsManager = new FloatingLyricsManager(this);
+        hearingProtectionController = new HearingProtectionController(this, musicPlayerManager);
+        hearingProtectionController.start();
 
         if (getApplication() instanceof MainApplication) {
             MainApplication app = (MainApplication) getApplication();
@@ -307,9 +316,11 @@ public class MusicService extends Service {
 
     private void updateMetadata(Song song) {
         if (song == null) {
+            cancelActiveArtworkTask();
             lastSongId = "";
             lastPicUrl = "";
             lastBitmap = null;
+            fetchingPicUrl = null;
             Song placeholder = new Song("", getString(R.string.music_player), getString(R.string.ready_to_play), "", "");
             showNotification(placeholder, false, BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground), true, "metadata:null-song");
             return;
@@ -317,6 +328,22 @@ public class MusicService extends Service {
 
         boolean isNewSong = !song.id.equals(lastSongId);
         lastSongId = song.id;
+
+        if (isNewSong) {
+            cancelActiveArtworkTask();
+        }
+
+        if (song.embeddedPicture != null && song.embeddedPicture.length > 0) {
+            Bitmap embeddedBitmap = ImageManager.getInstance().getEmbeddedBitmap("embedded:" + song.id, song.embeddedPicture, true);
+            if (embeddedBitmap != null) {
+                lastBitmap = embeddedBitmap;
+                lastPicUrl = "";
+                fetchingPicUrl = null;
+                updateMediaSessionMetadata(song, embeddedBitmap);
+                showNotification(song, musicPlayerManager.isPlaying(), embeddedBitmap, isNewSong, "metadata:embedded-art");
+                return;
+            }
+        }
 
         // 1. Optimization: If the image URL hasn't changed and a bitmap already exists, update Metadata directly
         if (song.picUrl != null && ImageUtils.isSameImage(song.picUrl, lastPicUrl) && lastBitmap != null) {
@@ -345,10 +372,15 @@ public class MusicService extends Service {
 
         // Fetch album art async
         final String targetSongId = song.id;
+        final long artworkRequestId = artworkRequestIdGenerator.incrementAndGet();
+        activeArtworkRequestId = artworkRequestId;
         fetchingPicUrl = song.picUrl;
 
-        new Thread(() -> {
-            Bitmap albumArt = ImageManager.getInstance().fetchBitmap(song.picUrl);
+        activeArtworkTask = artworkExecutor.submit(() -> {
+            Bitmap albumArt = ImageManager.getInstance().fetchNotificationBitmap(song.picUrl);
+            if (Thread.currentThread().isInterrupted() || artworkRequestId != activeArtworkRequestId) {
+                return;
+            }
             if (albumArt == null) {
                 albumArt = BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground);
             }
@@ -356,6 +388,9 @@ public class MusicService extends Service {
             Bitmap finalAlbumArt = albumArt;
 
             handler.post(() -> {
+                if (artworkRequestId != activeArtworkRequestId) {
+                    return;
+                }
                 if (song.picUrl != null && ImageUtils.isSameImage(song.picUrl, fetchingPicUrl)) {
                     fetchingPicUrl = null;
                 }
@@ -370,7 +405,17 @@ public class MusicService extends Service {
                 updateMediaSessionMetadata(song, finalAlbumArt);
                 showNotification(song, musicPlayerManager.isPlaying(), finalAlbumArt, true, "metadata:art-ready");
             });
-        }).start();
+        });
+    }
+
+    private void cancelActiveArtworkTask() {
+        activeArtworkRequestId = artworkRequestIdGenerator.incrementAndGet();
+        fetchingPicUrl = null;
+        Future<?> task = activeArtworkTask;
+        activeArtworkTask = null;
+        if (task != null) {
+            task.cancel(true);
+        }
     }
 
     private void updateMediaSessionMetadata(Song song, Bitmap albumArt) {
@@ -683,6 +728,9 @@ public class MusicService extends Service {
             } else if ("ACTION_UPDATE_SETTINGS".equals(action)) {
                 SettingsManager sm = new SettingsManager(this);
                 musicPlayerManager.setAppVolume(sm.getAppVolume());
+                if (hearingProtectionController != null) {
+                    hearingProtectionController.onSettingsChanged();
+                }
                 if (floatingLyricsManager != null) {
                     floatingLyricsManager.onSettingChanged();
                 }
@@ -715,6 +763,11 @@ public class MusicService extends Service {
         musicPlayerManager.removeOnPlaybackStateChangedListener(playbackStateChangedListener);
         musicPlayerManager.removeOnPlaybackModeChangedListener(playbackModeChangedListener);
         musicPlayerManager.removeOnSeekListener(seekListener);
+        cancelActiveArtworkTask();
+        artworkExecutor.shutdownNow();
+        if (hearingProtectionController != null) {
+            hearingProtectionController.stop();
+        }
         if (floatingLyricsManager != null) {
             floatingLyricsManager.release();
         }

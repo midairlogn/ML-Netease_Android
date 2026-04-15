@@ -2,8 +2,18 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/navigation_home"
-        android:icon="@drawable/ic_home"
+        android:icon="@drawable/ic_music_note"
         android:title="@string/music_nav_menu"/>
+
+    <item
+        android:id="@+id/navigation_local"
+        android:icon="@drawable/ic_folder"
+        android:title="@string/local_music_nav"/>
+
+    <item
+        android:id="@+id/navigation_downloads"
+        android:icon="@drawable/ic_download_padded"
+        android:title="@string/download_manager_nav"/>
 
     <item
         android:id="@+id/navigation_settings"

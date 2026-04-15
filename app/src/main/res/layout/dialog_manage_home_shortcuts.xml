@@ -24,7 +24,7 @@
         app:tint="@color/text_primary"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
-        android:contentDescription="Close" />
+        android:contentDescription="@string/close" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_manage_shortcuts"
@@ -49,6 +49,7 @@
             android:layout_width="120dp"
             android:layout_height="120dp"
             android:src="@drawable/ic_music_note"
+            android:contentDescription="@null"
             android:alpha="0.2"
             app:tint="@color/text_secondary" />
 
@@ -81,6 +82,7 @@
         android:padding="8dp"
         android:background="?attr/selectableItemBackground"
         android:clickable="true"
+        android:contentDescription="@string/add_shortcut"
         android:focusable="true">
 
         <TextView

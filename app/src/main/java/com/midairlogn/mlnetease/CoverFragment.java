@@ -14,6 +14,7 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
 
     private ImageView albumCover;
     private String currentUrl;
+    private byte[] currentEmbeddedPicture;
     private boolean isPlaceholder = true;
 
     @Nullable
@@ -28,9 +29,12 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
         albumCover = view.findViewById(R.id.album_cover);
 
         albumCover.setOnClickListener(v -> {
-            if (!isPlaceholder && currentUrl != null && !currentUrl.isEmpty()) {
+            if (!isPlaceholder && ((currentUrl != null && !currentUrl.isEmpty()) || hasEmbeddedPicture())) {
                 Intent intent = new Intent(getContext(), ImageDetailActivity.class);
                 intent.putExtra("url", currentUrl);
+                if (hasEmbeddedPicture()) {
+                    intent.putExtra("image_bytes", currentEmbeddedPicture);
+                }
                 startActivity(intent);
             }
         });
@@ -40,7 +44,7 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
         manager.addOnFullInfoAvailableListener(this);
         Song current = manager.getCurrentSong();
         if (current != null) {
-            updateCover(current.picUrl);
+            updateCover(current);
         }
     }
 
@@ -54,18 +58,28 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
     @Override
     public void onSongChanged(Song song) {
         if (song != null) {
-            updateCover(song.picUrl);
+            updateCover(song);
         }
     }
 
     @Override
     public void onFullInfoAvailable(Song song) {
         if (song != null) {
-            updateCover(song.picUrl);
+            updateCover(song);
         }
     }
 
-    private void updateCover(String urlString) {
+    private void updateCover(Song song) {
+        if (song.embeddedPicture != null && song.embeddedPicture.length > 0) {
+            currentEmbeddedPicture = song.embeddedPicture;
+            ImageManager.getInstance().loadEmbedded("embedded:" + song.id, song.embeddedPicture, albumCover, R.drawable.ic_ml_app_logo_foreground, true);
+            currentUrl = null;
+            isPlaceholder = false;
+            return;
+        }
+
+        currentEmbeddedPicture = null;
+        String urlString = song.picUrl;
         if (urlString == null || urlString.isEmpty()) {
             albumCover.setImageResource(R.drawable.ic_ml_app_logo_foreground);
             currentUrl = null;
@@ -82,5 +96,9 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
         isPlaceholder = false;
 
         ImageManager.getInstance().load(urlString, albumCover, R.drawable.ic_ml_app_logo_foreground);
+    }
+
+    private boolean hasEmbeddedPicture() {
+        return currentEmbeddedPicture != null && currentEmbeddedPicture.length > 0;
     }
 }
