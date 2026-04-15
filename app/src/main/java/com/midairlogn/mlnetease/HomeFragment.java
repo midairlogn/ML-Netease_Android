@@ -629,7 +629,7 @@ public class HomeFragment extends Fragment {
             List<Song> songs = new ArrayList<>();
             for (int i = 0; i < songsArray.length(); i++) {
                 JSONObject obj = songsArray.getJSONObject(i);
-                String id = String.valueOf(obj.getInt("id"));
+                String id = String.valueOf(obj.opt("id"));
                 String name = obj.getString("name");
 
                 StringBuilder artists = new StringBuilder();
