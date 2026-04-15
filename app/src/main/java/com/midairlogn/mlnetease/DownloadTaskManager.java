@@ -41,6 +41,7 @@ public class DownloadTaskManager {
     private DownloadTaskManager(Context appContext) {
         this.appContext = appContext;
         tasks.addAll(DownloadTaskStore.load(appContext));
+        removeCompletedTasksOnLaunch();
         seedIdCounterFromLoadedTasks();
     }
 
@@ -495,6 +496,21 @@ public class DownloadTaskManager {
             if (current >= nextId || ID_COUNTER.compareAndSet(current, nextId)) {
                 return;
             }
+        }
+    }
+
+    private void removeCompletedTasksOnLaunch() {
+        boolean changed = false;
+        synchronized (lock) {
+            for (int i = tasks.size() - 1; i >= 0; i--) {
+                if (tasks.get(i).status == DownloadTaskStatus.COMPLETED) {
+                    tasks.remove(i);
+                    changed = true;
+                }
+            }
+        }
+        if (changed) {
+            persistTasks();
         }
     }
 

@@ -55,7 +55,7 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:padding="4dp"
         android:src="@drawable/ic_heart_filled"
-        android:tint="@color/brand_primary"
+        app:tint="@color/brand_primary"
         android:visibility="gone"
         android:contentDescription="@string/manage_favourites" />
 
