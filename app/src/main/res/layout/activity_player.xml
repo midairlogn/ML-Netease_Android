@@ -30,6 +30,18 @@
             android:layout_weight="1" />
 
         <ImageButton
+            android:id="@+id/btn_favourite_song"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginEnd="12dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="6dp"
+            android:src="@drawable/ic_heart_outline"
+            android:scaleType="fitCenter"
+            app:tint="@color/text_primary"
+            android:contentDescription="@string/favourite" />
+
+        <ImageButton
             android:id="@+id/btn_download_song"
             android:layout_width="32dp"
             android:layout_height="32dp"

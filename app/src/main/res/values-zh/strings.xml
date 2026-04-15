@@ -27,6 +27,10 @@
     <string name="lyrics_preview_line_one">当前歌词预览</string>
     <string name="lyrics_preview_line_two">下一句歌词预览</string>
     <string name="download">下载</string>
+    <string name="favourite">收藏</string>
+    <string name="unfavourite">取消收藏</string>
+    <string name="favourite_added">已加入收藏</string>
+    <string name="favourite_removed">已取消收藏</string>
     <string name="download_manager_title">下载管理</string>
     <string name="download_manager_nav">下载</string>
     <string name="download_manager_subtitle">查看下载队列、进度、预计剩余时间，并控制每个任务。</string>
@@ -96,6 +100,13 @@
     <string name="hint_no_homepage_shortcut">暂无收藏</string>
     <string name="hint_homepage_add_shortcut">添加收藏以快速开始播放</string>
     <string name="manage_shortcut">管理收藏</string>
+    <string name="favourites_title">我喜欢的音乐</string>
+    <string name="favourites_badge">歌曲</string>
+    <string name="manage_favourites">管理喜欢的歌曲</string>
+    <string name="favourites_empty_hint">还没有收藏歌曲</string>
+    <string name="favourites_count_format">%1$d 首收藏歌曲</string>
+    <string name="favourites_sheet_title">我喜欢的音乐（%1$d）</string>
+    <string name="shortcut_id_format">ID：%1$s</string>
     <string name="clear">清空</string>
     <string name="confirm">确认</string>
     <string name="type_audio_quality_standard">标准音质</string>

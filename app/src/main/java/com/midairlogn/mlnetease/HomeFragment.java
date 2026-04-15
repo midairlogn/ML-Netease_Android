@@ -39,6 +39,7 @@ public class HomeFragment extends Fragment {
     private Button btnManageShortcuts;
     private LinearLayout emptyShortcutLayout;
     private List<HomeShortcut> currentShortcuts = new ArrayList<>();
+    private List<HomeEntry> homeEntries = new ArrayList<>();
     private boolean isShortcutMode = true;
     private String lastSearchedId = "";
     private String lastSearchedType = "";
@@ -147,8 +148,17 @@ public class HomeFragment extends Fragment {
         adapter = new SongAdapter();
         shortcutAdapter = new HomeShortcutAdapter();
 
-        shortcutAdapter.setOnItemClickListener(shortcut -> {
-            executeShortcut(shortcut);
+        shortcutAdapter.setOnItemClickListener(entry -> {
+            if (entry.isFavourites()) {
+                playFavourites();
+                return;
+            }
+            executeShortcut(entry.shortcut);
+        });
+        shortcutAdapter.setOnManageClickListener(entry -> {
+            if (entry.isFavourites()) {
+                showFavouriteManager();
+            }
         });
 
         recyclerView.setAdapter(shortcutAdapter);
@@ -287,6 +297,14 @@ public class HomeFragment extends Fragment {
         super.onDestroyView();
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (isAdded()) {
+            loadShortcuts();
+        }
+    }
+
     private void performSearch() {
         String input = searchInput.getText().toString().trim();
         if (input.isEmpty()) return;
@@ -418,7 +436,7 @@ public class HomeFragment extends Fragment {
             btnDownloadAll.setVisibility(View.GONE);
             btnResetSearch.setVisibility(View.GONE);
             btnManageShortcuts.setVisibility(currentShortcuts.isEmpty() ? View.GONE : View.VISIBLE);
-            emptyShortcutLayout.setVisibility(currentShortcuts.isEmpty() ? View.VISIBLE : View.GONE);
+            emptyShortcutLayout.setVisibility(View.GONE);
         } else {
             recyclerView.setAdapter(adapter);
             btnResetSearch.setVisibility(View.VISIBLE);
@@ -430,8 +448,29 @@ public class HomeFragment extends Fragment {
 
     private void loadShortcuts() {
         currentShortcuts = new SettingsManager(requireContext()).getHomeShortcuts();
-        shortcutAdapter.setShortcuts(currentShortcuts);
+        rebuildHomeEntries();
         updateViewMode();
+    }
+
+    private void rebuildHomeEntries() {
+        SettingsManager settingsManager = new SettingsManager(requireContext());
+        List<FavouriteSong> favourites = settingsManager.getFavouriteSongs();
+        List<HomeEntry> entries = new ArrayList<>();
+        String favouriteSubtitle = favourites.isEmpty()
+                ? getString(R.string.favourites_empty_hint)
+                : getString(R.string.favourites_count_format, favourites.size());
+        entries.add(HomeEntry.favourites(
+                getString(R.string.favourites_title),
+                favouriteSubtitle,
+                getString(R.string.favourites_badge)
+        ));
+        for (HomeShortcut shortcut : currentShortcuts) {
+            String subtitle = getString(R.string.shortcut_id_format, shortcut.id);
+            String badge = shortcut.isPlaylist() ? getString(R.string.playlist) : getString(R.string.album);
+            entries.add(HomeEntry.shortcut(shortcut, subtitle, badge));
+        }
+        homeEntries = entries;
+        shortcutAdapter.setEntries(homeEntries);
     }
 
     public void reloadShortcuts() {
@@ -470,6 +509,26 @@ public class HomeFragment extends Fragment {
                 }
             });
         }
+    }
+
+    private void playFavourites() {
+        SettingsManager settingsManager = new SettingsManager(requireContext());
+        List<FavouriteSong> favourites = settingsManager.getFavouriteSongs();
+        if (favourites.isEmpty()) {
+            Toast.makeText(getContext(), R.string.favourites_empty_hint, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        List<Song> songs = new ArrayList<>();
+        for (FavouriteSong favourite : favourites) {
+            songs.add(favourite.toSong());
+        }
+        MusicPlayerManager.getInstance(getContext()).addPlaylistAndPlayFirstNew(songs);
+    }
+
+    private void showFavouriteManager() {
+        FavouriteSongsBottomSheetFragment fragment = new FavouriteSongsBottomSheetFragment();
+        fragment.setOnDismissListener(this::loadShortcuts);
+        fragment.show(getParentFragmentManager(), "FavouriteSongsBottomSheet");
     }
 
     private void parsePlaylistResult(String json, boolean isShortcut) {

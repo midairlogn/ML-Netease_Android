@@ -50,6 +50,10 @@
         <item>简体中文</item>
     </string-array>
     <string name="download">Download</string>
+    <string name="favourite">Favourite</string>
+    <string name="unfavourite">Unfavourite</string>
+    <string name="favourite_added">Added to favourites</string>
+    <string name="favourite_removed">Removed from favourites</string>
     <string name="download_manager_title">Downloads</string>
     <string name="download_manager_nav">Downloads</string>
     <string name="download_manager_subtitle">Track queue progress, estimated time, and control each task.</string>
@@ -123,6 +127,13 @@
     <string name="hint_no_homepage_shortcut">No homepage shortcuts yet</string>
     <string name="hint_homepage_add_shortcut">Add shortcuts for one-tap playback.</string>
     <string name="manage_shortcut">Manage Shortcuts</string>
+    <string name="favourites_title">Favourites</string>
+    <string name="favourites_badge">Songs</string>
+    <string name="manage_favourites">Manage favourites</string>
+    <string name="favourites_empty_hint">No favourite songs yet</string>
+    <string name="favourites_count_format">%1$d favourite songs</string>
+    <string name="favourites_sheet_title">Favourites (%1$d)</string>
+    <string name="shortcut_id_format">ID: %1$s</string>
     <string name="delete_shortcut">Delete shortcut</string>
     <string name="shortcut_meta_format" translatable="false">%1$s (ID: %2$s)</string>
     <string name="clear">Clear</string>

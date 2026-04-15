@@ -32,6 +32,7 @@ public class SettingsManager {
     private static final String KEY_TRANSLATION_INTEGRATION_ENABLED = "translation_integration_enabled";
     private static final String KEY_APP_VOLUME = "app_volume";
     private static final String KEY_HOME_SHORTCUTS = "home_shortcuts";
+    private static final String KEY_FAVOURITE_SONGS = "favourite_songs";
     private static final String KEY_APP_LANGUAGE = "app_language";
     private static final String KEY_DOWNLOAD_FILENAME_TEMPLATE = "download_filename_template";
     private static final String KEY_DOWNLOAD_FILENAME_SEPARATOR = "download_filename_separator";
@@ -214,6 +215,154 @@ public class SettingsManager {
         for (int i = 0; i < shortcuts.size(); i++) {
             shortcuts.get(i).sequence = i;
         }
+    }
+
+    public List<FavouriteSong> getFavouriteSongs() {
+        List<FavouriteSong> favourites = new ArrayList<>();
+        String raw = prefs.getString(KEY_FAVOURITE_SONGS, "[]");
+        try {
+            JSONArray array = new JSONArray(raw);
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject item = array.optJSONObject(i);
+                if (item == null) {
+                    continue;
+                }
+
+                String id = item.optString("id", "").trim();
+                String name = item.optString("name", "").trim();
+                String artists = item.optString("artists", "").trim();
+                String album = item.optString("album", "").trim();
+                String sourceType = item.optString("sourceType", Song.SOURCE_REMOTE).trim();
+                String mediaUri = item.optString("mediaUri", "").trim();
+                String mimeType = item.optString("mimeType", "").trim();
+                long durationMs = Math.max(0L, item.optLong("durationMs", 0L));
+                int sequence = item.optInt("sequence", i);
+
+                if (id.isEmpty() || name.isEmpty()) {
+                    continue;
+                }
+                if (!Song.SOURCE_REMOTE.equals(sourceType) && !Song.isLocalSourceType(sourceType)) {
+                    continue;
+                }
+                if (Song.isLocalSourceType(sourceType) && mediaUri.isEmpty()) {
+                    continue;
+                }
+
+                favourites.add(new FavouriteSong(id, name, artists, album, sourceType, mediaUri, mimeType, durationMs, sequence));
+            }
+        } catch (Exception ignored) {
+        }
+
+        Collections.sort(favourites, Comparator.comparingInt(song -> song.sequence));
+        normalizeFavouriteSequences(favourites);
+        return favourites;
+    }
+
+    public void setFavouriteSongs(List<FavouriteSong> favourites) {
+        List<FavouriteSong> normalized = new ArrayList<>();
+        if (favourites != null) {
+            for (FavouriteSong favourite : favourites) {
+                if (favourite == null) {
+                    continue;
+                }
+                String id = favourite.id == null ? "" : favourite.id.trim();
+                String name = favourite.name == null ? "" : favourite.name.trim();
+                String artists = favourite.artists == null ? "" : favourite.artists.trim();
+                String album = favourite.album == null ? "" : favourite.album.trim();
+                String sourceType = favourite.sourceType == null ? Song.SOURCE_REMOTE : favourite.sourceType.trim();
+                String mediaUri = favourite.mediaUri == null ? "" : favourite.mediaUri.trim();
+                String mimeType = favourite.mimeType == null ? "" : favourite.mimeType.trim();
+                long durationMs = Math.max(0L, favourite.durationMs);
+
+                if (id.isEmpty() || name.isEmpty()) {
+                    continue;
+                }
+                if (!Song.SOURCE_REMOTE.equals(sourceType) && !Song.isLocalSourceType(sourceType)) {
+                    continue;
+                }
+                if (Song.isLocalSourceType(sourceType) && mediaUri.isEmpty()) {
+                    continue;
+                }
+
+                normalized.add(new FavouriteSong(id, name, artists, album, sourceType, mediaUri, mimeType, durationMs, favourite.sequence));
+            }
+        }
+
+        Collections.sort(normalized, Comparator.comparingInt(song -> song.sequence));
+        normalizeFavouriteSequences(normalized);
+
+        JSONArray array = new JSONArray();
+        for (FavouriteSong favourite : normalized) {
+            JSONObject item = new JSONObject();
+            try {
+                item.put("id", favourite.id);
+                item.put("name", favourite.name);
+                item.put("artists", favourite.artists);
+                item.put("album", favourite.album);
+                item.put("sourceType", favourite.sourceType);
+                item.put("mediaUri", favourite.mediaUri);
+                item.put("mimeType", favourite.mimeType);
+                item.put("durationMs", favourite.durationMs);
+                item.put("sequence", favourite.sequence);
+                array.put(item);
+            } catch (Exception ignored) {
+            }
+        }
+
+        prefs.edit().putString(KEY_FAVOURITE_SONGS, array.toString()).apply();
+    }
+
+    public void normalizeFavouriteSequences(List<FavouriteSong> favourites) {
+        for (int i = 0; i < favourites.size(); i++) {
+            favourites.get(i).sequence = i;
+        }
+    }
+
+    public boolean isFavouriteSong(Song song) {
+        if (song == null || song.id == null || song.id.trim().isEmpty()) {
+            return false;
+        }
+        List<FavouriteSong> favourites = getFavouriteSongs();
+        for (FavouriteSong favourite : favourites) {
+            if (favourite.matchesSong(song)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean addFavouriteSong(Song song) {
+        if (song == null || song.id == null || song.id.trim().isEmpty()) {
+            return false;
+        }
+        List<FavouriteSong> favourites = new ArrayList<>(getFavouriteSongs());
+        for (FavouriteSong favourite : favourites) {
+            if (favourite.matchesSong(song)) {
+                return false;
+            }
+        }
+        FavouriteSong favouriteSong = FavouriteSong.fromSong(song, favourites.size());
+        if (favouriteSong == null) {
+            return false;
+        }
+        favourites.add(favouriteSong);
+        setFavouriteSongs(favourites);
+        return true;
+    }
+
+    public boolean removeFavouriteSong(Song song) {
+        if (song == null) {
+            return false;
+        }
+        List<FavouriteSong> favourites = new ArrayList<>(getFavouriteSongs());
+        for (int i = 0; i < favourites.size(); i++) {
+            if (favourites.get(i).matchesSong(song)) {
+                favourites.remove(i);
+                setFavouriteSongs(favourites);
+                return true;
+            }
+        }
+        return false;
     }
 
     public void setAppLanguage(String language) {
@@ -403,6 +552,7 @@ public class SettingsManager {
         json.put(KEY_TRANSLATION_INTEGRATION_ENABLED, isTranslationIntegrationEnabled());
         json.put(KEY_APP_VOLUME, getAppVolume());
         json.put(KEY_HOME_SHORTCUTS, serializeHomeShortcuts());
+        json.put(KEY_FAVOURITE_SONGS, serializeFavouriteSongs());
         json.put(KEY_APP_LANGUAGE, getAppLanguage());
         json.put(KEY_DOWNLOAD_FILENAME_TEMPLATE, getDownloadFileNameTemplate());
         json.put(KEY_DOWNLOAD_FILENAME_SEPARATOR, getDownloadFileNameSeparator());
@@ -433,6 +583,7 @@ public class SettingsManager {
         setTranslationIntegrationEnabled(json.optBoolean(KEY_TRANSLATION_INTEGRATION_ENABLED, false));
         setAppVolume(clamp(json.optInt(KEY_APP_VOLUME, DEFAULT_APP_VOLUME), 0, 100));
         importHomeShortcuts(json.optJSONArray(KEY_HOME_SHORTCUTS));
+        importFavouriteSongs(json.optJSONArray(KEY_FAVOURITE_SONGS));
         setAppLanguage(normalizeLanguage(json.optString(KEY_APP_LANGUAGE, "system")));
 
         DownloadCustomizationSettings downloadSettings = new DownloadCustomizationSettings();
@@ -466,6 +617,28 @@ public class SettingsManager {
         return array;
     }
 
+    private JSONArray serializeFavouriteSongs() {
+        JSONArray array = new JSONArray();
+        List<FavouriteSong> favourites = getFavouriteSongs();
+        for (FavouriteSong favourite : favourites) {
+            JSONObject item = new JSONObject();
+            try {
+                item.put("id", favourite.id);
+                item.put("name", favourite.name);
+                item.put("artists", favourite.artists);
+                item.put("album", favourite.album);
+                item.put("sourceType", favourite.sourceType);
+                item.put("mediaUri", favourite.mediaUri);
+                item.put("mimeType", favourite.mimeType);
+                item.put("durationMs", favourite.durationMs);
+                item.put("sequence", favourite.sequence);
+                array.put(item);
+            } catch (Exception ignored) {
+            }
+        }
+        return array;
+    }
+
     private void importHomeShortcuts(JSONArray array) {
         List<HomeShortcut> shortcuts = new ArrayList<>();
         if (array != null) {
@@ -483,6 +656,30 @@ public class SettingsManager {
             }
         }
         setHomeShortcuts(shortcuts);
+    }
+
+    private void importFavouriteSongs(JSONArray array) {
+        List<FavouriteSong> favourites = new ArrayList<>();
+        if (array != null) {
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject item = array.optJSONObject(i);
+                if (item == null) {
+                    continue;
+                }
+                favourites.add(new FavouriteSong(
+                        item.optString("id", ""),
+                        item.optString("name", ""),
+                        item.optString("artists", ""),
+                        item.optString("album", ""),
+                        item.optString("sourceType", Song.SOURCE_REMOTE),
+                        item.optString("mediaUri", ""),
+                        item.optString("mimeType", ""),
+                        item.optLong("durationMs", 0L),
+                        item.optInt("sequence", i)
+                ));
+            }
+        }
+        setFavouriteSongs(favourites);
     }
 
     private SecretKey deriveBackupKey(char[] passwordChars, byte[] salt) throws Exception {

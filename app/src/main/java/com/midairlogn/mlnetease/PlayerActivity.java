@@ -19,10 +19,11 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
     private TextView currentTime, totalTime;
     private SeekBar seekBar;
     private ImageButton btnPlayPause, btnPrev, btnNext;
-    private ImageButton btnMode, btnPlaylist, btnDownloadSong;
+    private ImageButton btnMode, btnPlaylist, btnDownloadSong, btnFavouriteSong;
     private ImageButton btnBack;
     private ViewPager2 viewPager;
     private MusicPlayerManager musicPlayerManager;
+    private SettingsManager settingsManager;
     private Toast currentToast;
     private boolean isTracking = false;
 
@@ -33,6 +34,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         musicPlayerManager = MusicPlayerManager.getInstance(this);
+        settingsManager = new SettingsManager(this);
 
         initViews();
         setupViewPager();
@@ -62,6 +64,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         btnNext = findViewById(R.id.btn_next);
         btnMode = findViewById(R.id.btn_mode);
         btnPlaylist = findViewById(R.id.btn_playlist);
+        btnFavouriteSong = findViewById(R.id.btn_favourite_song);
         btnDownloadSong = findViewById(R.id.btn_download_song);
         btnBack = findViewById(R.id.btn_back);
         viewPager = findViewById(R.id.view_pager);
@@ -101,6 +104,8 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
             }
         });
 
+        btnFavouriteSong.setOnClickListener(v -> toggleFavourite());
+
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -123,11 +128,47 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
     }
 
     private void updateSongInfo(Song song) {
-        if (song != null) {
-            songTitle.setText(song.name);
-            songArtist.setText(song.artists);
-            btnDownloadSong.setVisibility(song.isLocal() ? android.view.View.GONE : android.view.View.VISIBLE);
+        if (song == null) {
+            songTitle.setText(R.string.song_title);
+            songArtist.setText(R.string.artist_name);
+            btnDownloadSong.setVisibility(android.view.View.VISIBLE);
+            renderFavouriteState(null);
+            return;
         }
+
+        songTitle.setText(song.name);
+        songArtist.setText(song.artists);
+        btnDownloadSong.setVisibility(song.isLocal() ? android.view.View.GONE : android.view.View.VISIBLE);
+        renderFavouriteState(song);
+    }
+
+    private void toggleFavourite() {
+        Song currentSong = musicPlayerManager.getCurrentSong();
+        if (currentSong == null) {
+            Toast.makeText(this, R.string.no_music, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        boolean changed;
+        int messageRes;
+        if (settingsManager.isFavouriteSong(currentSong)) {
+            changed = settingsManager.removeFavouriteSong(currentSong);
+            messageRes = R.string.favourite_removed;
+        } else {
+            changed = settingsManager.addFavouriteSong(currentSong);
+            messageRes = R.string.favourite_added;
+        }
+
+        if (changed) {
+            renderFavouriteState(currentSong);
+            Toast.makeText(this, messageRes, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void renderFavouriteState(Song song) {
+        boolean isFavourite = song != null && settingsManager.isFavouriteSong(song);
+        btnFavouriteSong.setImageResource(isFavourite ? R.drawable.ic_heart_filled : R.drawable.ic_heart_outline);
+        btnFavouriteSong.setContentDescription(getString(isFavourite ? R.string.unfavourite : R.string.favourite));
     }
 
     private boolean lastIsPlaying = false;
