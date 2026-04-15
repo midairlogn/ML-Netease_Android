@@ -160,6 +160,7 @@
             android:layout_width="120dp"
             android:layout_height="120dp"
             android:src="@drawable/ic_music_note"
+            android:contentDescription="@null"
             android:alpha="0.2"
             app:tint="@color/text_secondary" />
 

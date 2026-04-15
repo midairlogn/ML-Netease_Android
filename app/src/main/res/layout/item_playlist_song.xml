@@ -50,8 +50,9 @@
         android:id="@+id/btn_remove"
         android:layout_width="40dp"
         android:layout_height="40dp"
-        android:src="@android:drawable/ic_menu_close_clear_cancel"
         android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/delete_shortcut"
+        android:src="@android:drawable/ic_menu_close_clear_cancel"
         app:tint="@color/text_secondary"/>
 
 </LinearLayout>

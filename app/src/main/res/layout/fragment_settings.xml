@@ -102,6 +102,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:contentDescription="@string/app_volume_slider"
                 android:max="100"
                 android:minHeight="32dp"
                 android:paddingVertical="4dp"
@@ -139,6 +140,7 @@
                 android:id="@+id/spinner_language"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:contentDescription="@string/language_selector"
                 android:entries="@array/language_options"/>
         </LinearLayout>
 
@@ -246,7 +248,8 @@
             <Switch
                 android:id="@+id/switch_translation_integration"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/lyric_translation_switch"/>
         </LinearLayout>
 
         <!-- Floating Window Settings -->
@@ -268,7 +271,8 @@
             <Switch
                 android:id="@+id/switch_floating_lyrics"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/floating_lyrics_switch"/>
         </LinearLayout>
 
         <LinearLayout
@@ -299,6 +303,7 @@
                      android:layout_width="40dp"
                      android:layout_height="40dp"
                      android:backgroundTint="@color/lyrics_color_red"
+                     android:contentDescription="@string/highlight_color_red"
                      android:layout_marginEnd="8dp" />
 
                  <Button
@@ -307,6 +312,7 @@
                      android:layout_width="40dp"
                      android:layout_height="40dp"
                      android:backgroundTint="@color/lyrics_color_blue"
+                     android:contentDescription="@string/highlight_color_blue"
                      android:layout_marginEnd="8dp" />
 
                  <Button
@@ -315,6 +321,7 @@
                      android:layout_width="40dp"
                      android:layout_height="40dp"
                      android:backgroundTint="@color/lyrics_color_green"
+                     android:contentDescription="@string/highlight_color_green"
                      android:layout_marginEnd="8dp" />
 
                  <Button
@@ -323,6 +330,7 @@
                      android:layout_width="40dp"
                      android:layout_height="40dp"
                      android:backgroundTint="@color/lyrics_color_yellow"
+                     android:contentDescription="@string/highlight_color_yellow"
                      android:layout_marginEnd="8dp" />
 
                  <Button
@@ -331,6 +339,7 @@
                      android:layout_width="40dp"
                      android:layout_height="40dp"
                      android:backgroundTint="@color/lyrics_color_purple"
+                     android:contentDescription="@string/highlight_color_purple"
                      android:layout_marginEnd="8dp"/>
              </LinearLayout>
 
@@ -350,6 +359,7 @@
                      android:id="@+id/btn_size_minus"
                      android:layout_width="50dp"
                      android:layout_height="wrap_content"
+                     android:contentDescription="@string/decrease_font_size"
                      android:text="-"/>
                  <TextView
                      android:id="@+id/text_font_size"
@@ -362,6 +372,7 @@
                      android:id="@+id/btn_size_plus"
                      android:layout_width="50dp"
                      android:layout_height="wrap_content"
+                     android:contentDescription="@string/increase_font_size"
                      android:text="+"/>
              </LinearLayout>
 
