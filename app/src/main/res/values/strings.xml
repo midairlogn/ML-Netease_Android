@@ -60,6 +60,7 @@
     <string name="hearing_protection_switch">Hearing protection</string>
     <string name="hearing_protection_summary">Pause between songs after extended listening to give your ears a break.</string>
     <string name="hearing_protection_schedule_summary">Rest %1$s after about %2$s listening</string>
+    <string name="hearing_protection_progress_summary">Weighted listening load: %1$s / %2$s</string>
     <string name="hearing_protection_listen_duration_title">Continuous listening target</string>
     <string name="hearing_protection_rest_duration_title">Rest duration</string>
     <string name="hearing_protection_listen_dialog_title">Choose listening target</string>
@@ -68,6 +69,7 @@
     <string name="hearing_protection_custom_option">Custom</string>
     <string name="hearing_protection_custom_minutes_hint">Enter minutes</string>
     <string name="hearing_protection_custom_invalid">Enter a value between %1$d and %2$d minutes</string>
+    <string name="hearing_protection_duration_minutes_decimal">%1$.1f minutes</string>
     <string name="hearing_protection_rest_started">Time for an ear break. Playback will resume in %1$d minutes.</string>
     <string name="hearing_protection_rest_cancelled">Ear-break timer cancelled.</string>
     <string name="hearing_protection_rest_finished">Ear break finished. Resuming playback.</string>

@@ -25,6 +25,7 @@
     <string name="hearing_protection_switch">听力保护</string>
     <string name="hearing_protection_summary">长时间连续听歌后，在歌曲之间暂停一段时间，让耳朵休息一下。</string>
     <string name="hearing_protection_schedule_summary">连续收听约 %2$s 后休息 %1$s</string>
+    <string name="hearing_protection_progress_summary">加权听音负荷：%1$s / %2$s</string>
     <string name="hearing_protection_listen_duration_title">连续收听时长</string>
     <string name="hearing_protection_rest_duration_title">休息时长</string>
     <string name="hearing_protection_listen_dialog_title">选择连续收听时长</string>
@@ -34,6 +35,7 @@
     <string name="hearing_protection_custom_minutes_hint">请输入分钟数</string>
     <string name="hearing_protection_custom_invalid">请输入 %1$d 到 %2$d 分钟之间的数值</string>
     <string name="hearing_protection_rest_started">现在该让耳朵休息一下了。播放将在 %1$d 分钟后继续。</string>
+    <string name="hearing_protection_duration_minutes_decimal">%1$.1f 分钟</string>
     <string name="hearing_protection_rest_cancelled">已取消听力保护休息计时。</string>
     <string name="hearing_protection_rest_finished">休息结束，正在恢复播放。</string>
     <string name="title_lyric_highlight_color">悬浮窗歌词颜色</string>

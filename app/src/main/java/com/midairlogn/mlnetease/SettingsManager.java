@@ -39,6 +39,12 @@ public class SettingsManager {
     private static final String KEY_HEARING_PROTECTION_REST_MINUTES = "hearing_protection_rest_minutes";
     private static final String KEY_HEARING_PROTECTION_REST_ACTIVE = "hearing_protection_rest_active";
     private static final String KEY_HEARING_PROTECTION_REST_END_ELAPSED_MS = "hearing_protection_rest_end_elapsed_ms";
+    private static final String KEY_HEARING_PROTECTION_ACCUMULATED_DOSE_MS = "hearing_protection_accumulated_dose_ms";
+    private static final String KEY_HEARING_PROTECTION_ACTIVE_START_WALL_CLOCK_MS = "hearing_protection_active_start_wall_clock_ms";
+    private static final String KEY_HEARING_PROTECTION_ACTIVE_INTENSITY = "hearing_protection_active_intensity";
+    private static final String KEY_HEARING_PROTECTION_PAUSE_START_WALL_CLOCK_MS = "hearing_protection_pause_start_wall_clock_ms";
+    private static final String KEY_HEARING_PROTECTION_PAUSE_BASE_DOSE_MS = "hearing_protection_pause_base_dose_ms";
+    private static final String KEY_HEARING_PROTECTION_PAUSE_INTENSITY = "hearing_protection_pause_intensity";
     private static final String KEY_DOWNLOAD_FILENAME_TEMPLATE = "download_filename_template";
     private static final String KEY_DOWNLOAD_FILENAME_SEPARATOR = "download_filename_separator";
     private static final String KEY_DOWNLOAD_METADATA_ENABLED = "download_metadata_enabled";
@@ -449,6 +455,70 @@ public class SettingsManager {
                 .apply();
     }
 
+    public void setHearingProtectionAccumulatedDoseMs(long doseMs) {
+        prefs.edit()
+                .putLong(KEY_HEARING_PROTECTION_ACCUMULATED_DOSE_MS, Math.max(0L, doseMs))
+                .apply();
+    }
+
+    public long getHearingProtectionAccumulatedDoseMs() {
+        return Math.max(0L, prefs.getLong(KEY_HEARING_PROTECTION_ACCUMULATED_DOSE_MS, 0L));
+    }
+
+    public void clearHearingProtectionAccumulatedDose() {
+        prefs.edit().remove(KEY_HEARING_PROTECTION_ACCUMULATED_DOSE_MS).apply();
+    }
+
+    public void setHearingProtectionActiveSession(long startWallClockMs, float intensityMultiplier) {
+        prefs.edit()
+                .putLong(KEY_HEARING_PROTECTION_ACTIVE_START_WALL_CLOCK_MS, Math.max(0L, startWallClockMs))
+                .putFloat(KEY_HEARING_PROTECTION_ACTIVE_INTENSITY, Math.max(0f, intensityMultiplier))
+                .apply();
+    }
+
+    public long getHearingProtectionActiveSessionStartWallClockMs() {
+        return Math.max(0L, prefs.getLong(KEY_HEARING_PROTECTION_ACTIVE_START_WALL_CLOCK_MS, 0L));
+    }
+
+    public float getHearingProtectionActiveSessionIntensity() {
+        return Math.max(0f, prefs.getFloat(KEY_HEARING_PROTECTION_ACTIVE_INTENSITY, 0f));
+    }
+
+    public void clearHearingProtectionActiveSession() {
+        prefs.edit()
+                .remove(KEY_HEARING_PROTECTION_ACTIVE_START_WALL_CLOCK_MS)
+                .remove(KEY_HEARING_PROTECTION_ACTIVE_INTENSITY)
+                .apply();
+    }
+
+    public void setHearingProtectionPauseSession(long pauseStartWallClockMs, long baseDoseMs, float intensityMultiplier) {
+        prefs.edit()
+                .putLong(KEY_HEARING_PROTECTION_PAUSE_START_WALL_CLOCK_MS, Math.max(0L, pauseStartWallClockMs))
+                .putLong(KEY_HEARING_PROTECTION_PAUSE_BASE_DOSE_MS, Math.max(0L, baseDoseMs))
+                .putFloat(KEY_HEARING_PROTECTION_PAUSE_INTENSITY, Math.max(0f, intensityMultiplier))
+                .apply();
+    }
+
+    public long getHearingProtectionPauseStartWallClockMs() {
+        return Math.max(0L, prefs.getLong(KEY_HEARING_PROTECTION_PAUSE_START_WALL_CLOCK_MS, 0L));
+    }
+
+    public long getHearingProtectionPauseBaseDoseMs() {
+        return Math.max(0L, prefs.getLong(KEY_HEARING_PROTECTION_PAUSE_BASE_DOSE_MS, 0L));
+    }
+
+    public float getHearingProtectionPauseIntensity() {
+        return Math.max(0f, prefs.getFloat(KEY_HEARING_PROTECTION_PAUSE_INTENSITY, 0f));
+    }
+
+    public void clearHearingProtectionPauseSession() {
+        prefs.edit()
+                .remove(KEY_HEARING_PROTECTION_PAUSE_START_WALL_CLOCK_MS)
+                .remove(KEY_HEARING_PROTECTION_PAUSE_BASE_DOSE_MS)
+                .remove(KEY_HEARING_PROTECTION_PAUSE_INTENSITY)
+                .apply();
+    }
+
     private int clampHearingProtectionListenMinutes(int minutes) {
         return Math.max(15, Math.min(minutes, 240));
     }
@@ -638,6 +708,7 @@ public class SettingsManager {
         json.put(KEY_HEARING_PROTECTION_ENABLED, isHearingProtectionEnabled());
         json.put(KEY_HEARING_PROTECTION_LISTEN_MINUTES, getHearingProtectionListenMinutes());
         json.put(KEY_HEARING_PROTECTION_REST_MINUTES, getHearingProtectionRestMinutes());
+        json.put(KEY_HEARING_PROTECTION_ACCUMULATED_DOSE_MS, getHearingProtectionAccumulatedDoseMs());
         json.put(KEY_HOME_SHORTCUTS, serializeHomeShortcuts());
         json.put(KEY_FAVOURITE_SONGS, serializeFavouriteSongs());
         json.put(KEY_APP_LANGUAGE, getAppLanguage());
@@ -678,6 +749,7 @@ public class SettingsManager {
                 KEY_HEARING_PROTECTION_REST_MINUTES,
                 DEFAULT_HEARING_PROTECTION_REST_MINUTES
         ));
+        setHearingProtectionAccumulatedDoseMs(json.optLong(KEY_HEARING_PROTECTION_ACCUMULATED_DOSE_MS, 0L));
         importHomeShortcuts(json.optJSONArray(KEY_HOME_SHORTCUTS));
         importFavouriteSongs(json.optJSONArray(KEY_FAVOURITE_SONGS));
         setAppLanguage(normalizeLanguage(json.optString(KEY_APP_LANGUAGE, "system")));

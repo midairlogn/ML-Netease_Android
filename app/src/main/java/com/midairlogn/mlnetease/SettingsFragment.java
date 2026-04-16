@@ -66,6 +66,7 @@ public class SettingsFragment extends Fragment {
     private View layoutHearingProtectionListenDuration;
     private View layoutHearingProtectionRestDuration;
     private TextView textHearingProtectionSummary;
+    private TextView textHearingProtectionProgress;
     private TextView textHearingProtectionListenDurationValue;
     private TextView textHearingProtectionRestDurationValue;
     private ActivityResultLauncher<String> createSettingsBackupLauncher;
@@ -74,7 +75,18 @@ public class SettingsFragment extends Fragment {
     private boolean lastImportSkippedFloatingLyrics;
 
     private final Handler debounceHandler = new Handler(Looper.getMainLooper());
+    private final Handler hearingProtectionUiHandler = new Handler(Looper.getMainLooper());
     private Runnable saveRunnable;
+    private final Runnable hearingProtectionUiRefreshRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isAdded() || getView() == null || settingsManager == null) {
+                return;
+            }
+            refreshHearingProtectionSummary();
+            scheduleHearingProtectionUiRefresh();
+        }
+    };
 
     // Floating Window
     private Switch switchFloatingLyrics;
@@ -166,6 +178,7 @@ public class SettingsFragment extends Fragment {
         layoutHearingProtectionListenDuration = view.findViewById(R.id.layout_hearing_protection_listen_duration);
         layoutHearingProtectionRestDuration = view.findViewById(R.id.layout_hearing_protection_rest_duration);
         textHearingProtectionSummary = view.findViewById(R.id.text_hearing_protection_summary);
+        textHearingProtectionProgress = view.findViewById(R.id.text_hearing_protection_progress);
         textHearingProtectionListenDurationValue = view.findViewById(R.id.text_hearing_protection_listen_duration_value);
         textHearingProtectionRestDurationValue = view.findViewById(R.id.text_hearing_protection_rest_duration_value);
         View btnSettingsBackup = view.findViewById(R.id.btn_settings_backup);
@@ -395,6 +408,7 @@ public class SettingsFragment extends Fragment {
     @Override
     public void onDestroyView() {
         cancelPendingSave();
+        stopHearingProtectionUiRefresh();
         if (settingsManager != null && preferenceChangeListener != null) {
             settingsManager.getPrefs().unregisterOnSharedPreferenceChangeListener(preferenceChangeListener);
         }
@@ -412,6 +426,7 @@ public class SettingsFragment extends Fragment {
         layoutHearingProtectionListenDuration = null;
         layoutHearingProtectionRestDuration = null;
         textHearingProtectionSummary = null;
+        textHearingProtectionProgress = null;
         textHearingProtectionListenDurationValue = null;
         textHearingProtectionRestDurationValue = null;
         switchFloatingLyrics = null;
@@ -549,6 +564,7 @@ public class SettingsFragment extends Fragment {
     public void onResume() {
         super.onResume();
         refreshSettingsUI();
+        scheduleHearingProtectionUiRefresh();
         if (switchFloatingLyrics != null && switchFloatingLyrics.isChecked()) {
             if (!Settings.canDrawOverlays(requireContext())) {
                 switchFloatingLyrics.setChecked(false);
@@ -561,7 +577,16 @@ public class SettingsFragment extends Fragment {
         super.onHiddenChanged(hidden);
         if (!hidden) {
             refreshSettingsUI();
+            scheduleHearingProtectionUiRefresh();
+        } else {
+            stopHearingProtectionUiRefresh();
         }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        stopHearingProtectionUiRefresh();
     }
 
     private void refreshSettingsUI() {
@@ -724,6 +749,20 @@ public class SettingsFragment extends Fragment {
                     listenLabel
             ));
         }
+        if (textHearingProtectionProgress != null) {
+            HearingProtectionController.HearingProtectionSnapshot snapshot =
+                    HearingProtectionController.getSnapshot(requireContext());
+            long currentDoseMs = Math.max(0L, snapshot.getDisplayDoseMs());
+            double currentMinutes = currentDoseMs / 60_000d;
+            textHearingProtectionProgress.setText(getString(
+                    R.string.hearing_protection_progress_summary,
+                    formatWeightedMinutes(currentMinutes),
+                    listenLabel
+            ));
+            textHearingProtectionProgress.setVisibility(
+                    settingsManager.isHearingProtectionEnabled() ? View.VISIBLE : View.GONE
+            );
+        }
     }
 
     private void showHearingProtectionListenDurationDialog() {
@@ -881,8 +920,33 @@ public class SettingsFragment extends Fragment {
         customInput.setAlpha(enabled ? 1f : 0.5f);
     }
 
+    private void scheduleHearingProtectionUiRefresh() {
+        stopHearingProtectionUiRefresh();
+        if (!isAdded() || getView() == null || settingsManager == null || isHidden()) {
+            return;
+        }
+        if (!settingsManager.isHearingProtectionEnabled()) {
+            return;
+        }
+        refreshHearingProtectionSummary();
+        HearingProtectionController.HearingProtectionSnapshot snapshot =
+                HearingProtectionController.getSnapshot(requireContext());
+        if (!snapshot.activelyAccumulating && !snapshot.pauseRecoveryActive) {
+            return;
+        }
+        hearingProtectionUiHandler.postDelayed(hearingProtectionUiRefreshRunnable, 1000L);
+    }
+
+    private void stopHearingProtectionUiRefresh() {
+        hearingProtectionUiHandler.removeCallbacks(hearingProtectionUiRefreshRunnable);
+    }
+
     private String formatMinutes(int minutes) {
         return getString(R.string.hearing_protection_option_minutes, minutes);
+    }
+
+    private String formatWeightedMinutes(double minutes) {
+        return getString(R.string.hearing_protection_duration_minutes_decimal, Math.max(0d, minutes));
     }
 
     private interface MinuteChoiceListener {
