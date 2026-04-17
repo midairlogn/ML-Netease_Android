@@ -3,28 +3,33 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:paddingVertical="10dp"
-    android:paddingHorizontal="24dp">
+    android:gravity="center_horizontal"
+    android:paddingVertical="12dp"
+    android:paddingHorizontal="16dp">
 
     <TextView
         android:id="@+id/text_lyric_line"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="13sp"
+        android:textSize="15sp"
         android:textStyle="bold"
         android:textColor="@color/text_secondary"
-        android:gravity="start"
+        android:gravity="center"
+        android:textAlignment="center"
+        android:lineSpacingExtra="3dp"
         android:fontFamily="sans-serif-medium" />
 
     <TextView
         android:id="@+id/text_lyric_translation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:textSize="11sp"
+        android:layout_marginTop="4dp"
+        android:textSize="13sp"
         android:textColor="@color/text_secondary"
         android:alpha="0.75"
-        android:gravity="start"
+        android:gravity="center"
+        android:textAlignment="center"
+        android:lineSpacingExtra="2dp"
         android:visibility="gone"
         android:fontFamily="sans-serif" />
 

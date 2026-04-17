@@ -60,19 +60,19 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewH
         if (position == activeIndex) {
             holder.text.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.text_primary));
             holder.text.setAlpha(1.0f);
-            holder.text.setTextSize(16);
+            holder.text.setTextSize(20);
 
             holder.translation.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.text_primary));
             holder.translation.setAlpha(0.85f);
-            holder.translation.setTextSize(12);
+            holder.translation.setTextSize(14);
         } else {
             holder.text.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.text_secondary));
             holder.text.setAlpha(0.6f);
-            holder.text.setTextSize(13);
+            holder.text.setTextSize(15);
 
             holder.translation.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.text_secondary));
             holder.translation.setAlpha(0.5f);
-            holder.translation.setTextSize(11);
+            holder.translation.setTextSize(13);
         }
     }
 

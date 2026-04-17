@@ -10,7 +10,7 @@
         android:layout_width="match_parent"
         android:layout_height="50dp"
         android:layout_gravity="center_vertical"
-        android:layout_marginHorizontal="0dp"
+        android:layout_marginHorizontal="2dp"
         android:background="@drawable/shape_highlight_bg"
         android:visibility="gone"/>
 
@@ -20,7 +20,7 @@
         android:layout_height="match_parent"
         android:clipToPadding="false"
         android:scrollbars="none"
-        android:paddingHorizontal="48dp"/>
+        android:paddingHorizontal="8dp"/>
 
     <RelativeLayout
         android:id="@+id/lyrics_timeline_overlay"
@@ -28,7 +28,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"
         android:visibility="gone"
-        android:paddingHorizontal="8dp">
+        android:paddingHorizontal="4dp">
 
         <TextView
             android:id="@+id/lyrics_timeline_time"
@@ -47,7 +47,7 @@
             android:layout_toEndOf="@id/lyrics_timeline_time"
             android:layout_toStartOf="@id/lyrics_timeline_play"
             android:layout_centerVertical="true"
-            android:layout_marginHorizontal="8dp"
+            android:layout_marginHorizontal="6dp"
             android:background="@drawable/shape_dashed_line"
             android:layerType="software"/>
 
