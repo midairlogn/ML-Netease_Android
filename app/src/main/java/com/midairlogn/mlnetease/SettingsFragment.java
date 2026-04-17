@@ -76,7 +76,8 @@ public class SettingsFragment extends Fragment {
 
     private final Handler debounceHandler = new Handler(Looper.getMainLooper());
     private final Handler hearingProtectionUiHandler = new Handler(Looper.getMainLooper());
-    private Runnable saveRunnable;
+    private Runnable musicUSaveRunnable;
+    private Runnable searchLimitSaveRunnable;
     private final Runnable hearingProtectionUiRefreshRunnable = new Runnable() {
         @Override
         public void run() {
@@ -455,7 +456,7 @@ public class SettingsFragment extends Fragment {
                 if (isRefreshingSettingsUi) {
                     return;
                 }
-                scheduleSave(() -> settingsManager.setMusicU(s.toString().trim()));
+                scheduleMusicUSave(s.toString().trim());
             }
         });
         inputMusicU.setOnEditorActionListener((v, actionId, event) -> {
@@ -480,7 +481,7 @@ public class SettingsFragment extends Fragment {
                 if (isRefreshingSettingsUi) {
                     return;
                 }
-                scheduleSave(() -> validateAndSaveSearchLimit(s.toString().trim(), false));
+                scheduleSearchLimitSave(s.toString().trim());
             }
         });
         inputSearchLimit.setOnEditorActionListener((v, actionId, event) -> {
@@ -497,49 +498,89 @@ public class SettingsFragment extends Fragment {
         });
     }
 
-    private void scheduleSave(Runnable saveTask) {
-        if (saveRunnable != null) {
-            debounceHandler.removeCallbacks(saveRunnable);
+    private void scheduleMusicUSave(String musicU) {
+        if (musicUSaveRunnable != null) {
+            debounceHandler.removeCallbacks(musicUSaveRunnable);
         }
-        saveRunnable = () -> {
-            saveTask.run();
+        musicUSaveRunnable = () -> {
+            settingsManager.setMusicU(musicU);
             notifySettingsChanged();
         };
-        debounceHandler.postDelayed(saveRunnable, 300); // 300ms debounce
+        debounceHandler.postDelayed(musicUSaveRunnable, 300); // 300ms debounce
+    }
+
+    private void scheduleSearchLimitSave(String limitStr) {
+        if (searchLimitSaveRunnable != null) {
+            debounceHandler.removeCallbacks(searchLimitSaveRunnable);
+        }
+        searchLimitSaveRunnable = () -> {
+            if (saveSearchLimitDraft(limitStr)) {
+                notifySettingsChanged();
+            }
+        };
+        debounceHandler.postDelayed(searchLimitSaveRunnable, 300); // 300ms debounce
     }
 
     private void cancelPendingSave() {
-        if (saveRunnable != null) {
-            debounceHandler.removeCallbacks(saveRunnable);
-            saveRunnable = null;
+        if (musicUSaveRunnable != null) {
+            debounceHandler.removeCallbacks(musicUSaveRunnable);
+            musicUSaveRunnable = null;
+        }
+        if (searchLimitSaveRunnable != null) {
+            debounceHandler.removeCallbacks(searchLimitSaveRunnable);
+            searchLimitSaveRunnable = null;
         }
         debounceHandler.removeCallbacksAndMessages(null);
     }
 
     private void saveAndClearFocus(EditText editText) {
-        if (saveRunnable != null) {
-            debounceHandler.removeCallbacks(saveRunnable);
-            saveRunnable.run();
-            saveRunnable = null;
-        }
         if (editText == inputSearchLimit) {
-            validateAndSaveSearchLimit(editText.getText().toString().trim(), true);
+            if (searchLimitSaveRunnable != null) {
+                debounceHandler.removeCallbacks(searchLimitSaveRunnable);
+                searchLimitSaveRunnable = null;
+            }
+            if (validateAndSaveSearchLimit(editText.getText().toString().trim(), true)) {
+                notifySettingsChanged();
+            }
         } else if (editText == inputMusicU) {
+            if (musicUSaveRunnable != null) {
+                debounceHandler.removeCallbacks(musicUSaveRunnable);
+                musicUSaveRunnable = null;
+            }
             settingsManager.setMusicU(editText.getText().toString().trim());
+            notifySettingsChanged();
         }
-        notifySettingsChanged();
         hideKeyboard(editText);
         editText.clearFocus();
     }
 
-    private void validateAndSaveSearchLimit(String limitStr, boolean updateUI) {
+    private boolean saveSearchLimitDraft(String limitStr) {
         if (limitStr.isEmpty()) {
+            return false;
+        }
+        try {
+            int limit = Integer.parseInt(limitStr);
+            if (limit < 1 || limit > 100) {
+                return false;
+            }
+            settingsManager.setSearchLimit(limit);
+            return true;
+        } catch (NumberFormatException ignored) {
+            return false;
+        }
+    }
+
+    private boolean validateAndSaveSearchLimit(String limitStr, boolean finalizeEdit) {
+        if (limitStr.isEmpty()) {
+            if (!finalizeEdit) {
+                return false;
+            }
             int defaultLimit = 10;
             settingsManager.setSearchLimit(defaultLimit);
-            if (updateUI) {
+            if (inputSearchLimit != null) {
                 inputSearchLimit.setText(String.valueOf(defaultLimit));
             }
-            return;
+            return true;
         }
         try {
             int limit = Integer.parseInt(limitStr);
@@ -547,10 +588,16 @@ public class SettingsFragment extends Fragment {
             if (limit < 1) { limit = 1; changed = true; }
             if (limit > 100) { limit = 100; changed = true; }
             settingsManager.setSearchLimit(limit);
-            if (updateUI && changed) {
+            if (finalizeEdit && changed && inputSearchLimit != null) {
                 inputSearchLimit.setText(String.valueOf(limit));
             }
-        } catch (NumberFormatException ignored) {}
+            return true;
+        } catch (NumberFormatException ignored) {
+            if (finalizeEdit && inputSearchLimit != null) {
+                inputSearchLimit.setText(String.valueOf(settingsManager.getSearchLimit()));
+            }
+            return false;
+        }
     }
 
     private void notifySettingsChanged() {
@@ -586,7 +633,25 @@ public class SettingsFragment extends Fragment {
     @Override
     public void onPause() {
         super.onPause();
+        flushPendingSaves();
         stopHearingProtectionUiRefresh();
+    }
+
+    private void flushPendingSaves() {
+        if (musicUSaveRunnable != null) {
+            debounceHandler.removeCallbacks(musicUSaveRunnable);
+            musicUSaveRunnable.run();
+            musicUSaveRunnable = null;
+        }
+        if (searchLimitSaveRunnable != null) {
+            debounceHandler.removeCallbacks(searchLimitSaveRunnable);
+            searchLimitSaveRunnable = null;
+            if (inputSearchLimit != null) {
+                if (validateAndSaveSearchLimit(inputSearchLimit.getText().toString().trim(), true)) {
+                    notifySettingsChanged();
+                }
+            }
+        }
     }
 
     private void refreshSettingsUI() {
@@ -595,13 +660,13 @@ public class SettingsFragment extends Fragment {
         isRefreshingSettingsUi = true;
         try {
             // Refresh values from SharedPreferences in case they were changed elsewhere (e.g. Floating Window)
-            if (inputMusicU != null) {
+            if (inputMusicU != null && !inputMusicU.hasFocus()) {
                 String musicU = settingsManager.getMusicU();
                 if (!musicU.equals(inputMusicU.getText().toString())) {
                     inputMusicU.setText(musicU);
                 }
             }
-            if (inputSearchLimit != null) {
+            if (inputSearchLimit != null && !inputSearchLimit.hasFocus()) {
                 String searchLimit = String.valueOf(settingsManager.getSearchLimit());
                 if (!searchLimit.equals(inputSearchLimit.getText().toString())) {
                     inputSearchLimit.setText(searchLimit);
