@@ -167,7 +167,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
 
     private void renderFavouriteState(Song song) {
         boolean isFavourite = song != null && settingsManager.isFavouriteSong(song);
-        btnFavouriteSong.setImageResource(isFavourite ? R.drawable.ic_heart_filled : R.drawable.ic_heart_outline);
+        btnFavouriteSong.setSelected(isFavourite);
         btnFavouriteSong.setContentDescription(getString(isFavourite ? R.string.unfavourite : R.string.favourite));
     }
 

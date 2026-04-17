@@ -38,9 +38,9 @@
             android:layout_marginEnd="12dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="6dp"
-            android:src="@drawable/ic_heart_outline"
+            android:src="@drawable/player_favourite_icon"
             android:scaleType="fitCenter"
-            app:tint="@color/text_primary"
+            app:tint="@color/player_favourite_tint"
             android:contentDescription="@string/favourite" />
 
         <ImageButton
