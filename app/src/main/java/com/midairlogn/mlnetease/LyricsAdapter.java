@@ -13,9 +13,14 @@ import java.util.List;
 
 public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewHolder> {
 
+    public interface OnLyricClickListener {
+        void onLyricClick(LyricLine line, int position);
+    }
+
     private List<LyricLine> lyrics = new ArrayList<>();
     private int activeIndex = -1;
     private boolean showTranslation = false;
+    private OnLyricClickListener onLyricClickListener;
 
     public void setLyrics(List<LyricLine> lyrics) {
         this.lyrics = lyrics;
@@ -26,6 +31,10 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewH
         if (this.showTranslation == showTranslation) return;
         this.showTranslation = showTranslation;
         notifyDataSetChanged();
+    }
+
+    public void setOnLyricClickListener(OnLyricClickListener onLyricClickListener) {
+        this.onLyricClickListener = onLyricClickListener;
     }
 
     public void setActiveIndex(int index) {
@@ -47,6 +56,13 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewH
     public void onBindViewHolder(@NonNull LyricViewHolder holder, int position) {
         LyricLine line = lyrics.get(position);
         holder.text.setText(line.text);
+        holder.itemView.setOnClickListener(v -> {
+            int adapterPosition = holder.getBindingAdapterPosition();
+            if (adapterPosition == RecyclerView.NO_POSITION || onLyricClickListener == null) {
+                return;
+            }
+            onLyricClickListener.onLyricClick(lyrics.get(adapterPosition), adapterPosition);
+        });
 
         boolean hasTranslation = !TextUtils.isEmpty(line.translation);
         if (showTranslation && hasTranslation) {

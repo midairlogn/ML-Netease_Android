@@ -29,7 +29,6 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
     private int currentLineIndex = -1;
 
     // Timeline Overlay Views
-    private View lyricsTimelineOverlay;
     private View lyricsHighlightBg;
     private View lyricsTimelineLine;
     private TextView lyricsTimelineTime;
@@ -39,6 +38,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
     private long selectedTime = -1;
     private SettingsManager settingsManager;
     private android.content.SharedPreferences.OnSharedPreferenceChangeListener preferenceChangeListener;
+    private boolean hasTimestampedLyrics = false;
 
     @Nullable
     @Override
@@ -53,13 +53,18 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
 
         // Initialize Overlay Views
         lyricsHighlightBg = view.findViewById(R.id.lyrics_highlight_bg);
-        lyricsTimelineOverlay = view.findViewById(R.id.lyrics_timeline_overlay);
         lyricsTimelineLine = view.findViewById(R.id.lyrics_timeline_line);
         lyricsTimelineTime = view.findViewById(R.id.lyrics_timeline_time);
         lyricsTimelinePlay = view.findViewById(R.id.lyrics_timeline_play);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         adapter = new LyricsAdapter();
+        adapter.setOnLyricClickListener((line, position) -> {
+            if (!hasTimestampedLyrics) {
+                return;
+            }
+            seekToLyricTime(line.time, true);
+        });
         recyclerView.setAdapter(adapter);
 
         // Dynamically set vertical padding to half of the screen height
@@ -98,21 +103,25 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
     }
 
     private void setupTimelineInteraction() {
-        hideOverlayRunnable = () -> {
-            lyricsTimelineOverlay.setVisibility(View.GONE);
-            lyricsHighlightBg.setVisibility(View.GONE);
-            isUserScrolling = false;
-        };
+        hideOverlayRunnable = this::clearTimelineOverlay;
 
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
                 if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    if (!hasTimestampedLyrics) {
+                        clearTimelineOverlay();
+                        return;
+                    }
                     isUserScrolling = true;
                     handler.removeCallbacks(hideOverlayRunnable);
-                    lyricsTimelineOverlay.setVisibility(View.VISIBLE);
+                    showTimelineOverlay();
                 } else if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    if (!hasTimestampedLyrics) {
+                        clearTimelineOverlay();
+                        return;
+                    }
                     // Start timer to hide overlay
                     handler.postDelayed(hideOverlayRunnable, 3000);
                 }
@@ -121,23 +130,44 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 super.onScrolled(recyclerView, dx, dy);
-                if (lyricsTimelineOverlay.getVisibility() == View.VISIBLE) {
+                if (lyricsTimelinePlay.getVisibility() == View.VISIBLE) {
                     updateTimelineTime();
                 }
             }
         });
 
         lyricsTimelinePlay.setOnClickListener(v -> {
-            if (selectedTime != -1) {
-                MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
-                manager.seekTo((int) selectedTime);
-                manager.resume();
-                isUserScrolling = false;
-                lyricsTimelineOverlay.setVisibility(View.GONE);
-                lyricsHighlightBg.setVisibility(View.GONE);
-                handler.removeCallbacks(hideOverlayRunnable);
+            if (selectedTime == -1 || !hasTimestampedLyrics) {
+                return;
             }
+            seekToLyricTime(selectedTime, true);
         });
+    }
+
+    private void showTimelineOverlay() {
+        lyricsTimelineTime.setVisibility(View.VISIBLE);
+        lyricsTimelinePlay.setVisibility(View.VISIBLE);
+    }
+
+    private void seekToLyricTime(long time, boolean clearTimelineOverlay) {
+        MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
+        if (manager == null) {
+            return;
+        }
+        manager.seekTo((int) time);
+        manager.resume();
+        if (clearTimelineOverlay) {
+            clearTimelineOverlay();
+        }
+    }
+
+    private void clearTimelineOverlay() {
+        isUserScrolling = false;
+        lyricsHighlightBg.setVisibility(View.GONE);
+        lyricsTimelineLine.setVisibility(View.GONE);
+        lyricsTimelineTime.setVisibility(View.GONE);
+        lyricsTimelinePlay.setVisibility(View.GONE);
+        handler.removeCallbacks(hideOverlayRunnable);
     }
 
     private void updateTimelineTime() {
@@ -239,7 +269,9 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
 
         getActivity().runOnUiThread(() -> {
             boolean showTranslation = settingsManager.isTranslationIntegrationEnabled();
-            boolean hasTimestampedLyrics = LyricsUtils.hasTimestampedLyrics(lyrics);
+            hasTimestampedLyrics = LyricsUtils.hasTimestampedLyrics(lyrics);
+            selectedTime = -1;
+            clearTimelineOverlay();
             if (showTranslation && hasTimestampedLyrics) {
                 lyricLines = LyricsUtils.mergeLyricsWithTranslation(lyrics, tlyrics);
             } else if (hasTimestampedLyrics) {
