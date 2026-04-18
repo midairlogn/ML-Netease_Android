@@ -61,6 +61,8 @@
     <string name="hearing_protection_summary">Pause between songs after extended listening to give your ears a break.</string>
     <string name="hearing_protection_schedule_summary">Rest %1$s after about %2$s listening</string>
     <string name="hearing_protection_progress_summary">Weighted listening load: %1$s / %2$s</string>
+    <string name="hearing_protection_rest_remaining_summary">Rest remaining: %1$s</string>
+    <string name="hearing_protection_rest_remaining_duration">%1$dm %2$02ds</string>
     <string name="hearing_protection_listen_duration_title">Continuous listening target</string>
     <string name="hearing_protection_rest_duration_title">Rest duration</string>
     <string name="hearing_protection_listen_dialog_title">Choose listening target</string>

@@ -115,6 +115,9 @@ class HearingProtectionController implements
             persistAccumulatedDose();
             clearActiveSession();
             clearPauseSession();
+            playbackSessionStartElapsedMs = -1L;
+            pauseStartedElapsedMs = -1L;
+            lastPlaybackIntensityMultiplier = 1.0d;
             restPendingAfterCurrentSong = false;
             if (wasRestActive) {
                 musicPlayerManager.playNext();
@@ -129,6 +132,12 @@ class HearingProtectionController implements
             } else {
                 scheduleRestFinished(remainingMs);
             }
+        }
+
+        if (!restActive && musicPlayerManager.isPlaying() && playbackSessionStartElapsedMs < 0L) {
+            playbackSessionStartElapsedMs = SystemClock.elapsedRealtime();
+            lastPlaybackIntensityMultiplier = getPlaybackIntensityMultiplier();
+            persistActiveSession();
         }
 
         if (!restPendingAfterCurrentSong && accumulatedDose >= getDoseThreshold()) {

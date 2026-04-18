@@ -47,6 +47,7 @@ import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import javax.crypto.AEADBadTagException;
 
 public class SettingsFragment extends Fragment {
@@ -219,7 +220,14 @@ public class SettingsFragment extends Fragment {
         // Listen for preference changes (e.g. from notification)
         preferenceChangeListener = (sharedPreferences, key) -> {
             if (getActivity() == null) return;
-            getActivity().runOnUiThread(this::refreshSettingsUI);
+            getActivity().runOnUiThread(() -> {
+                refreshSettingsUI();
+                if (settingsManager != null && settingsManager.isHearingProtectionEnabled()) {
+                    scheduleHearingProtectionUiRefresh();
+                } else {
+                    stopHearingProtectionUiRefresh();
+                }
+            });
         };
         settingsManager.getPrefs().registerOnSharedPreferenceChangeListener(preferenceChangeListener);
 
@@ -310,6 +318,11 @@ public class SettingsFragment extends Fragment {
                 layoutHearingProtectionSettings.setVisibility(isChecked ? View.VISIBLE : View.GONE);
             }
             refreshHearingProtectionSummary();
+            if (isChecked) {
+                scheduleHearingProtectionUiRefresh();
+            } else {
+                stopHearingProtectionUiRefresh();
+            }
             notifySettingsChanged();
         });
         if (layoutHearingProtectionListenDuration != null) {
@@ -817,13 +830,20 @@ public class SettingsFragment extends Fragment {
         if (textHearingProtectionProgress != null) {
             HearingProtectionController.HearingProtectionSnapshot snapshot =
                     HearingProtectionController.getSnapshot(requireContext());
-            long currentDoseMs = Math.max(0L, snapshot.getDisplayDoseMs());
-            double currentMinutes = currentDoseMs / 60_000d;
-            textHearingProtectionProgress.setText(getString(
-                    R.string.hearing_protection_progress_summary,
-                    formatWeightedMinutes(currentMinutes),
-                    listenLabel
-            ));
+            if (snapshot.restActive) {
+                textHearingProtectionProgress.setText(getString(
+                        R.string.hearing_protection_rest_remaining_summary,
+                        formatRestRemaining(snapshot.restRemainingMs)
+                ));
+            } else {
+                long currentDoseMs = Math.max(0L, snapshot.getDisplayDoseMs());
+                double currentMinutes = currentDoseMs / 60_000d;
+                textHearingProtectionProgress.setText(getString(
+                        R.string.hearing_protection_progress_summary,
+                        formatWeightedMinutes(currentMinutes),
+                        listenLabel
+                ));
+            }
             textHearingProtectionProgress.setVisibility(
                     settingsManager.isHearingProtectionEnabled() ? View.VISIBLE : View.GONE
             );
@@ -996,7 +1016,7 @@ public class SettingsFragment extends Fragment {
         refreshHearingProtectionSummary();
         HearingProtectionController.HearingProtectionSnapshot snapshot =
                 HearingProtectionController.getSnapshot(requireContext());
-        if (!snapshot.activelyAccumulating && !snapshot.pauseRecoveryActive) {
+        if (!snapshot.activelyAccumulating && !snapshot.pauseRecoveryActive && !snapshot.restActive) {
             return;
         }
         hearingProtectionUiHandler.postDelayed(hearingProtectionUiRefreshRunnable, 1000L);
@@ -1012,6 +1032,14 @@ public class SettingsFragment extends Fragment {
 
     private String formatWeightedMinutes(double minutes) {
         return getString(R.string.hearing_protection_duration_minutes_decimal, Math.max(0d, minutes));
+    }
+
+    private String formatRestRemaining(long remainingMs) {
+        long safeRemainingMs = Math.max(0L, remainingMs);
+        long totalSeconds = TimeUnit.MILLISECONDS.toSeconds(safeRemainingMs);
+        long minutes = totalSeconds / 60L;
+        long seconds = totalSeconds % 60L;
+        return getString(R.string.hearing_protection_rest_remaining_duration, minutes, seconds);
     }
 
     private interface MinuteChoiceListener {

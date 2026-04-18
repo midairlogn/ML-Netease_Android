@@ -26,6 +26,8 @@
     <string name="hearing_protection_summary">长时间连续听歌后，在歌曲之间暂停一段时间，让耳朵休息一下。</string>
     <string name="hearing_protection_schedule_summary">连续收听约 %2$s 后休息 %1$s</string>
     <string name="hearing_protection_progress_summary">加权听音负荷：%1$s / %2$s</string>
+    <string name="hearing_protection_rest_remaining_summary">剩余休息时间：%1$s</string>
+    <string name="hearing_protection_rest_remaining_duration">%1$d分 %2$02d秒</string>
     <string name="hearing_protection_listen_duration_title">连续收听时长</string>
     <string name="hearing_protection_rest_duration_title">休息时长</string>
     <string name="hearing_protection_listen_dialog_title">选择连续收听时长</string>
