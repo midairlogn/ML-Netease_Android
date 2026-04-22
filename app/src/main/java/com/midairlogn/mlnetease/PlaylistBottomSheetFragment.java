@@ -8,6 +8,7 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -22,6 +23,7 @@ public class PlaylistBottomSheetFragment extends BottomSheetDialogFragment imple
     private PlaylistAdapter adapter;
     private MusicPlayerManager musicPlayerManager;
     private TextView tvPlaylistTitle;
+    private AlertDialog clearPlaylistDialog;
 
     private boolean isDragging = false;
 
@@ -40,14 +42,22 @@ public class PlaylistBottomSheetFragment extends BottomSheetDialogFragment imple
         updateTitle();
 
         view.findViewById(R.id.btn_clear_playlist).setOnClickListener(v -> {
-            new android.app.AlertDialog.Builder(getContext())
+            AlertDialog dialog = new AlertDialog.Builder(requireContext())
                     .setTitle(R.string.clear_playlist)
                     .setMessage(R.string.hint_clear_playlist)
-                    .setPositiveButton(R.string.yes, (dialog, which) -> {
+                    .setPositiveButton(R.string.yes, (dialogInterface, which) -> {
                         musicPlayerManager.setPlaylist(new java.util.ArrayList<>());
                     })
                     .setNegativeButton(R.string.no, null)
-                    .show();
+                    .create();
+            if (UiLaunchGuards.showAlertDialogOnce(clearPlaylistDialog, dialog)) {
+                clearPlaylistDialog = dialog;
+                dialog.setOnDismissListener(d -> {
+                    if (clearPlaylistDialog == dialog) {
+                        clearPlaylistDialog = null;
+                    }
+                });
+            }
         });
 
         recyclerView = view.findViewById(R.id.recycler_view_playlist);
@@ -121,6 +131,10 @@ public class PlaylistBottomSheetFragment extends BottomSheetDialogFragment imple
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        if (clearPlaylistDialog != null && clearPlaylistDialog.isShowing()) {
+            clearPlaylistDialog.dismiss();
+        }
+        clearPlaylistDialog = null;
         if (musicPlayerManager != null) {
             musicPlayerManager.removeOnPlaylistChangedListener(this);
             musicPlayerManager.removeOnSongChangedListener(this);

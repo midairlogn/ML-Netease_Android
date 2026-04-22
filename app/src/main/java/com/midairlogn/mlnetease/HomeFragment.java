@@ -114,7 +114,7 @@ public class HomeFragment extends Fragment {
                 ManageShortcutsDialog dialog = new ManageShortcutsDialog();
                 dialog.setInitialShortcut(existing);
                 dialog.setOnDismissListener(() -> loadShortcuts());
-                dialog.show(getParentFragmentManager(), "ManageShortcuts");
+                UiLaunchGuards.showDialogFragmentOnce(getParentFragmentManager(), dialog, "ManageShortcuts");
             } else {
                 // Add new and open edit dialog
                 HomeShortcut newShortcut = new HomeShortcut(lastSearchedId, lastSearchedId, type, shortcuts.size());
@@ -136,7 +136,7 @@ public class HomeFragment extends Fragment {
                 ManageShortcutsDialog dialog = new ManageShortcutsDialog();
                 dialog.setInitialShortcut(savedShortcut != null ? savedShortcut : newShortcut);
                 dialog.setOnDismissListener(() -> loadShortcuts());
-                dialog.show(getParentFragmentManager(), "ManageShortcuts");
+                UiLaunchGuards.showDialogFragmentOnce(getParentFragmentManager(), dialog, "ManageShortcuts");
 
                 // Disable button after adding
                 btnAddToShortcut.setEnabled(false);
@@ -534,7 +534,7 @@ public class HomeFragment extends Fragment {
     private void showFavouriteManager() {
         FavouriteSongsBottomSheetFragment fragment = new FavouriteSongsBottomSheetFragment();
         fragment.setOnDismissListener(this::loadShortcuts);
-        fragment.show(getParentFragmentManager(), "FavouriteSongsBottomSheet");
+        UiLaunchGuards.showDialogFragmentOnce(getParentFragmentManager(), fragment, "FavouriteSongsBottomSheet");
     }
 
     private void parsePlaylistResult(String json, boolean isShortcut) {
@@ -698,7 +698,7 @@ public class HomeFragment extends Fragment {
     private void showManageShortcutsDialog() {
         ManageShortcutsDialog dialog = new ManageShortcutsDialog();
         dialog.setOnDismissListener(() -> loadShortcuts());
-        dialog.show(getParentFragmentManager(), "ManageShortcuts");
+        UiLaunchGuards.showDialogFragmentOnce(getParentFragmentManager(), dialog, "ManageShortcuts");
     }
 
     private void hideKeyboard(View view) {

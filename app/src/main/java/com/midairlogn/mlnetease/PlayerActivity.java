@@ -53,6 +53,12 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
 
     }
 
+    @Override
+    protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+    }
+
     private void initViews() {
         songTitle = findViewById(R.id.player_song_title);
         songArtist = findViewById(R.id.player_song_artist);
@@ -89,7 +95,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
 
         btnPlaylist.setOnClickListener(v -> {
             PlaylistBottomSheetFragment bottomSheet = new PlaylistBottomSheetFragment();
-            bottomSheet.show(getSupportFragmentManager(), "PlaylistBottomSheet");
+            UiLaunchGuards.showDialogFragmentOnce(getSupportFragmentManager(), bottomSheet, "PlaylistBottomSheet");
         });
 
         btnDownloadSong.setOnClickListener(v -> {

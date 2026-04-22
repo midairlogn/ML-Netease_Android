@@ -21,6 +21,7 @@ public class ImageDetailActivity extends AppCompatActivity {
     private String imageUrl;
     private byte[] imageBytes;
     private Bitmap currentBitmap;
+    private volatile int imageRequestVersion;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,9 +33,27 @@ public class ImageDetailActivity extends AppCompatActivity {
         Button btnDownload = findViewById(R.id.btn_download);
         ImageButton btnClose = findViewById(R.id.btn_close);
 
-        imageUrl = getIntent().getStringExtra("url");
-        imageBytes = getIntent().getByteArrayExtra("image_bytes");
+        bindIntent(getIntent());
 
+        btnClose.setOnClickListener(v -> finish());
+
+        btnDownload.setOnClickListener(v -> downloadImage());
+    }
+
+    @Override
+    protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        bindIntent(intent);
+    }
+
+    private void bindIntent(android.content.Intent intent) {
+        imageUrl = intent.getStringExtra("url");
+        imageBytes = intent.getByteArrayExtra("image_bytes");
+        imageRequestVersion++;
+        currentBitmap = null;
+        imageView.resetZoom();
+        imageView.setImageResource(R.drawable.ic_ml_app_logo_foreground);
         if (imageBytes != null && imageBytes.length > 0) {
             currentBitmap = android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
             if (currentBitmap != null) {
@@ -43,17 +62,20 @@ public class ImageDetailActivity extends AppCompatActivity {
         } else if (imageUrl != null) {
             loadImage(imageUrl);
         }
-
-        btnClose.setOnClickListener(v -> finish());
-
-        btnDownload.setOnClickListener(v -> downloadImage());
     }
 
     private void loadImage(String urlString) {
+        final int requestVersion = imageRequestVersion;
         new Thread(() -> {
-            currentBitmap = ImageManager.getInstance().fetchBitmap(urlString);
-            if (currentBitmap != null) {
-                runOnUiThread(() -> imageView.setImageBitmap(currentBitmap));
+            Bitmap bitmap = ImageManager.getInstance().fetchBitmap(urlString);
+            if (bitmap != null) {
+                runOnUiThread(() -> {
+                    if (requestVersion != imageRequestVersion || !urlString.equals(imageUrl)) {
+                        return;
+                    }
+                    currentBitmap = bitmap;
+                    imageView.setImageBitmap(bitmap);
+                });
             }
         }).start();
     }

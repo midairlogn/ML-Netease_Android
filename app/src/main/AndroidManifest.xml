@@ -56,12 +56,16 @@
         </activity>
         <activity
             android:name=".PlayerActivity"
-            android:launchMode="singleTop"
+            android:launchMode="singleTask"
             android:screenOrientation="portrait" />
         <activity
             android:name=".DownloadCustomizationActivity"
+            android:launchMode="singleTask"
             android:screenOrientation="portrait" />
-        <activity android:name=".ImageDetailActivity" android:screenOrientation="portrait" />
+        <activity
+            android:name=".ImageDetailActivity"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait" />
 
         <service
             android:name=".MusicService"

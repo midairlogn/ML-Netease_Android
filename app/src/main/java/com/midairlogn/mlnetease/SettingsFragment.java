@@ -103,6 +103,7 @@ public class SettingsFragment extends Fragment {
     private SharedPreferences.OnSharedPreferenceChangeListener preferenceChangeListener;
     private boolean isUpdatingLanguageSpinner;
     private boolean isRefreshingSettingsUi;
+    private AlertDialog activeDialog;
 
     private int tempColor = 0;
     private float tempSize = 16f;
@@ -233,7 +234,11 @@ public class SettingsFragment extends Fragment {
 
         // Input Listeners
         setupInputListeners();
-        layoutDownloadCustomize.setOnClickListener(v -> startActivity(new Intent(requireContext(), DownloadCustomizationActivity.class)));
+        layoutDownloadCustomize.setOnClickListener(v -> {
+            Intent intent = new Intent(requireContext(), DownloadCustomizationActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(intent);
+        });
         btnSettingsBackup.setOnClickListener(v -> showDataBackupActions());
 
         updateAudioQualitySummary(settingsManager.getQuality());
@@ -456,7 +461,27 @@ public class SettingsFragment extends Fragment {
         btnSizeMinus = null;
         textLyricPreviewCurrent = null;
         textLyricPreviewNext = null;
+        dismissActiveDialog();
         super.onDestroyView();
+    }
+
+    private void dismissActiveDialog() {
+        if (activeDialog != null && activeDialog.isShowing()) {
+            activeDialog.dismiss();
+        }
+        activeDialog = null;
+    }
+
+    private void showManagedDialog(@NonNull AlertDialog dialog) {
+        if (!UiLaunchGuards.showAlertDialogOnce(activeDialog, dialog)) {
+            return;
+        }
+        activeDialog = dialog;
+        dialog.setOnDismissListener(d -> {
+            if (activeDialog == dialog) {
+                activeDialog = null;
+            }
+        });
     }
 
     private void setupInputListeners() {
@@ -994,7 +1019,7 @@ public class SettingsFragment extends Fragment {
             listener.onMinuteSelected(customMinutes);
             dialog.dismiss();
         }));
-        dialog.show();
+        showManagedDialog(dialog);
     }
 
     private void updateCustomMinuteInputState(EditText customInput, boolean enabled) {
@@ -1062,11 +1087,11 @@ public class SettingsFragment extends Fragment {
         addAudioQualityOption(radioGroup, "sky", R.string.type_audio_quality_sky, currentQuality);
         addAudioQualityOption(radioGroup, "jymaster", R.string.type_audio_quality_jymaster, currentQuality);
 
-        new AlertDialog.Builder(context)
+        AlertDialog dialog = new AlertDialog.Builder(context)
                 .setTitle(R.string.title_audio_quality)
                 .setView(radioGroup)
                 .setNegativeButton(R.string.cancel, null)
-                .setPositiveButton(R.string.confirm, (dialog, which) -> {
+                .setPositiveButton(R.string.confirm, (dialogInterface, which) -> {
                     int checkedId = radioGroup.getCheckedRadioButtonId();
                     View checkedView = radioGroup.findViewById(checkedId);
                     Object tag = checkedView == null ? null : checkedView.getTag();
@@ -1077,7 +1102,8 @@ public class SettingsFragment extends Fragment {
                         notifySettingsChanged();
                     }
                 })
-                .show();
+                .create();
+        showManagedDialog(dialog);
     }
 
     private void addAudioQualityOption(RadioGroup radioGroup, String qualityValue, int labelResId, String currentQuality) {
@@ -1138,16 +1164,19 @@ public class SettingsFragment extends Fragment {
                 getString(R.string.settings_export),
                 getString(R.string.settings_import)
         };
-        new AlertDialog.Builder(requireContext())
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.settings_backup_choose_action)
-                .setItems(actions, (dialog, which) -> {
+                .setItems(actions, (dialogInterface, which) -> {
+                    dialogInterface.dismiss();
                     if (which == 0) {
-                        showExportPasswordDialog();
+                        hearingProtectionUiHandler.post(this::showExportPasswordDialog);
                     } else if (which == 1) {
-                        importSettingsBackupLauncher.launch(new String[] {"application/octet-stream", "application/json", "*/*"});
+                        hearingProtectionUiHandler.post(() ->
+                                importSettingsBackupLauncher.launch(new String[] {"application/octet-stream", "application/json", "*/*"}));
                     }
                 })
-                .show();
+                .create();
+        showManagedDialog(dialog);
     }
 
     private void showExportPasswordDialog() {
@@ -1230,7 +1259,7 @@ public class SettingsFragment extends Fragment {
                         handleImportSourceSelected(importUri);
                     }
                 }));
-        dialog.show();
+        showManagedDialog(dialog);
     }
 
     private TextView createDialogBodyText(int stringResId) {

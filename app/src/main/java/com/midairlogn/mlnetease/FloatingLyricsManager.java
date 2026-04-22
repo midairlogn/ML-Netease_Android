@@ -146,7 +146,7 @@ public class FloatingLyricsManager {
         iconView.setOnClickListener(v -> {
             resetAutoCollapseTimer();
             Intent intent = new Intent(context, PlayerActivity.class);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             context.startActivity(intent);
             // Optionally collapse the floating window or keep it as is
             // collapse();

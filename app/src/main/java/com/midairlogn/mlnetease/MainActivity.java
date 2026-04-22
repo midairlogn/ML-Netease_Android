@@ -58,6 +58,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
 
     private SettingsManager settingsManager;
     private boolean pendingExternalAudioIntent = false;
+    private AlertDialog activeDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -290,17 +291,18 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     private void checkOverlayPermission() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             if (!Settings.canDrawOverlays(this)) {
-                new AlertDialog.Builder(this)
+                AlertDialog dialog = new AlertDialog.Builder(this)
                         .setTitle(R.string.permission_required)
                         .setMessage(getString(R.string.hint_overlay_permission))
-                        .setPositiveButton(R.string.go_to_settings, (dialog, which) -> {
+                        .setPositiveButton(R.string.go_to_settings, (dialogInterface, which) -> {
                             Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                     Uri.parse("package:" + getPackageName()));
                             startActivityForResult(intent, REQUEST_CODE_OVERLAY);
                         })
-                        .setNegativeButton(getString(R.string.cancel), (dialog, which) -> startMusicService())
+                        .setNegativeButton(getString(R.string.cancel), (dialogInterface, which) -> startMusicService())
                         .setCancelable(false)
-                        .show();
+                        .create();
+                showManagedDialog(dialog);
             } else {
                 startMusicService();
             }
@@ -330,17 +332,19 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
                 }
             }
             if (!allGranted) {
-                new AlertDialog.Builder(this)
+                AlertDialog dialog = new AlertDialog.Builder(this)
                         .setTitle(R.string.permissions_required)
                         .setMessage(R.string.hint_partial_permission)
-                        .setPositiveButton(R.string.go_to_settings, (dialog, which) -> {
+                        .setPositiveButton(R.string.go_to_settings, (dialogInterface, which) -> {
                             Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                                     Uri.parse("package:" + getPackageName()));
                             startActivity(intent);
                             startMusicService();
                         })
-                        .setNegativeButton(R.string.cancel, (dialog, which) -> checkOverlayPermission())
-                        .show();
+                        .setNegativeButton(R.string.cancel, (dialogInterface, which) ->
+                                new android.os.Handler(getMainLooper()).post(this::checkOverlayPermission))
+                        .create();
+                showManagedDialog(dialog);
             } else {
                 checkOverlayPermission();
             }
@@ -355,20 +359,33 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
                 if (Settings.canDrawOverlays(this)) {
                     startMusicService();
                 } else {
-                    new AlertDialog.Builder(this)
+                    AlertDialog dialog = new AlertDialog.Builder(this)
                             .setTitle(R.string.permission_required)
                             .setMessage(R.string.hint_overlay_permission)
-                            .setPositiveButton(R.string.go_to_settings, (dialog, which) -> {
+                            .setPositiveButton(R.string.go_to_settings, (dialogInterface, which) -> {
                                 Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                         Uri.parse("package:" + getPackageName()));
                                 startActivityForResult(intent, REQUEST_CODE_OVERLAY);
                             })
-                            .setNegativeButton(R.string.exit, (dialog, which) -> finish())
+                            .setNegativeButton(R.string.exit, (dialogInterface, which) -> finish())
                             .setCancelable(false)
-                            .show();
+                            .create();
+                    showManagedDialog(dialog);
                 }
             }
         }
+    }
+
+    private void showManagedDialog(@NonNull AlertDialog dialog) {
+        if (!UiLaunchGuards.showAlertDialogOnce(activeDialog, dialog)) {
+            return;
+        }
+        activeDialog = dialog;
+        dialog.setOnDismissListener(d -> {
+            if (activeDialog == dialog) {
+                activeDialog = null;
+            }
+        });
     }
 
     private void initMiniPlayer() {
@@ -390,6 +407,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
 
         miniPlayerRoot.setOnClickListener(v -> {
             Intent intent = new Intent(this, PlayerActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(intent);
         });
 
@@ -399,7 +417,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
 
         miniPlayerPlaylist.setOnClickListener(v -> {
             PlaylistBottomSheetFragment bottomSheet = new PlaylistBottomSheetFragment();
-            bottomSheet.show(getSupportFragmentManager(), "PlaylistBottomSheet");
+            UiLaunchGuards.showDialogFragmentOnce(getSupportFragmentManager(), bottomSheet, "PlaylistBottomSheet");
         });
 
         // Initial State
@@ -460,6 +478,10 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
 
     @Override
     protected void onDestroy() {
+        if (activeDialog != null && activeDialog.isShowing()) {
+            activeDialog.dismiss();
+        }
+        activeDialog = null;
         super.onDestroy();
         musicPlayerManager.removeOnSongChangedListener(this);
         musicPlayerManager.removeOnPlaybackStateChangedListener(this);

@@ -100,6 +100,17 @@ public class ZoomImageView extends AppCompatImageView {
         });
     }
 
+    public void resetZoom() {
+        saveScale = 1f;
+        mode = NONE;
+        oldMeasuredWidth = 0;
+        oldMeasuredHeight = 0;
+        matrix.reset();
+        setImageMatrix(matrix);
+        requestLayout();
+        invalidate();
+    }
+
     private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
         @Override
         public boolean onScaleBegin(ScaleGestureDetector detector) {

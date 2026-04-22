@@ -33,6 +33,7 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
     private ShortcutAdapter adapter;
     private Runnable onDismissListener;
     private HomeShortcut initialShortcut;
+    private Dialog editDialog;
 
     public void setOnDismissListener(Runnable listener) {
         this.onDismissListener = listener;
@@ -153,9 +154,17 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
     }
 
     private void showEditDialog(HomeShortcut shortcut) {
-        Dialog editDialog = new Dialog(getContext());
+        if (editDialog != null && editDialog.isShowing()) {
+            return;
+        }
+        editDialog = new Dialog(getContext());
         editDialog.setContentView(R.layout.dialog_edit_home_shortcut);
         editDialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT);
+        editDialog.setOnDismissListener(dialog -> {
+            if (this.editDialog == dialog) {
+                this.editDialog = null;
+            }
+        });
 
         // Make root layout focusable to intercept clicks for keyboard hiding
         View root = editDialog.findViewById(android.R.id.content);
@@ -273,6 +282,10 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
     @Override
     public void onDismiss(@NonNull android.content.DialogInterface dialog) {
         super.onDismiss(dialog);
+        if (editDialog != null && editDialog.isShowing()) {
+            editDialog.dismiss();
+        }
+        editDialog = null;
         if (onDismissListener != null) onDismissListener.run();
     }
 

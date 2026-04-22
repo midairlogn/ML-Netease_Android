@@ -35,6 +35,7 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
                 if (hasEmbeddedPicture()) {
                     intent.putExtra("image_bytes", currentEmbeddedPicture);
                 }
+                intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(intent);
             }
         });

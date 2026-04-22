@@ -77,6 +77,19 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         setupListeners();
     }
 
+    @Override
+    protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        bindCurrentSettings();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        bindCurrentSettings();
+    }
+
     private void bindCurrentSettings() {
         isBinding = true;
         DownloadCustomizationSettings settings = settingsManager.getDownloadCustomizationSettings();
