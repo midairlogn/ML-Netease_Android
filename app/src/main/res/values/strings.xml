@@ -166,6 +166,11 @@
     <string name="manage_shortcut">Manage Shortcuts</string>
     <string name="favourites_title">Favourites</string>
     <string name="favourites_badge">Songs</string>
+    <string name="app_shortcut_downloads">Downloads</string>
+    <string name="app_shortcut_downloads_long">Open downloads</string>
+    <string name="app_shortcut_favourites">Favourites</string>
+    <string name="app_shortcut_favourites_long">Play favourites</string>
+    <string name="app_shortcut_home_fallback">Shortcut</string>
     <string name="manage_favourites">Manage favourites</string>
     <string name="favourites_empty_hint">No favourite songs yet</string>
     <string name="favourites_count_format">%1$d favourite songs</string>

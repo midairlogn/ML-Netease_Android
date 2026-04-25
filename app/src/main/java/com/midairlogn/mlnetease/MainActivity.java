@@ -59,6 +59,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     private SettingsManager settingsManager;
     private boolean pendingExternalAudioIntent = false;
     private AlertDialog activeDialog;
+    private boolean pendingAppShortcutIntent = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,6 +68,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         setAppLocale(settingsManager.getAppLanguage());
         setContentView(R.layout.activity_main);
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
+        AppShortcutController.refresh(this);
 
         musicPlayerManager = MusicPlayerManager.getInstance(this);
 
@@ -107,6 +109,8 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         initMiniPlayer();
         if (pendingExternalAudioIntent) {
             handleIncomingAudioIntent(getIntent());
+        } else if (pendingAppShortcutIntent) {
+            handleAppShortcutIntent(getIntent());
         }
     }
 
@@ -120,6 +124,8 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         }
         if (hasIncomingAudioIntent(intent)) {
             handleIncomingAudioIntent(intent);
+        } else if (isAppShortcutIntent(intent)) {
+            handleAppShortcutIntent(intent);
         }
     }
 
@@ -139,6 +145,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         }
         intent.removeExtra(EXTRA_OPEN_TAB);
         pendingExternalAudioIntent = hasIncomingAudioIntent(intent);
+        pendingAppShortcutIntent = isAppShortcutIntent(intent);
     }
 
     private void restoreFragments() {
@@ -255,6 +262,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         if (fragment != null) {
             fragment.reloadShortcuts();
         }
+        AppShortcutController.refresh(this);
     }
 
     private void checkAndRequestPermissions() {
@@ -534,6 +542,16 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         return intent != null && Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null;
     }
 
+    private boolean isAppShortcutIntent(Intent intent) {
+        if (intent == null) {
+            return false;
+        }
+        String action = intent.getAction();
+        return AppShortcutController.ACTION_OPEN_DOWNLOADS.equals(action)
+                || AppShortcutController.ACTION_PLAY_FAVOURITES.equals(action)
+                || AppShortcutController.ACTION_PLAY_HOME_SHORTCUT.equals(action);
+    }
+
     private void handleIncomingAudioIntent(Intent intent) {
         if (intent == null) {
             return;
@@ -558,5 +576,68 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
                 intent.setData(null);
             }
         }
+    }
+
+    private void handleAppShortcutIntent(Intent intent) {
+        if (intent == null) {
+            return;
+        }
+
+        String action = intent.getAction();
+        if (AppShortcutController.ACTION_OPEN_DOWNLOADS.equals(action)) {
+            DownloadFolderOpener.open(this);
+            clearHandledIntent(intent);
+            return;
+        }
+
+        if (AppShortcutController.ACTION_PLAY_FAVOURITES.equals(action)) {
+            switchToTab(TAB_HOME);
+            ShortcutPlaybackLauncher.playFavourites(this, new ShortcutPlaybackLauncher.PlaybackCallback() {
+                @Override
+                public void onStarted() {
+                    clearHandledIntent(intent);
+                }
+
+                @Override
+                public void onError() {
+                    clearHandledIntent(intent);
+                }
+            });
+            return;
+        }
+
+        if (AppShortcutController.ACTION_PLAY_HOME_SHORTCUT.equals(action)) {
+            switchToTab(TAB_HOME);
+            String type = intent.getStringExtra(AppShortcutController.EXTRA_SHORTCUT_TYPE);
+            String id = intent.getStringExtra(AppShortcutController.EXTRA_SHORTCUT_ID);
+            HomeShortcut shortcut = AppShortcutController.findHomeShortcut(this, type, id);
+            if (shortcut == null) {
+                Toast.makeText(this, R.string.hint_shortcut_not_found, Toast.LENGTH_SHORT).show();
+                AppShortcutController.refresh(this);
+                clearHandledIntent(intent);
+                return;
+            }
+            ShortcutPlaybackLauncher.playHomeShortcut(this, shortcut, new ShortcutPlaybackLauncher.PlaybackCallback() {
+                @Override
+                public void onStarted() {
+                    clearHandledIntent(intent);
+                }
+
+                @Override
+                public void onError() {
+                    clearHandledIntent(intent);
+                }
+            });
+        }
+    }
+
+    private void clearHandledIntent(Intent intent) {
+        pendingAppShortcutIntent = false;
+        if (intent == null) {
+            return;
+        }
+        intent.setAction(null);
+        intent.removeExtra(AppShortcutController.EXTRA_SHORTCUT_TYPE);
+        intent.removeExtra(AppShortcutController.EXTRA_SHORTCUT_ID);
     }
 }

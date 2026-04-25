@@ -222,6 +222,7 @@ public class SettingsManager {
         }
 
         prefs.edit().putString(KEY_HOME_SHORTCUTS, array.toString()).apply();
+        AppShortcutController.refresh(appContext);
     }
 
     public void normalizeShortcutSequences(List<HomeShortcut> shortcuts) {
@@ -327,6 +328,7 @@ public class SettingsManager {
         }
 
         prefs.edit().putString(KEY_FAVOURITE_SONGS, array.toString()).apply();
+        AppShortcutController.refresh(appContext);
     }
 
     public void normalizeFavouriteSequences(List<FavouriteSong> favourites) {
