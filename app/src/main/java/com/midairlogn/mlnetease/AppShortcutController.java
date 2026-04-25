@@ -75,7 +75,7 @@ public final class AppShortcutController {
         return new ShortcutInfo.Builder(context, SHORTCUT_ID_DOWNLOADS)
                 .setShortLabel(context.getString(R.string.app_shortcut_downloads))
                 .setLongLabel(context.getString(R.string.app_shortcut_downloads_long))
-                .setIcon(Icon.createWithResource(context, R.drawable.ic_folder))
+                .setIcon(Icon.createWithResource(context, R.drawable.ic_shortcut_downloads))
                 .setIntent(createBaseIntent(context, ACTION_OPEN_DOWNLOADS))
                 .build();
     }
@@ -84,7 +84,7 @@ public final class AppShortcutController {
         return new ShortcutInfo.Builder(context, SHORTCUT_ID_FAVOURITES)
                 .setShortLabel(context.getString(R.string.app_shortcut_favourites))
                 .setLongLabel(context.getString(R.string.app_shortcut_favourites_long))
-                .setIcon(Icon.createWithResource(context, R.drawable.ic_heart_filled))
+                .setIcon(Icon.createWithResource(context, R.drawable.ic_shortcut_favourites))
                 .setIntent(createBaseIntent(context, ACTION_PLAY_FAVOURITES))
                 .build();
     }
@@ -97,7 +97,7 @@ public final class AppShortcutController {
         return new ShortcutInfo.Builder(context, SHORTCUT_ID_PREFIX_HOME + shortcut.type + "_" + shortcut.id)
                 .setShortLabel(title)
                 .setLongLabel(title)
-                .setIcon(Icon.createWithResource(context, shortcut.isPlaylist() ? R.drawable.ic_playlist : R.drawable.ic_music_note))
+                .setIcon(Icon.createWithResource(context, R.drawable.ic_shortcut_play))
                 .setIntent(intent)
                 .build();
     }
