@@ -63,6 +63,15 @@
             android:launchMode="singleTask"
             android:screenOrientation="portrait" />
         <activity
+            android:name=".home.shortcut.DownloadShortcutActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:finishOnTaskLaunch="true"
+            android:launchMode="singleTask"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.MLNetease.ShortcutProxy" />
+        <activity
             android:name=".image.ImageDetailActivity"
             android:launchMode="singleTask"
             android:screenOrientation="portrait" />

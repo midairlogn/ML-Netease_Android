@@ -9,6 +9,7 @@ import android.os.Build;
 
 import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.MainActivity;
+import com.midairlogn.mlnetease.download.file.DownloadFolderOpener;
 import com.midairlogn.mlnetease.home.model.HomeShortcut;
 import com.midairlogn.mlnetease.settings.SettingsManager;
 
@@ -81,7 +82,7 @@ public final class AppShortcutController {
                 .setShortLabel(context.getString(R.string.app_shortcut_downloads))
                 .setLongLabel(context.getString(R.string.app_shortcut_downloads_long))
                 .setIcon(Icon.createWithResource(context, R.drawable.ic_shortcut_downloads))
-                .setIntent(createBaseIntent(context, ACTION_OPEN_DOWNLOADS))
+                .setIntent(createDownloadsShortcutIntent(context))
                 .build();
     }
 
@@ -110,6 +111,13 @@ public final class AppShortcutController {
     private static Intent createBaseIntent(Context context, String action) {
         Intent intent = new Intent(context, MainActivity.class);
         intent.setAction(action);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        return intent;
+    }
+
+    private static Intent createDownloadsShortcutIntent(Context context) {
+        Intent intent = new Intent(context, DownloadShortcutActivity.class);
+        intent.setAction(ACTION_OPEN_DOWNLOADS);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         return intent;
     }
