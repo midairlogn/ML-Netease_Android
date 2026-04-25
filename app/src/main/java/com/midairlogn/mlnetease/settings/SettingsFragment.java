@@ -43,9 +43,10 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.midairlogn.mlnetease.download.DownloadCustomizationActivity;
+import com.midairlogn.mlnetease.BuildConfig;
 import com.midairlogn.mlnetease.download.settings.DownloadCustomizationSettings;
 import com.midairlogn.mlnetease.download.file.DownloadFileUtils;
-import com.midairlogn.mlnetease.HearingProtectionController;
+import com.midairlogn.mlnetease.hearing.HearingProtectionController;
 import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
 import com.midairlogn.mlnetease.playback.core.MusicService;
 import com.midairlogn.mlnetease.R;

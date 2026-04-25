@@ -25,8 +25,8 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.media.session.MediaButtonReceiver;
 
+import com.midairlogn.mlnetease.hearing.HearingProtectionController;
 import com.midairlogn.mlnetease.playback.lyrics.FloatingLyricsManager;
-import com.midairlogn.mlnetease.HearingProtectionController;
 import com.midairlogn.mlnetease.image.ImageManager;
 import com.midairlogn.mlnetease.image.ImageUtils;
 import com.midairlogn.mlnetease.playback.ui.PlayerActivity;

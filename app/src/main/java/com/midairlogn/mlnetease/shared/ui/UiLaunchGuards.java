@@ -6,14 +6,14 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
-final class UiLaunchGuards {
+public final class UiLaunchGuards {
 
     private UiLaunchGuards() {
     }
 
-    static boolean showDialogFragmentOnce(@NonNull FragmentManager fragmentManager,
-                                          @NonNull DialogFragment dialogFragment,
-                                          @NonNull String tag) {
+    public static boolean showDialogFragmentOnce(@NonNull FragmentManager fragmentManager,
+                                                 @NonNull DialogFragment dialogFragment,
+                                                 @NonNull String tag) {
         if (fragmentManager.isStateSaved()) {
             return false;
         }
@@ -25,7 +25,7 @@ final class UiLaunchGuards {
         return true;
     }
 
-    static boolean showAlertDialogOnce(AlertDialog currentDialog, @NonNull AlertDialog nextDialog) {
+    public static boolean showAlertDialogOnce(AlertDialog currentDialog, @NonNull AlertDialog nextDialog) {
         if (currentDialog != null && currentDialog.isShowing()) {
             return false;
         }

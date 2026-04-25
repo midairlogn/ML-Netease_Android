@@ -13,21 +13,21 @@ import com.midairlogn.mlnetease.shared.model.Song;
 
 import java.util.concurrent.TimeUnit;
 
-class HearingProtectionController implements
+public class HearingProtectionController implements
         MusicPlayerManager.OnPlaybackStateChangedListener,
         MusicPlayerManager.OnSongCompletionListener,
         MusicPlayerManager.OnPlaybackActionListener {
 
-    static final class HearingProtectionSnapshot {
-        final long committedDoseMs;
-        final long displayDoseMs;
-        final boolean restActive;
-        final long restRemainingMs;
-        final boolean activelyAccumulating;
-        final boolean pauseRecoveryActive;
-        final long activeSessionElapsedMs;
-        final long pauseElapsedMs;
-        final double activeIntensityMultiplier;
+    public static final class HearingProtectionSnapshot {
+        public final long committedDoseMs;
+        public final long displayDoseMs;
+        public final boolean restActive;
+        public final long restRemainingMs;
+        public final boolean activelyAccumulating;
+        public final boolean pauseRecoveryActive;
+        public final long activeSessionElapsedMs;
+        public final long pauseElapsedMs;
+        public final double activeIntensityMultiplier;
 
         HearingProtectionSnapshot(long committedDoseMs,
                                   long displayDoseMs,
@@ -49,7 +49,7 @@ class HearingProtectionController implements
             this.activeIntensityMultiplier = Math.max(0d, activeIntensityMultiplier);
         }
 
-        long getDisplayDoseMs() {
+        public long getDisplayDoseMs() {
             return displayDoseMs;
         }
     }
@@ -76,13 +76,13 @@ class HearingProtectionController implements
 
     private final Runnable restFinishedRunnable = this::completeRestAndResume;
 
-    HearingProtectionController(Context context, MusicPlayerManager musicPlayerManager) {
+    public HearingProtectionController(Context context, MusicPlayerManager musicPlayerManager) {
         this.appContext = context.getApplicationContext();
         this.musicPlayerManager = musicPlayerManager;
         this.settingsManager = new SettingsManager(appContext);
     }
 
-    void start() {
+    public void start() {
         musicPlayerManager.addOnPlaybackStateChangedListener(this);
         musicPlayerManager.addOnSongCompletionListener(this);
         musicPlayerManager.addOnPlaybackActionListener(this);
@@ -101,7 +101,7 @@ class HearingProtectionController implements
         }
     }
 
-    void stop() {
+    public void stop() {
         handler.removeCallbacks(restFinishedRunnable);
         musicPlayerManager.removeOnPlaybackStateChangedListener(this);
         musicPlayerManager.removeOnSongCompletionListener(this);
@@ -112,7 +112,7 @@ class HearingProtectionController implements
         clearPauseSession();
     }
 
-    void onSettingsChanged() {
+    public void onSettingsChanged() {
         if (!settingsManager.isHearingProtectionEnabled()) {
             boolean wasRestActive = restActive;
             cancelRest(false);
@@ -150,11 +150,11 @@ class HearingProtectionController implements
         }
     }
 
-    boolean isRestActive() {
+    public boolean isRestActive() {
         return restActive;
     }
 
-    static HearingProtectionSnapshot getSnapshot(Context context) {
+    public static HearingProtectionSnapshot getSnapshot(Context context) {
         Context appContext = context.getApplicationContext();
         SettingsManager settingsManager = new SettingsManager(appContext);
         MusicPlayerManager musicPlayerManager = MusicPlayerManager.getInstance(appContext);

@@ -40,7 +40,7 @@ import com.midairlogn.mlnetease.settings.SettingsFragment;
 import com.midairlogn.mlnetease.settings.SettingsManager;
 import com.midairlogn.mlnetease.home.shortcut.ShortcutPlaybackLauncher;
 import com.midairlogn.mlnetease.shared.model.Song;
-import com.midairlogn.mlnetease.UiLaunchGuards;
+import com.midairlogn.mlnetease.shared.ui.UiLaunchGuards;
 
 import java.util.ArrayList;
 import java.util.List;
