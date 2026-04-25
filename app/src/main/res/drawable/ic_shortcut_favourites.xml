@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="@color/shortcut_badge_tint"
+        android:pathData="M14,9.5H34C37.04,9.5 39.5,11.96 39.5,15V33C39.5,36.04 37.04,38.5 34,38.5H14C10.96,38.5 8.5,36.04 8.5,33V15C8.5,11.96 10.96,9.5 14,9.5Z" />
+    <path
+        android:fillColor="@color/shortcut_badge_fill"
+        android:pathData="M24,18.6C22.19,16.41 19.14,15.74 16.85,17.74C14.56,19.74 14.24,23.07 16.07,25.42C17.56,27.33 21.96,31.05 23.38,32.31C23.57,32.49 23.73,32.58 24,32.58C24.27,32.58 24.43,32.49 24.62,32.31C26.04,31.05 30.44,27.33 31.93,25.42C33.76,23.07 33.44,19.74 31.15,17.74C28.86,15.74 25.81,16.41 24,18.6Z" />
+    <path
+        android:fillColor="@color/shortcut_icon_foreground"
+        android:pathData="M21.55,21.75C21.55,21.09 22.25,20.67 22.82,21.02L27.02,23.58C27.58,23.92 27.58,24.74 27.02,25.08L22.82,27.64C22.25,27.99 21.55,27.57 21.55,26.91V21.75Z" />
+</vector>

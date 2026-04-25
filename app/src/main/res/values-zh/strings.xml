@@ -121,6 +121,11 @@
     <string name="manage_shortcut">管理收藏</string>
     <string name="favourites_title">我喜欢的音乐</string>
     <string name="favourites_badge">歌曲</string>
+    <string name="app_shortcut_downloads">下载目录</string>
+    <string name="app_shortcut_downloads_long">打开下载目录</string>
+    <string name="app_shortcut_favourites">喜欢</string>
+    <string name="app_shortcut_favourites_long">播放喜欢</string>
+    <string name="app_shortcut_home_fallback">收藏</string>
     <string name="manage_favourites">管理喜欢的歌曲</string>
     <string name="favourites_empty_hint">还没有收藏歌曲</string>
     <string name="favourites_count_format">%1$d 首收藏歌曲</string>
