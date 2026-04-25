@@ -55,20 +55,20 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".PlayerActivity"
+            android:name=".playback.ui.PlayerActivity"
             android:launchMode="singleTask"
             android:screenOrientation="portrait" />
         <activity
-            android:name=".DownloadCustomizationActivity"
+            android:name=".download.DownloadCustomizationActivity"
             android:launchMode="singleTask"
             android:screenOrientation="portrait" />
         <activity
-            android:name=".ImageDetailActivity"
+            android:name=".image.ImageDetailActivity"
             android:launchMode="singleTask"
             android:screenOrientation="portrait" />
 
         <service
-            android:name=".MusicService"
+            android:name=".playback.core.MusicService"
             android:attributionTags="media_playback"
             android:enabled="true"
             android:exported="false"
@@ -79,7 +79,7 @@
         </service>
 
         <service
-            android:name=".SongDownloadService"
+            android:name=".download.core.SongDownloadService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />

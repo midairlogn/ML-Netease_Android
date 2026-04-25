@@ -3,6 +3,9 @@ package com.midairlogn.mlnetease;
 import android.app.Application;
 import android.app.Activity;
 import android.os.Bundle;
+
+import com.midairlogn.mlnetease.download.core.DownloadTaskManager;
+
 import java.util.ArrayList;
 import java.util.List;
 
