@@ -123,8 +123,8 @@
     <string name="favourites_badge">歌曲</string>
     <string name="app_shortcut_downloads">下载目录</string>
     <string name="app_shortcut_downloads_long">打开下载目录</string>
-    <string name="app_shortcut_favourites">喜欢</string>
-    <string name="app_shortcut_favourites_long">播放喜欢</string>
+    <string name="app_shortcut_favourites">红心歌曲</string>
+    <string name="app_shortcut_favourites_long">播放红心歌曲</string>
     <string name="app_shortcut_home_fallback">收藏</string>
     <string name="manage_favourites">管理喜欢的歌曲</string>
     <string name="favourites_empty_hint">还没有收藏歌曲</string>
