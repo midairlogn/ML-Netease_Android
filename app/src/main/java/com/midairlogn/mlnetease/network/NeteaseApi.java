@@ -472,6 +472,18 @@ public class NeteaseApi {
                     result.put("url", dataObj.optString("url", ""));
                     result.put("size", dataObj.optLong("size", 0));
                     result.put("level", dataObj.optString("level", ""));
+                    if (!dataObj.isNull("gain")) {
+                        result.put("gain", dataObj.optDouble("gain", 0d));
+                    }
+                    if (!dataObj.isNull("peak")) {
+                        result.put("peak", dataObj.optDouble("peak", 0d));
+                    }
+                    if (!dataObj.isNull("closedGain")) {
+                        result.put("closedGain", dataObj.optDouble("closedGain", 0d));
+                    }
+                    if (!dataObj.isNull("closedPeak")) {
+                        result.put("closedPeak", dataObj.optDouble("closedPeak", 0d));
+                    }
                 }
 
                 // Process Detail

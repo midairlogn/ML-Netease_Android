@@ -22,6 +22,11 @@ public class Song implements Serializable {
     public String lyric;
     public String translatedLyric;
     public byte[] embeddedPicture;
+    public float gainDb;
+    public float peak;
+    public float closedGainDb;
+    public float closedPeak;
+    public boolean hasLoudnessNormalization;
 
     public Song(String id, String name, String artists, String album, String picUrl) {
         this.id = id;
@@ -36,6 +41,11 @@ public class Song implements Serializable {
         this.lyric = "";
         this.translatedLyric = "";
         this.embeddedPicture = null;
+        this.gainDb = 0f;
+        this.peak = 0f;
+        this.closedGainDb = 0f;
+        this.closedPeak = 0f;
+        this.hasLoudnessNormalization = false;
     }
 
     public Song(String id, String name, String artists, String album, String picUrl,
