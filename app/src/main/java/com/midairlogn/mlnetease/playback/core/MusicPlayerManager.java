@@ -3,6 +3,7 @@ package com.midairlogn.mlnetease.playback.core;
 import android.content.Context;
 import android.net.Uri;
 import android.media.MediaPlayer;
+import android.media.audiofx.LoudnessEnhancer;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -46,11 +47,16 @@ public class MusicPlayerManager {
     private int retryCount = 0;
     private static final int MAX_RETRY = 3;
     private static final long PROGRESS_UPDATE_INTERVAL_MS = 500L;
+    private static final int MILLIBELS_PER_DECIBEL = 100;
     private int resumePosition = 0;
     private boolean isCompletionListenerEnabled = false;
     private final AtomicLong playRequestIdGenerator = new AtomicLong(0);
     private volatile long activePlayRequestId = 0;
     private volatile NeteaseApi.CancelableRequest activeFullInfoRequest = NeteaseApi.CancelableRequest.NONE;
+    private LoudnessEnhancer loudnessEnhancer;
+    private int loudnessEnhancerAudioSessionId = -1;
+    private float pendingLoudnessGainDb = 0f;
+    private boolean hasPendingLoudnessNormalization = false;
 
     private volatile boolean isAutoSkipping = false;
     private int continuousSkipCount = 0;
@@ -450,12 +456,23 @@ public class MusicPlayerManager {
                         String url = root.optString("url", "");
                         currentLyric = root.optString("lyric", "");
                         currentTLyric = root.optString("tlyric", "");
+                        boolean hasGain = root.has("gain") && !root.isNull("gain");
+                        boolean hasPeak = root.has("peak") && !root.isNull("peak");
 
                         // Update Song object with better info if available
                         song.picUrl = root.optString("pic", song.picUrl);
                         song.name = root.optString("name", song.name);
                         song.artists = root.optString("ar_name", song.artists);
                         song.album = root.optString("al_name", song.album);
+                        song.hasLoudnessNormalization = hasGain;
+                        song.gainDb = hasGain ? (float) root.optDouble("gain", 0d) : 0f;
+                        song.peak = hasPeak ? (float) root.optDouble("peak", 0d) : 0f;
+                        if (song.hasLoudnessNormalization && Float.isFinite(song.gainDb)) {
+                            pendingLoudnessGainDb = song.gainDb;
+                            hasPendingLoudnessNormalization = true;
+                        } else {
+                            clearLoudnessNormalization();
+                        }
 
                         // Notify that full info (lyrics, picUrl, etc.) is now available.
                         // UI components like LyricsFragment and FloatingLyricsManager use this
@@ -519,8 +536,12 @@ public class MusicPlayerManager {
             song.lyric = metadata.lyric;
             song.translatedLyric = metadata.translatedLyric;
             song.embeddedPicture = metadata.artworkData;
+            song.gainDb = 0f;
+            song.peak = 0f;
+            song.hasLoudnessNormalization = false;
             currentLyric = metadata.lyric;
             currentTLyric = metadata.translatedLyric;
+            clearLoudnessNormalization();
             notifyFullInfoAvailable(song);
             playUri(mediaUri, index, requestId, false);
         } catch (Exception e) {
@@ -571,6 +592,12 @@ public class MusicPlayerManager {
                 if (resumePosition > 0) {
                     mp.seekTo(resumePosition);
                     resumePosition = 0;
+                }
+                // Apply per-track gain without touching the user-configured app volume scalar.
+                if (hasPendingLoudnessNormalization) {
+                    applyLoudnessNormalization(pendingLoudnessGainDb);
+                } else {
+                    releaseLoudnessEnhancer();
                 }
                 mp.start();
                 isPaused = false;
@@ -884,6 +911,68 @@ public class MusicPlayerManager {
             mediaPlayer.setVolume(volumeScalar, volumeScalar);
         } catch (IllegalStateException ignored) {
         }
+    }
+
+    public void applyLoudnessNormalization(float gainDb) {
+        pendingLoudnessGainDb = gainDb;
+        hasPendingLoudnessNormalization = true;
+        int audioSessionId;
+        try {
+            audioSessionId = mediaPlayer.getAudioSessionId();
+        } catch (IllegalStateException e) {
+            return;
+        }
+        if (audioSessionId <= 0 || !Float.isFinite(gainDb)) {
+            return;
+        }
+
+        int gainmB = Math.round(gainDb * MILLIBELS_PER_DECIBEL);
+        try {
+            if (loudnessEnhancer != null && loudnessEnhancerAudioSessionId != audioSessionId) {
+                releaseLoudnessEnhancer();
+            }
+            if (loudnessEnhancer == null) {
+                loudnessEnhancer = new LoudnessEnhancer(audioSessionId);
+                loudnessEnhancerAudioSessionId = audioSessionId;
+            }
+            loudnessEnhancer.setTargetGain(gainmB);
+            loudnessEnhancer.setEnabled(true);
+        } catch (RuntimeException e) {
+            releaseLoudnessEnhancer();
+        }
+    }
+
+    private void clearLoudnessNormalization() {
+        pendingLoudnessGainDb = 0f;
+        hasPendingLoudnessNormalization = false;
+        releaseLoudnessEnhancer();
+    }
+
+    private void releaseLoudnessEnhancer() {
+        if (loudnessEnhancer == null) {
+            return;
+        }
+        try {
+            loudnessEnhancer.setEnabled(false);
+        } catch (RuntimeException ignored) {
+        }
+        try {
+            loudnessEnhancer.release();
+        } catch (RuntimeException ignored) {
+        }
+        loudnessEnhancer = null;
+        loudnessEnhancerAudioSessionId = -1;
+    }
+
+    public void release() {
+        cancelActiveFullInfoRequest();
+        stopProgressDispatcher();
+        clearLoudnessNormalization();
+        try {
+            mediaPlayer.release();
+        } catch (Exception ignored) {
+        }
+        instance = null;
     }
 
     public void removeOnProgressUpdateListener(OnProgressUpdateListener listener) {
