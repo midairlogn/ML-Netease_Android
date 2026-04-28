@@ -39,6 +39,7 @@ public class SettingsManager {
     private static final String KEY_PLAY_MODE = "play_mode";
     private static final String KEY_TRANSLATION_INTEGRATION_ENABLED = "translation_integration_enabled";
     private static final String KEY_APP_VOLUME = "app_volume";
+    private static final String KEY_DYNAMIC_VOLUME_ENABLED = "dynamic_volume_enabled";
     private static final String KEY_HOME_SHORTCUTS = "home_shortcuts";
     private static final String KEY_FAVOURITE_SONGS = "favourite_songs";
     private static final String KEY_APP_LANGUAGE = "app_language";
@@ -156,6 +157,14 @@ public class SettingsManager {
 
     public int getAppVolume() {
         return prefs.getInt(KEY_APP_VOLUME, DEFAULT_APP_VOLUME);
+    }
+
+    public void setDynamicVolumeEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_DYNAMIC_VOLUME_ENABLED, enabled).apply();
+    }
+
+    public boolean isDynamicVolumeEnabled() {
+        return prefs.getBoolean(KEY_DYNAMIC_VOLUME_ENABLED, true);
     }
 
     public List<HomeShortcut> getHomeShortcuts() {
@@ -715,6 +724,7 @@ public class SettingsManager {
         json.put(KEY_PLAY_MODE, getPlayMode());
         json.put(KEY_TRANSLATION_INTEGRATION_ENABLED, isTranslationIntegrationEnabled());
         json.put(KEY_APP_VOLUME, getAppVolume());
+        json.put(KEY_DYNAMIC_VOLUME_ENABLED, isDynamicVolumeEnabled());
         json.put(KEY_HEARING_PROTECTION_ENABLED, isHearingProtectionEnabled());
         json.put(KEY_HEARING_PROTECTION_LISTEN_MINUTES, getHearingProtectionListenMinutes());
         json.put(KEY_HEARING_PROTECTION_REST_MINUTES, getHearingProtectionRestMinutes());
@@ -750,6 +760,7 @@ public class SettingsManager {
         setPlayMode(normalizePlayMode(json.optInt(KEY_PLAY_MODE, 0)));
         setTranslationIntegrationEnabled(json.optBoolean(KEY_TRANSLATION_INTEGRATION_ENABLED, false));
         setAppVolume(clamp(json.optInt(KEY_APP_VOLUME, DEFAULT_APP_VOLUME), 0, 100));
+        setDynamicVolumeEnabled(json.optBoolean(KEY_DYNAMIC_VOLUME_ENABLED, true));
         setHearingProtectionEnabled(json.optBoolean(KEY_HEARING_PROTECTION_ENABLED, false));
         setHearingProtectionListenMinutes(json.optInt(
                 KEY_HEARING_PROTECTION_LISTEN_MINUTES,

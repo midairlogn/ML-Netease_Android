@@ -53,6 +53,8 @@
     <string name="title_search_limit">Search Result Limit (Default 10)</string>
     <string name="hint_search_limit">Enter limit (e.g. 10)</string>
     <string name="title_app_volume">App Volume</string>
+    <string name="title_dynamic_volume">Dynamic Volume Normalization</string>
+    <string name="dynamic_volume_switch">Dynamic volume normalization</string>
     <string name="title_audio_quality">Audio Quality</string>
     <string name="title_lyric_translation">Lyric Translation Integration</string>
     <string name="title_hearing_protection">Hearing Protection</string>

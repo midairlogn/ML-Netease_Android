@@ -738,6 +738,7 @@ public class MusicService extends Service {
             } else if ("ACTION_UPDATE_SETTINGS".equals(action)) {
                 SettingsManager sm = new SettingsManager(this);
                 musicPlayerManager.setAppVolume(sm.getAppVolume());
+                musicPlayerManager.onDynamicVolumeSettingChanged();
                 if (hearingProtectionController != null) {
                     hearingProtectionController.onSettingsChanged();
                 }

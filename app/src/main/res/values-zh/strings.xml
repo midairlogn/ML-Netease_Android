@@ -18,6 +18,8 @@
     <string name="title_search_limit">搜索返回数量（默认 10）</string>
     <string name="hint_search_limit">请输入返回数量（例如 10）</string>
     <string name="title_app_volume">音量设置</string>
+    <string name="title_dynamic_volume">动态音量均衡</string>
+    <string name="dynamic_volume_switch">动态音量均衡</string>
     <string name="title_audio_quality">音质选择</string>
     <string name="title_lyric_translation">开启歌词翻译</string>
     <string name="title_hearing_protection">听力保护</string>

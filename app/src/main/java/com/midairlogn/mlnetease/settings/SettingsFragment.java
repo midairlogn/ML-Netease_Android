@@ -72,6 +72,7 @@ public class SettingsFragment extends Fragment {
     private TextView textAudioQualityValue;
     private SeekBar seekbarAppVolume;
     private TextView textAppVolumeValue;
+    private Switch switchDynamicVolume;
     private Spinner spinnerLanguage;
     private View layoutDownloadCustomize;
     private TextView textDownloadCustomizeSummary;
@@ -186,6 +187,7 @@ public class SettingsFragment extends Fragment {
         textAudioQualityValue = view.findViewById(R.id.text_audio_quality_value);
         seekbarAppVolume = view.findViewById(R.id.seekbar_app_volume);
         textAppVolumeValue = view.findViewById(R.id.text_app_volume_value);
+        switchDynamicVolume = view.findViewById(R.id.switch_dynamic_volume);
         spinnerLanguage = view.findViewById(R.id.spinner_language);
         layoutDownloadCustomize = view.findViewById(R.id.layout_download_customize);
         textDownloadCustomizeSummary = view.findViewById(R.id.text_download_customize_summary);
@@ -321,6 +323,12 @@ public class SettingsFragment extends Fragment {
             seekbarAppVolume.setProgress(defaultVolume);
             textAppVolumeValue.setText(defaultVolume + "%");
             settingsManager.setAppVolume(defaultVolume);
+            notifySettingsChanged();
+        });
+
+        switchDynamicVolume.setChecked(settingsManager.isDynamicVolumeEnabled());
+        switchDynamicVolume.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            settingsManager.setDynamicVolumeEnabled(isChecked);
             notifySettingsChanged();
         });
 
@@ -729,6 +737,15 @@ public class SettingsFragment extends Fragment {
             }
             if (textAppVolumeValue != null) {
                 textAppVolumeValue.setText(appVolume + "%");
+            }
+            boolean dynamicVolumeEnabled = settingsManager.isDynamicVolumeEnabled();
+            if (switchDynamicVolume != null) {
+                switchDynamicVolume.setOnCheckedChangeListener(null);
+                switchDynamicVolume.setChecked(dynamicVolumeEnabled);
+                switchDynamicVolume.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                    settingsManager.setDynamicVolumeEnabled(isChecked);
+                    notifySettingsChanged();
+                });
             }
             updateLanguageSpinnerSelection();
 

@@ -492,38 +492,42 @@ public class MusicPlayerManager {
                         song.closedGainDb = hasClosedGain ? (float) root.optDouble("closedGain", 0d) : 0f;
                         song.closedPeak = hasClosedPeak ? (float) root.optDouble("closedPeak", 0d) : 0f;
                         clearLoudnessNormalization();
-                        NormalizationMetadata normalizationMetadata = resolveNormalizationMetadata(
-                                song,
-                                hasGain,
-                                hasPeak,
-                                hasClosedGain,
-                                hasClosedPeak
-                        );
-                        song.hasLoudnessNormalization = normalizationMetadata.hasGain;
-                        if (normalizationMetadata.hasGain) {
-                            float effectiveGainDb = resolveEffectiveNormalizationGainDb(
-                                    normalizationMetadata.gainDb,
-                                    normalizationMetadata.peak,
-                                    normalizationMetadata.hasPeak
+                        if (settingsManager.isDynamicVolumeEnabled()) {
+                            NormalizationMetadata normalizationMetadata = resolveNormalizationMetadata(
+                                    song,
+                                    hasGain,
+                                    hasPeak,
+                                    hasClosedGain,
+                                    hasClosedPeak
                             );
-                            if (Math.abs(effectiveGainDb) >= MIN_EFFECTIVE_GAIN_DB) {
-                                pendingLoudnessGainDb = effectiveGainDb;
-                                hasPendingLoudnessNormalization = true;
+                            song.hasLoudnessNormalization = normalizationMetadata.hasGain;
+                            if (normalizationMetadata.hasGain) {
+                                float effectiveGainDb = resolveEffectiveNormalizationGainDb(
+                                        normalizationMetadata.gainDb,
+                                        normalizationMetadata.peak,
+                                        normalizationMetadata.hasPeak
+                                );
+                                if (Math.abs(effectiveGainDb) >= MIN_EFFECTIVE_GAIN_DB) {
+                                    pendingLoudnessGainDb = effectiveGainDb;
+                                    hasPendingLoudnessNormalization = true;
+                                }
                             }
-                        }
-                        if (normalizationMetadata.hasGain) {
-                            android.util.Log.d(
-                                    "MusicPlayerManager",
-                                    "Loudness normalization rawGainDb=" + song.gainDb
-                                            + " peak=" + song.peak
-                                            + " closedGainDb=" + song.closedGainDb
-                                            + " closedPeak=" + song.closedPeak
-                                            + " source=" + normalizationMetadata.source
-                                            + " selectedGainDb=" + normalizationMetadata.gainDb
-                                            + " selectedPeak=" + normalizationMetadata.peak
-                                            + " hasPeak=" + normalizationMetadata.hasPeak
-                                            + " appliedGainDb=" + (hasPendingLoudnessNormalization ? pendingLoudnessGainDb : 0f)
-                            );
+                            if (normalizationMetadata.hasGain) {
+                                android.util.Log.d(
+                                        "MusicPlayerManager",
+                                        "Loudness normalization rawGainDb=" + song.gainDb
+                                                + " peak=" + song.peak
+                                                + " closedGainDb=" + song.closedGainDb
+                                                + " closedPeak=" + song.closedPeak
+                                                + " source=" + normalizationMetadata.source
+                                                + " selectedGainDb=" + normalizationMetadata.gainDb
+                                                + " selectedPeak=" + normalizationMetadata.peak
+                                                + " hasPeak=" + normalizationMetadata.hasPeak
+                                                + " appliedGainDb=" + (hasPendingLoudnessNormalization ? pendingLoudnessGainDb : 0f)
+                                );
+                            }
+                        } else {
+                            song.hasLoudnessNormalization = false;
                         }
 
                         // Notify that full info (lyrics, picUrl, etc.) is now available.
@@ -1001,6 +1005,36 @@ public class MusicPlayerManager {
         }
     }
 
+    public void onDynamicVolumeSettingChanged() {
+        Song currentSong = getCurrentSong();
+        if (!settingsManager.isDynamicVolumeEnabled()) {
+            clearLoudnessNormalization();
+            setAppVolume(settingsManager.getAppVolume());
+            return;
+        }
+        if (currentSong == null || currentSong.isLocal()) {
+            clearLoudnessNormalization();
+            return;
+        }
+        NormalizationMetadata normalizationMetadata = resolveStoredNormalizationMetadata(currentSong);
+        currentSong.hasLoudnessNormalization = normalizationMetadata.hasGain;
+        clearLoudnessNormalization();
+        if (!normalizationMetadata.hasGain) {
+            return;
+        }
+        float effectiveGainDb = resolveEffectiveNormalizationGainDb(
+                normalizationMetadata.gainDb,
+                normalizationMetadata.peak,
+                normalizationMetadata.hasPeak
+        );
+        if (Math.abs(effectiveGainDb) < MIN_EFFECTIVE_GAIN_DB) {
+            return;
+        }
+        pendingLoudnessGainDb = effectiveGainDb;
+        hasPendingLoudnessNormalization = true;
+        applyLoudnessNormalization(effectiveGainDb);
+    }
+
     private void clearLoudnessNormalization() {
         pendingLoudnessGainDb = 0f;
         hasPendingLoudnessNormalization = false;
@@ -1022,6 +1056,21 @@ public class MusicPlayerManager {
         if (hasGain && Float.isFinite(song.gainDb)) {
             boolean validPeak = hasPeak && Float.isFinite(song.peak) && song.peak > 0f;
             return new NormalizationMetadata(true, song.gainDb, validPeak, song.peak, "raw");
+        }
+        return new NormalizationMetadata(false, 0f, false, 0f, "none");
+    }
+
+    private NormalizationMetadata resolveStoredNormalizationMetadata(Song song) {
+        if (song == null) {
+            return new NormalizationMetadata(false, 0f, false, 0f, "none");
+        }
+        boolean hasClosedPeak = Float.isFinite(song.closedPeak) && song.closedPeak > 0f;
+        if (Float.isFinite(song.closedGainDb) && (song.closedGainDb != 0f || hasClosedPeak)) {
+            return new NormalizationMetadata(true, song.closedGainDb, hasClosedPeak, song.closedPeak, "closed");
+        }
+        boolean hasPeak = Float.isFinite(song.peak) && song.peak > 0f;
+        if (Float.isFinite(song.gainDb) && (song.gainDb != 0f || hasPeak)) {
+            return new NormalizationMetadata(true, song.gainDb, hasPeak, song.peak, "raw");
         }
         return new NormalizationMetadata(false, 0f, false, 0f, "none");
     }
