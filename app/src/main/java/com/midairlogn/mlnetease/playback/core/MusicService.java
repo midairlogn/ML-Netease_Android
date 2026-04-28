@@ -47,6 +47,7 @@ public class MusicService extends Service {
     private static final String TAG = "MusicService";
     private static final String CHANNEL_ID = "music_channel";
     private static final int NOTIFICATION_ID = 1;
+    private static final String ACTION_UPDATE_SETTINGS = "ACTION_UPDATE_SETTINGS";
     private MediaSessionCompat mediaSession;
     private MusicPlayerManager musicPlayerManager;
     private NotificationManager notificationManager;
@@ -735,7 +736,7 @@ public class MusicService extends Service {
                     floatingLyricsManager.onSettingChanged();
                 }
                 updatePlaybackState(musicPlayerManager.isPlaying());
-            } else if ("ACTION_UPDATE_SETTINGS".equals(action)) {
+            } else if (ACTION_UPDATE_SETTINGS.equals(action)) {
                 SettingsManager sm = new SettingsManager(this);
                 musicPlayerManager.setAppVolume(sm.getAppVolume());
                 musicPlayerManager.onDynamicVolumeSettingChanged();
@@ -748,6 +749,20 @@ public class MusicService extends Service {
                 // Only update notification if the floating window toggle changed.
                 // updatePlaybackState handles this check automatically via lastNotifiedFloatingState.
                 updatePlaybackState(musicPlayerManager.isPlaying());
+            } else if (HearingProtectionController.ACTION_HEARING_REST_FINISHED.equals(action)) {
+                boolean forceContinueAfterRest = intent.getBooleanExtra(
+                        HearingProtectionController.EXTRA_FORCE_CONTINUE_AFTER_REST,
+                        false
+                );
+                boolean restExpired = hearingProtectionController != null
+                        && hearingProtectionController.shouldCompleteRestNow();
+                if (restExpired) {
+                    hearingProtectionController.completeRestFromService();
+                }
+                boolean shouldContinueAfterRest = forceContinueAfterRest || restExpired;
+                if (shouldContinueAfterRest && requestAudioFocus()) {
+                    musicPlayerManager.continueAfterHearingProtectionRest();
+                }
             }
         }
         MediaButtonReceiver.handleIntent(mediaSession, intent);
