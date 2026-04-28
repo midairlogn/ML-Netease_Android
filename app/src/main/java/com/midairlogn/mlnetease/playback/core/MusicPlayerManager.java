@@ -48,6 +48,11 @@ public class MusicPlayerManager {
     private static final int MAX_RETRY = 3;
     private static final long PROGRESS_UPDATE_INTERVAL_MS = 500L;
     private static final int MILLIBELS_PER_DECIBEL = 100;
+    private static final float MAX_NORMALIZED_OUTPUT_PEAK = 0.95f;
+    private static final float MAX_FALLBACK_POSITIVE_GAIN_DB = 3.0f;
+    private static final float MIN_ALLOWED_GAIN_DB = -20.0f;
+    private static final float MAX_ALLOWED_GAIN_DB = 6.0f;
+    private static final float MIN_EFFECTIVE_GAIN_DB = 0.1f;
     private int resumePosition = 0;
     private boolean isCompletionListenerEnabled = false;
     private final AtomicLong playRequestIdGenerator = new AtomicLong(0);
@@ -467,11 +472,26 @@ public class MusicPlayerManager {
                         song.hasLoudnessNormalization = hasGain;
                         song.gainDb = hasGain ? (float) root.optDouble("gain", 0d) : 0f;
                         song.peak = hasPeak ? (float) root.optDouble("peak", 0d) : 0f;
+                        clearLoudnessNormalization();
                         if (song.hasLoudnessNormalization && Float.isFinite(song.gainDb)) {
-                            pendingLoudnessGainDb = song.gainDb;
-                            hasPendingLoudnessNormalization = true;
-                        } else {
-                            clearLoudnessNormalization();
+                            float effectiveGainDb = resolveEffectiveNormalizationGainDb(
+                                    song.gainDb,
+                                    song.peak,
+                                    hasPeak
+                            );
+                            if (Math.abs(effectiveGainDb) >= MIN_EFFECTIVE_GAIN_DB) {
+                                pendingLoudnessGainDb = effectiveGainDb;
+                                hasPendingLoudnessNormalization = true;
+                            }
+                        }
+                        if (song.hasLoudnessNormalization) {
+                            android.util.Log.d(
+                                    "MusicPlayerManager",
+                                    "Loudness normalization rawGainDb=" + song.gainDb
+                                            + " peak=" + song.peak
+                                            + " hasPeak=" + hasPeak
+                                            + " appliedGainDb=" + (hasPendingLoudnessNormalization ? pendingLoudnessGainDb : 0f)
+                            );
                         }
 
                         // Notify that full info (lyrics, picUrl, etc.) is now available.
@@ -914,17 +934,22 @@ public class MusicPlayerManager {
     }
 
     public void applyLoudnessNormalization(float gainDb) {
-        pendingLoudnessGainDb = gainDb;
-        hasPendingLoudnessNormalization = true;
+        if (!Float.isFinite(gainDb)) {
+            clearLoudnessNormalization();
+            return;
+        }
         int audioSessionId;
         try {
             audioSessionId = mediaPlayer.getAudioSessionId();
         } catch (IllegalStateException e) {
             return;
         }
-        if (audioSessionId <= 0 || !Float.isFinite(gainDb)) {
+        if (audioSessionId <= 0) {
             return;
         }
+
+        pendingLoudnessGainDb = gainDb;
+        hasPendingLoudnessNormalization = true;
 
         int gainmB = Math.round(gainDb * MILLIBELS_PER_DECIBEL);
         try {
@@ -946,6 +971,26 @@ public class MusicPlayerManager {
         pendingLoudnessGainDb = 0f;
         hasPendingLoudnessNormalization = false;
         releaseLoudnessEnhancer();
+    }
+
+    private float resolveEffectiveNormalizationGainDb(float gainDb, float peak, boolean hasPeak) {
+        float clampedGainDb = clampGainDb(gainDb);
+        if (!Float.isFinite(clampedGainDb)) {
+            return 0f;
+        }
+        if (clampedGainDb <= 0f) {
+            return clampedGainDb;
+        }
+        if (hasPeak && Float.isFinite(peak) && peak > 0f) {
+            float safePeak = Math.max(peak, 0.0001f);
+            double safeBoostDb = 20d * Math.log10(MAX_NORMALIZED_OUTPUT_PEAK / safePeak);
+            return clampGainDb((float) Math.min(clampedGainDb, safeBoostDb));
+        }
+        return Math.min(clampedGainDb, MAX_FALLBACK_POSITIVE_GAIN_DB);
+    }
+
+    private float clampGainDb(float gainDb) {
+        return Math.max(MIN_ALLOWED_GAIN_DB, Math.min(gainDb, MAX_ALLOWED_GAIN_DB));
     }
 
     private void releaseLoudnessEnhancer() {
