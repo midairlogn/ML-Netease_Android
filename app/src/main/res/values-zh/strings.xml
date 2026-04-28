@@ -244,6 +244,7 @@
     <string name="settings_export_success">数据导出成功</string>
     <string name="settings_import_success">数据导入成功</string>
     <string name="settings_backup_invalid_file">数据文件不受支持或已损坏</string>
+    <string name="settings_backup_extension_required">备份文件必须使用 .mlns 扩展名</string>
     <string name="settings_backup_wrong_password">密码错误或文件已被损坏</string>
     <string name="settings_backup_read_error">无法打开文件</string>
     <string name="settings_backup_write_error">无法写入数据文件</string>

@@ -3,10 +3,13 @@ package com.midairlogn.mlnetease.settings;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Typeface;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.DocumentsContract;
+import android.provider.OpenableColumns;
 import android.text.InputType;
 import android.provider.Settings;
 import android.text.Html;
@@ -64,6 +67,8 @@ import java.util.concurrent.TimeUnit;
 import javax.crypto.AEADBadTagException;
 
 public class SettingsFragment extends Fragment {
+
+    private static final String BACKUP_FILE_EXTENSION = ".mlns";
 
     private SettingsManager settingsManager;
     private EditText inputMusicU;
@@ -1202,7 +1207,7 @@ public class SettingsFragment extends Fragment {
                         hearingProtectionUiHandler.post(this::showExportPasswordDialog);
                     } else if (which == 1) {
                         hearingProtectionUiHandler.post(() ->
-                                importSettingsBackupLauncher.launch(new String[] {"application/octet-stream", "application/json", "*/*"}));
+                                importSettingsBackupLauncher.launch(new String[] {"application/octet-stream", "application/json"}));
                     }
                 })
                 .create();
@@ -1232,7 +1237,7 @@ public class SettingsFragment extends Fragment {
             fileLabel.setPadding(0, dpToPx(16), 0, dpToPx(8));
             container.addView(fileLabel);
 
-            TextView fileChip = createDialogValueChip(getReadableFileName(importUri));
+            TextView fileChip = createDialogValueChip(getDisplayName(importUri));
             container.addView(fileChip);
 
             TextView importNote = createDialogBodyText(R.string.settings_import_note);
@@ -1341,6 +1346,55 @@ public class SettingsFragment extends Fragment {
         return value.replace(':', '/');
     }
 
+    private String getDisplayName(Uri uri) {
+        try (Cursor cursor = requireContext().getContentResolver().query(
+                uri,
+                new String[] {OpenableColumns.DISPLAY_NAME},
+                null,
+                null,
+                null
+        )) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int columnIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (columnIndex >= 0) {
+                    String displayName = cursor.getString(columnIndex);
+                    if (!TextUtils.isEmpty(displayName)) {
+                        return displayName;
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return getReadableFileName(uri);
+    }
+
+    private boolean hasBackupFileExtension(@Nullable String fileName) {
+        return fileName != null && fileName.toLowerCase(Locale.US).endsWith(BACKUP_FILE_EXTENSION);
+    }
+
+    @NonNull
+    private String ensureBackupFileExtension(@NonNull String fileName) {
+        return hasBackupFileExtension(fileName) ? fileName : fileName + BACKUP_FILE_EXTENSION;
+    }
+
+    @Nullable
+    private Uri maybeRenameBackupDocument(@NonNull Uri uri) {
+        String displayName = getDisplayName(uri);
+        if (hasBackupFileExtension(displayName)) {
+            return uri;
+        }
+        try {
+            Uri renamedUri = DocumentsContract.renameDocument(
+                    requireContext().getContentResolver(),
+                    uri,
+                    ensureBackupFileExtension(displayName)
+            );
+            return renamedUri != null ? renamedUri : uri;
+        } catch (Exception ignored) {
+            return uri;
+        }
+    }
+
     private void handleExportDestinationSelected(Uri uri) {
         PendingBackupAction action = pendingBackupAction;
         pendingBackupAction = null;
@@ -1348,8 +1402,13 @@ public class SettingsFragment extends Fragment {
             return;
         }
         try {
+            Uri outputUri = maybeRenameBackupDocument(uri);
+            if (!hasBackupFileExtension(getDisplayName(outputUri))) {
+                Toast.makeText(requireContext(), R.string.settings_backup_extension_required, Toast.LENGTH_SHORT).show();
+                return;
+            }
             byte[] data = settingsManager.exportEncryptedData(action.password);
-            try (OutputStream outputStream = requireContext().getContentResolver().openOutputStream(uri, "w")) {
+            try (OutputStream outputStream = requireContext().getContentResolver().openOutputStream(outputUri, "w")) {
                 if (outputStream == null) {
                     throw new IllegalStateException("Output stream unavailable");
                 }
@@ -1378,6 +1437,10 @@ public class SettingsFragment extends Fragment {
             return;
         }
         try {
+            if (!hasBackupFileExtension(getDisplayName(sourceUri))) {
+                Toast.makeText(requireContext(), R.string.settings_backup_extension_required, Toast.LENGTH_SHORT).show();
+                return;
+            }
             byte[] data = readAllBytes(sourceUri);
             lastImportSkippedFloatingLyrics = settingsManager.importEncryptedData(data, action.password);
             MusicPlayerManager.getInstance(requireContext()).reloadPlaybackModeFromSettings();

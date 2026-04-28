@@ -39,6 +39,7 @@
     <string name="settings_export_success">Data exported</string>
     <string name="settings_import_success">Data imported</string>
     <string name="settings_backup_invalid_file">Unsupported or corrupted data file</string>
+    <string name="settings_backup_extension_required">Backup files must use the .mlns extension</string>
     <string name="settings_backup_wrong_password">Wrong password or damaged file</string>
     <string name="settings_backup_read_error">Could not read the selected file</string>
     <string name="settings_backup_write_error">Could not write the selected file</string>
