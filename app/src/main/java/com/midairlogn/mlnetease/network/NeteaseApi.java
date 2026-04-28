@@ -478,6 +478,12 @@ public class NeteaseApi {
                     if (!dataObj.isNull("peak")) {
                         result.put("peak", dataObj.optDouble("peak", 0d));
                     }
+                    if (!dataObj.isNull("closedGain")) {
+                        result.put("closedGain", dataObj.optDouble("closedGain", 0d));
+                    }
+                    if (!dataObj.isNull("closedPeak")) {
+                        result.put("closedPeak", dataObj.optDouble("closedPeak", 0d));
+                    }
                 }
 
                 // Process Detail

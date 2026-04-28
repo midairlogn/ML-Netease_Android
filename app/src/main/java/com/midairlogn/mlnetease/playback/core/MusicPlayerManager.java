@@ -48,7 +48,7 @@ public class MusicPlayerManager {
     private static final int MAX_RETRY = 3;
     private static final long PROGRESS_UPDATE_INTERVAL_MS = 500L;
     private static final int MILLIBELS_PER_DECIBEL = 100;
-    private static final float MAX_NORMALIZED_OUTPUT_PEAK = 0.95f;
+    private static final float MAX_NORMALIZED_OUTPUT_PEAK = 0.98f;
     private static final float MAX_FALLBACK_POSITIVE_GAIN_DB = 3.0f;
     private static final float MIN_ALLOWED_GAIN_DB = -20.0f;
     private static final float MAX_ALLOWED_GAIN_DB = 6.0f;
@@ -62,6 +62,21 @@ public class MusicPlayerManager {
     private int loudnessEnhancerAudioSessionId = -1;
     private float pendingLoudnessGainDb = 0f;
     private boolean hasPendingLoudnessNormalization = false;
+    private static final class NormalizationMetadata {
+        final boolean hasGain;
+        final float gainDb;
+        final boolean hasPeak;
+        final float peak;
+        final String source;
+
+        NormalizationMetadata(boolean hasGain, float gainDb, boolean hasPeak, float peak, String source) {
+            this.hasGain = hasGain;
+            this.gainDb = gainDb;
+            this.hasPeak = hasPeak;
+            this.peak = peak;
+            this.source = source;
+        }
+    }
 
     private volatile boolean isAutoSkipping = false;
     private int continuousSkipCount = 0;
@@ -463,33 +478,50 @@ public class MusicPlayerManager {
                         currentTLyric = root.optString("tlyric", "");
                         boolean hasGain = root.has("gain") && !root.isNull("gain");
                         boolean hasPeak = root.has("peak") && !root.isNull("peak");
+                        boolean hasClosedGain = root.has("closedGain") && !root.isNull("closedGain");
+                        boolean hasClosedPeak = root.has("closedPeak") && !root.isNull("closedPeak");
 
                         // Update Song object with better info if available
                         song.picUrl = root.optString("pic", song.picUrl);
                         song.name = root.optString("name", song.name);
                         song.artists = root.optString("ar_name", song.artists);
                         song.album = root.optString("al_name", song.album);
-                        song.hasLoudnessNormalization = hasGain;
+                        song.hasLoudnessNormalization = hasClosedGain || hasGain;
                         song.gainDb = hasGain ? (float) root.optDouble("gain", 0d) : 0f;
                         song.peak = hasPeak ? (float) root.optDouble("peak", 0d) : 0f;
+                        song.closedGainDb = hasClosedGain ? (float) root.optDouble("closedGain", 0d) : 0f;
+                        song.closedPeak = hasClosedPeak ? (float) root.optDouble("closedPeak", 0d) : 0f;
                         clearLoudnessNormalization();
-                        if (song.hasLoudnessNormalization && Float.isFinite(song.gainDb)) {
+                        NormalizationMetadata normalizationMetadata = resolveNormalizationMetadata(
+                                song,
+                                hasGain,
+                                hasPeak,
+                                hasClosedGain,
+                                hasClosedPeak
+                        );
+                        song.hasLoudnessNormalization = normalizationMetadata.hasGain;
+                        if (normalizationMetadata.hasGain) {
                             float effectiveGainDb = resolveEffectiveNormalizationGainDb(
-                                    song.gainDb,
-                                    song.peak,
-                                    hasPeak
+                                    normalizationMetadata.gainDb,
+                                    normalizationMetadata.peak,
+                                    normalizationMetadata.hasPeak
                             );
                             if (Math.abs(effectiveGainDb) >= MIN_EFFECTIVE_GAIN_DB) {
                                 pendingLoudnessGainDb = effectiveGainDb;
                                 hasPendingLoudnessNormalization = true;
                             }
                         }
-                        if (song.hasLoudnessNormalization) {
+                        if (normalizationMetadata.hasGain) {
                             android.util.Log.d(
                                     "MusicPlayerManager",
                                     "Loudness normalization rawGainDb=" + song.gainDb
                                             + " peak=" + song.peak
-                                            + " hasPeak=" + hasPeak
+                                            + " closedGainDb=" + song.closedGainDb
+                                            + " closedPeak=" + song.closedPeak
+                                            + " source=" + normalizationMetadata.source
+                                            + " selectedGainDb=" + normalizationMetadata.gainDb
+                                            + " selectedPeak=" + normalizationMetadata.peak
+                                            + " hasPeak=" + normalizationMetadata.hasPeak
                                             + " appliedGainDb=" + (hasPendingLoudnessNormalization ? pendingLoudnessGainDb : 0f)
                             );
                         }
@@ -558,6 +590,8 @@ public class MusicPlayerManager {
             song.embeddedPicture = metadata.artworkData;
             song.gainDb = 0f;
             song.peak = 0f;
+            song.closedGainDb = 0f;
+            song.closedPeak = 0f;
             song.hasLoudnessNormalization = false;
             currentLyric = metadata.lyric;
             currentTLyric = metadata.translatedLyric;
@@ -971,6 +1005,25 @@ public class MusicPlayerManager {
         pendingLoudnessGainDb = 0f;
         hasPendingLoudnessNormalization = false;
         releaseLoudnessEnhancer();
+    }
+
+    private NormalizationMetadata resolveNormalizationMetadata(Song song,
+                                                               boolean hasGain,
+                                                               boolean hasPeak,
+                                                               boolean hasClosedGain,
+                                                               boolean hasClosedPeak) {
+        if (song == null) {
+            return new NormalizationMetadata(false, 0f, false, 0f, "none");
+        }
+        if (hasClosedGain && Float.isFinite(song.closedGainDb)) {
+            boolean validClosedPeak = hasClosedPeak && Float.isFinite(song.closedPeak) && song.closedPeak > 0f;
+            return new NormalizationMetadata(true, song.closedGainDb, validClosedPeak, song.closedPeak, "closed");
+        }
+        if (hasGain && Float.isFinite(song.gainDb)) {
+            boolean validPeak = hasPeak && Float.isFinite(song.peak) && song.peak > 0f;
+            return new NormalizationMetadata(true, song.gainDb, validPeak, song.peak, "raw");
+        }
+        return new NormalizationMetadata(false, 0f, false, 0f, "none");
     }
 
     private float resolveEffectiveNormalizationGainDb(float gainDb, float peak, boolean hasPeak) {
