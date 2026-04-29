@@ -689,6 +689,18 @@ public class MusicPlayerManager {
         updateProgressDispatcherState();
     }
 
+    public void markPausedForResume() {
+        if (playlist.isEmpty() || currentIndex < 0 || currentIndex >= playlist.size()) {
+            return;
+        }
+        if (isPaused && !mediaPlayer.isPlaying()) {
+            return;
+        }
+        isPaused = true;
+        notifyPlaybackStateChanged(false);
+        updateProgressDispatcherState();
+    }
+
     public void resume() {
         notifyPlaybackAction(true, PLAYBACK_ACTION_RESUME);
         if (isPaused && !mediaPlayer.isPlaying()) {
@@ -697,6 +709,29 @@ public class MusicPlayerManager {
             notifyPlaybackStateChanged(true);
         }
         updateProgressDispatcherState();
+    }
+
+    public void continueAfterHearingProtectionRest() {
+        if (playlist.isEmpty()) {
+            return;
+        }
+
+        int targetIndex = resolveNextIndexForHearingProtection();
+        if (targetIndex < 0) {
+            return;
+        }
+
+        if (targetIndex == currentIndex && currentIndex >= 0) {
+            resumePosition = 0;
+        }
+        play(targetIndex);
+    }
+
+    public boolean canContinueAfterHearingProtectionRest() {
+        if (playlist.isEmpty()) {
+            return false;
+        }
+        return resolveNextIndexForHearingProtection() >= 0;
     }
 
     public void togglePlayPause() {
@@ -756,6 +791,30 @@ public class MusicPlayerManager {
         }
 
         play(nextIndex);
+    }
+
+    private int resolveNextIndexForHearingProtection() {
+        if (playlist.isEmpty()) {
+            return -1;
+        }
+        if (currentIndex < 0 || currentIndex >= playlist.size()) {
+            return 0;
+        }
+
+        switch (currentMode) {
+            case MODE_LOOP_ONE:
+                return currentIndex;
+            case MODE_SHUFFLE:
+                return random.nextInt(playlist.size());
+            case MODE_LOOP_ALL:
+                return (currentIndex + 1) % playlist.size();
+            case MODE_ORDER:
+            default:
+                if (currentIndex < playlist.size() - 1) {
+                    return currentIndex + 1;
+                }
+                return -1;
+        }
     }
 
     public void playPrevious() {

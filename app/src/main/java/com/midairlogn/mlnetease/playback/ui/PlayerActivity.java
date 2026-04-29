@@ -14,6 +14,7 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.midairlogn.mlnetease.playback.ui.pager.CoverFragment;
 import com.midairlogn.mlnetease.download.model.DownloadTaskSnapshot;
+import com.midairlogn.mlnetease.hearing.HearingProtectionTransportController;
 import com.midairlogn.mlnetease.playback.ui.pager.LyricsFragment;
 import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.download.core.SongDownloadStarter;
@@ -92,9 +93,9 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
     }
 
     private void setupControls() {
-        btnPlayPause.setOnClickListener(v -> musicPlayerManager.togglePlayPause());
-        btnPrev.setOnClickListener(v -> musicPlayerManager.playPrevious());
-        btnNext.setOnClickListener(v -> musicPlayerManager.playNext());
+        btnPlayPause.setOnClickListener(v -> HearingProtectionTransportController.handlePlayPause(this));
+        btnPrev.setOnClickListener(v -> HearingProtectionTransportController.handlePrevious(this));
+        btnNext.setOnClickListener(v -> HearingProtectionTransportController.handleNext(this));
         btnBack.setOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
 
         btnMode.setOnClickListener(v -> {
@@ -140,6 +141,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
             public void onStopTrackingTouch(SeekBar seekBar) {
                 isTracking = false;
                 musicPlayerManager.seekTo(seekBar.getProgress());
+                HearingProtectionTransportController.handleResume(PlayerActivity.this);
             }
         });
     }

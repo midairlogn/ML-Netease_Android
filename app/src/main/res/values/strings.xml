@@ -221,6 +221,7 @@
     <string name="hint_grant_overlay">Please grant overlay permission</string>
     <string name="hint_grant_overlay_app_settings">Please grant overlay permission in app settings</string>
     <string name="hint_grant_overlay_settings">Please grant overlay permission in settings</string>
+    <string name="hint_grant_exact_alarm">Please allow exact alarms so hearing protection can resume playback on time.</string>
     <string name="clear_playlist">Clear Playlist</string>
     <string name="hint_clear_playlist">Are you sure you want to clear the playlist?</string>
     <string name="yes">Yes</string>

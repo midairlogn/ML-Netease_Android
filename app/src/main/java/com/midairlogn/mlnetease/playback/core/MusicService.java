@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.view.KeyEvent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioAttributes;
@@ -47,6 +48,16 @@ public class MusicService extends Service {
     private static final String TAG = "MusicService";
     private static final String CHANNEL_ID = "music_channel";
     private static final int NOTIFICATION_ID = 1;
+    public static final String ACTION_UPDATE_SETTINGS = "ACTION_UPDATE_SETTINGS";
+    public static final String ACTION_CANCEL_REST_AND_CONTINUE = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_CONTINUE";
+    public static final String ACTION_CANCEL_REST_AND_NEXT = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_NEXT";
+    public static final String ACTION_CANCEL_REST_AND_PREVIOUS = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_PREVIOUS";
+    public static final String ACTION_CANCEL_REST_AND_RESUME_CURRENT = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_RESUME_CURRENT";
+    public static final String ACTION_REFRESH_PLAYBACK_STATE = "com.midairlogn.mlnetease.action.REFRESH_PLAYBACK_STATE";
+    private static final String ACTION_NOTIFICATION_PLAY = "com.midairlogn.mlnetease.action.NOTIFICATION_PLAY";
+    private static final String ACTION_NOTIFICATION_PAUSE = "com.midairlogn.mlnetease.action.NOTIFICATION_PAUSE";
+    private static final String ACTION_NOTIFICATION_NEXT = "com.midairlogn.mlnetease.action.NOTIFICATION_NEXT";
+    private static final String ACTION_NOTIFICATION_PREVIOUS = "com.midairlogn.mlnetease.action.NOTIFICATION_PREVIOUS";
     private MediaSessionCompat mediaSession;
     private MusicPlayerManager musicPlayerManager;
     private NotificationManager notificationManager;
@@ -57,6 +68,7 @@ public class MusicService extends Service {
     private boolean hasAudioFocus = false;
     private boolean pausedByFocusLoss = false;
     private boolean resumeOnFocusGain = false;
+    private boolean pendingAutoContinueAfterRest = false;
     private String lastSongId = "";
     private String lastPicUrl = "";
     private Bitmap lastBitmap = null;
@@ -147,7 +159,9 @@ public class MusicService extends Service {
                 break;
             case AudioManager.AUDIOFOCUS_GAIN:
                 hasAudioFocus = true;
-                if (pausedByFocusLoss && resumeOnFocusGain && musicPlayerManager != null && !musicPlayerManager.isPlaying()) {
+                if (pendingAutoContinueAfterRest) {
+                    continuePlaybackAfterExpiredRest();
+                } else if (pausedByFocusLoss && resumeOnFocusGain && musicPlayerManager != null && !musicPlayerManager.isPlaying()) {
                     musicPlayerManager.resume();
                 }
                 pausedByFocusLoss = false;
@@ -217,16 +231,12 @@ public class MusicService extends Service {
             public void onCustomAction(String action, Bundle extras) {
                 if ("ACTION_TOGGLE_MODE".equals(action)) {
                     musicPlayerManager.togglePlaybackMode();
-                    // updatePlaybackState is called via playbackModeChangedListener
                 } else if ("ACTION_TOGGLE_FLOATING".equals(action)) {
                     SettingsManager sm = new SettingsManager(MusicService.this);
                     boolean currentState = sm.isFloatingLyricsEnabled();
                     if (!currentState) {
-                        // Attempting to enable - check permission
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(MusicService.this)) {
                             android.widget.Toast.makeText(MusicService.this, R.string.hint_grant_overlay_settings, android.widget.Toast.LENGTH_LONG).show();
-                            // We can't easily start Settings Activity from Service without new task flag
-                            // but the user can use the app's settings screen to enable it.
                             return;
                         }
                     }
@@ -234,13 +244,16 @@ public class MusicService extends Service {
                     if (floatingLyricsManager != null) {
                         floatingLyricsManager.onSettingChanged();
                     }
-                    // This will trigger Update 3 via showNotification since floatingStateChanged will be true
                     updatePlaybackState(musicPlayerManager.isPlaying());
                 }
             }
 
             @Override
             public void onPlay() {
+                if (isHearingProtectionRestActive()) {
+                    performRestCancellationAction(ACTION_CANCEL_REST_AND_CONTINUE);
+                    return;
+                }
                 if (!requestAudioFocus()) {
                     return;
                 }
@@ -259,6 +272,10 @@ public class MusicService extends Service {
 
             @Override
             public void onSkipToNext() {
+                if (isHearingProtectionRestActive()) {
+                    performRestCancellationAction(ACTION_CANCEL_REST_AND_NEXT);
+                    return;
+                }
                 if (!requestAudioFocus()) {
                     return;
                 }
@@ -267,6 +284,10 @@ public class MusicService extends Service {
 
             @Override
             public void onSkipToPrevious() {
+                if (isHearingProtectionRestActive()) {
+                    performRestCancellationAction(ACTION_CANCEL_REST_AND_PREVIOUS);
+                    return;
+                }
                 if (!requestAudioFocus()) {
                     return;
                 }
@@ -285,8 +306,9 @@ public class MusicService extends Service {
             @Override
             public void onSeekTo(long pos) {
                 musicPlayerManager.seekTo((int) pos);
-                // Removed explicit updatePlaybackState(musicPlayerManager.isPlaying());
-                // musicPlayerManager.seekTo already triggers the listener which calls updatePlaybackState
+                if (isHearingProtectionRestActive()) {
+                    performRestCancellationAction(ACTION_CANCEL_REST_AND_RESUME_CURRENT);
+                }
             }
         });
 
@@ -322,6 +344,143 @@ public class MusicService extends Service {
             audioManager.abandonAudioFocus(audioFocusChangeListener);
         }
         hasAudioFocus = false;
+    }
+
+    private boolean continuePlaybackAfterExpiredRest() {
+        pendingAutoContinueAfterRest = false;
+        pausedByFocusLoss = false;
+        resumeOnFocusGain = false;
+        if (!musicPlayerManager.canContinueAfterHearingProtectionRest()) {
+            return true;
+        }
+        if (!requestAudioFocus()) {
+            pendingAutoContinueAfterRest = true;
+            return false;
+        }
+        int previousIndex = musicPlayerManager.getCurrentIndex();
+        musicPlayerManager.continueAfterHearingProtectionRest();
+        boolean playbackAdvanced = musicPlayerManager.isPlaying()
+                || musicPlayerManager.getCurrentIndex() != previousIndex;
+        if (!playbackAdvanced) {
+            pendingAutoContinueAfterRest = true;
+            return false;
+        }
+        return true;
+    }
+
+    private boolean handleRestCancellationAction(String action) {
+        return hearingProtectionController != null
+                && isHearingProtectionRestActive()
+                && performRestCancellationAction(action);
+    }
+
+    private boolean isHearingProtectionRestActive() {
+        return hearingProtectionController != null
+                && HearingProtectionController.getSnapshot(this).restActive;
+    }
+
+    private boolean performRestCancellationAction(String action) {
+        if (!requestAudioFocus()) {
+            return isHearingProtectionRestActive();
+        }
+        if (hearingProtectionController == null || !hearingProtectionController.cancelRestForUserAction()) {
+            return false;
+        }
+        pausedByFocusLoss = false;
+        resumeOnFocusGain = false;
+        if (ACTION_CANCEL_REST_AND_CONTINUE.equals(action)) {
+            musicPlayerManager.continueAfterHearingProtectionRest();
+            return true;
+        }
+        if (ACTION_CANCEL_REST_AND_RESUME_CURRENT.equals(action)) {
+            musicPlayerManager.markPausedForResume();
+            musicPlayerManager.resume();
+            return true;
+        }
+        if (ACTION_CANCEL_REST_AND_NEXT.equals(action)) {
+            musicPlayerManager.playNext();
+            return true;
+        }
+        if (ACTION_CANCEL_REST_AND_PREVIOUS.equals(action)) {
+            musicPlayerManager.playPrevious();
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handleMediaButtonIntent(Intent intent) {
+        if (intent == null || !Intent.ACTION_MEDIA_BUTTON.equals(intent.getAction())) {
+            return false;
+        }
+        KeyEvent keyEvent = intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
+        if (keyEvent == null || keyEvent.getAction() != KeyEvent.ACTION_DOWN) {
+            return true;
+        }
+        switch (keyEvent.getKeyCode()) {
+            case KeyEvent.KEYCODE_MEDIA_PLAY:
+                handleNotificationPlay();
+                return true;
+            case KeyEvent.KEYCODE_MEDIA_PAUSE:
+                handleNotificationPause();
+                return true;
+            case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+                if (musicPlayerManager.isPlaying()) {
+                    handleNotificationPause();
+                } else {
+                    handleNotificationPlay();
+                }
+                return true;
+            case KeyEvent.KEYCODE_MEDIA_NEXT:
+                handleNotificationNext();
+                return true;
+            case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
+                handleNotificationPrevious();
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private void handleNotificationPlay() {
+        if (isHearingProtectionRestActive()) {
+            performRestCancellationAction(ACTION_CANCEL_REST_AND_CONTINUE);
+            return;
+        }
+        if (!requestAudioFocus()) {
+            return;
+        }
+        pausedByFocusLoss = false;
+        resumeOnFocusGain = false;
+        musicPlayerManager.resume();
+    }
+
+    private void handleNotificationPause() {
+        pausedByFocusLoss = false;
+        resumeOnFocusGain = false;
+        musicPlayerManager.pause();
+        abandonAudioFocus();
+    }
+
+    private void handleNotificationNext() {
+        if (isHearingProtectionRestActive()) {
+            performRestCancellationAction(ACTION_CANCEL_REST_AND_NEXT);
+            return;
+        }
+        if (!requestAudioFocus()) {
+            return;
+        }
+        musicPlayerManager.playNext();
+    }
+
+    private void handleNotificationPrevious() {
+        if (isHearingProtectionRestActive()) {
+            performRestCancellationAction(ACTION_CANCEL_REST_AND_PREVIOUS);
+            return;
+        }
+        if (!requestAudioFocus()) {
+            return;
+        }
+        musicPlayerManager.playPrevious();
     }
 
     private void updateMetadata(Song song) {
@@ -648,9 +807,13 @@ public class MusicService extends Service {
 
         NotificationCompat.Action playPauseAction = isPlaying ?
                 new NotificationCompat.Action(android.R.drawable.ic_media_pause, "Pause",
-                        MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_PAUSE)) :
+                        PendingIntent.getService(this, 120,
+                                new Intent(this, MusicService.class).setAction(ACTION_NOTIFICATION_PAUSE),
+                                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT)) :
                 new NotificationCompat.Action(android.R.drawable.ic_media_play, "Play",
-                        MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_PLAY));
+                        PendingIntent.getService(this, 121,
+                                new Intent(this, MusicService.class).setAction(ACTION_NOTIFICATION_PLAY),
+                                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
 
         // Mode Action
         int modeIcon = R.drawable.ic_mode_order;
@@ -660,8 +823,9 @@ public class MusicService extends Service {
             case MusicPlayerManager.MODE_SHUFFLE: modeIcon = R.drawable.ic_mode_shuffle; break;
             default: modeIcon = R.drawable.ic_mode_order; break;
         }
-        PendingIntent modePendingIntent = PendingIntent.getService(this, 1,
-            new Intent(this, MusicService.class).setAction("ACTION_TOGGLE_MODE"), PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent modePendingIntent = PendingIntent.getService(this, 122,
+            new Intent(this, MusicService.class).setAction("ACTION_TOGGLE_MODE"),
+            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         NotificationCompat.Action modeAction = new NotificationCompat.Action(modeIcon, "Mode", modePendingIntent);
 
         // Floating Action
@@ -669,8 +833,9 @@ public class MusicService extends Service {
         boolean isFloatingEnabled = sm.isFloatingLyricsEnabled();
         int floatIcon = isFloatingEnabled ? R.drawable.ic_floating_active : R.drawable.ic_floating;
 
-        PendingIntent floatPendingIntent = PendingIntent.getService(this, 2,
-            new Intent(this, MusicService.class).setAction("ACTION_TOGGLE_FLOATING"), PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent floatPendingIntent = PendingIntent.getService(this, 123,
+            new Intent(this, MusicService.class).setAction("ACTION_TOGGLE_FLOATING"),
+            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         NotificationCompat.Action floatAction = new NotificationCompat.Action(floatIcon, "Lyrics", floatPendingIntent);
 
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
@@ -682,10 +847,14 @@ public class MusicService extends Service {
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .addAction(modeAction)
                 .addAction(android.R.drawable.ic_media_previous, "Previous",
-                        MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS))
+                        PendingIntent.getService(this, 124,
+                                new Intent(this, MusicService.class).setAction(ACTION_NOTIFICATION_PREVIOUS),
+                                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT))
                 .addAction(playPauseAction)
                 .addAction(android.R.drawable.ic_media_next, "Next",
-                        MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_SKIP_TO_NEXT))
+                        PendingIntent.getService(this, 125,
+                                new Intent(this, MusicService.class).setAction(ACTION_NOTIFICATION_NEXT),
+                                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT))
                 .addAction(floatAction)
                 .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
                         .setMediaSession(mediaSession.getSessionToken())
@@ -717,6 +886,10 @@ public class MusicService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (handleMediaButtonIntent(intent)) {
+            updatePlaybackState(musicPlayerManager.isPlaying(), true);
+            return START_STICKY;
+        }
         if (intent != null && intent.getAction() != null) {
             String action = intent.getAction();
             if ("ACTION_TOGGLE_MODE".equals(action)) {
@@ -735,7 +908,7 @@ public class MusicService extends Service {
                     floatingLyricsManager.onSettingChanged();
                 }
                 updatePlaybackState(musicPlayerManager.isPlaying());
-            } else if ("ACTION_UPDATE_SETTINGS".equals(action)) {
+            } else if (ACTION_UPDATE_SETTINGS.equals(action)) {
                 SettingsManager sm = new SettingsManager(this);
                 musicPlayerManager.setAppVolume(sm.getAppVolume());
                 musicPlayerManager.onDynamicVolumeSettingChanged();
@@ -748,9 +921,49 @@ public class MusicService extends Service {
                 // Only update notification if the floating window toggle changed.
                 // updatePlaybackState handles this check automatically via lastNotifiedFloatingState.
                 updatePlaybackState(musicPlayerManager.isPlaying());
+            } else if (ACTION_REFRESH_PLAYBACK_STATE.equals(action)) {
+                if (pendingAutoContinueAfterRest && hearingProtectionController != null && !isHearingProtectionRestActive()) {
+                    continuePlaybackAfterExpiredRest();
+                }
+                updatePlaybackState(musicPlayerManager.isPlaying(), true);
+            } else if (HearingProtectionController.ACTION_HEARING_REST_FINISHED.equals(action)) {
+                boolean forceContinueAfterRest = intent.getBooleanExtra(
+                        HearingProtectionController.EXTRA_FORCE_CONTINUE_AFTER_REST,
+                        false
+                );
+                boolean restExpired = hearingProtectionController != null
+                        && hearingProtectionController.shouldCompleteRestNow();
+                if (restExpired) {
+                    hearingProtectionController.completeRestFromService();
+                }
+                boolean shouldContinueAfterRest = forceContinueAfterRest || restExpired;
+                if (shouldContinueAfterRest) {
+                    continuePlaybackAfterExpiredRest();
+                }
+            } else if (ACTION_CANCEL_REST_AND_CONTINUE.equals(action)
+                    || ACTION_CANCEL_REST_AND_RESUME_CURRENT.equals(action)
+                    || ACTION_CANCEL_REST_AND_NEXT.equals(action)
+                    || ACTION_CANCEL_REST_AND_PREVIOUS.equals(action)) {
+                performRestCancellationAction(action);
+                return START_STICKY;
+            } else if (ACTION_NOTIFICATION_PLAY.equals(action)) {
+                handleNotificationPlay();
+                updatePlaybackState(musicPlayerManager.isPlaying(), true);
+                return START_STICKY;
+            } else if (ACTION_NOTIFICATION_PAUSE.equals(action)) {
+                handleNotificationPause();
+                updatePlaybackState(musicPlayerManager.isPlaying(), true);
+                return START_STICKY;
+            } else if (ACTION_NOTIFICATION_NEXT.equals(action)) {
+                handleNotificationNext();
+                updatePlaybackState(musicPlayerManager.isPlaying(), true);
+                return START_STICKY;
+            } else if (ACTION_NOTIFICATION_PREVIOUS.equals(action)) {
+                handleNotificationPrevious();
+                updatePlaybackState(musicPlayerManager.isPlaying(), true);
+                return START_STICKY;
             }
         }
-        MediaButtonReceiver.handleIntent(mediaSession, intent);
         return START_NOT_STICKY;
     }
 

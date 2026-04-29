@@ -26,6 +26,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.midairlogn.mlnetease.home.shortcut.AppShortcutController;
 import com.midairlogn.mlnetease.download.file.DownloadFolderOpener;
 import com.midairlogn.mlnetease.download.DownloadsFragment;
+import com.midairlogn.mlnetease.hearing.HearingProtectionTransportController;
 import com.midairlogn.mlnetease.home.HomeFragment;
 import com.midairlogn.mlnetease.home.model.HomeShortcut;
 import com.midairlogn.mlnetease.image.ImageManager;
@@ -439,7 +440,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
 
         // The play/pause button area includes the progress bar
         View playPauseContainer = (View) miniPlayerPlayPause.getParent();
-        playPauseContainer.setOnClickListener(v -> musicPlayerManager.togglePlayPause());
+        playPauseContainer.setOnClickListener(v -> HearingProtectionTransportController.handlePlayPause(this));
 
         miniPlayerPlaylist.setOnClickListener(v -> {
             PlaylistBottomSheetFragment bottomSheet = new PlaylistBottomSheetFragment();

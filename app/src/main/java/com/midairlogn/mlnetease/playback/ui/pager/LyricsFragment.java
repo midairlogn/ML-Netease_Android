@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.midairlogn.mlnetease.playback.lyrics.LyricsAdapter;
 import com.midairlogn.mlnetease.playback.lyrics.LyricsUtils;
 import com.midairlogn.mlnetease.R;
+import com.midairlogn.mlnetease.hearing.HearingProtectionTransportController;
 import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
 import com.midairlogn.mlnetease.settings.SettingsManager;
 import com.midairlogn.mlnetease.shared.model.LyricLine;
@@ -164,7 +165,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
             return;
         }
         manager.seekTo((int) time);
-        manager.resume();
+        HearingProtectionTransportController.handleResume(requireContext());
         if (clearTimelineOverlay) {
             clearTimelineOverlay();
         }

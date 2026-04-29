@@ -1,6 +1,9 @@
 package com.midairlogn.mlnetease.hearing;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -8,6 +11,7 @@ import android.widget.Toast;
 
 import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
+import com.midairlogn.mlnetease.playback.core.MusicService;
 import com.midairlogn.mlnetease.settings.SettingsManager;
 import com.midairlogn.mlnetease.shared.model.Song;
 
@@ -60,11 +64,15 @@ public class HearingProtectionController implements
     private static final double SOCIAL_RECOVERY_RATIO = 0.5d;
     private static final double MAX_DOSE_RESET_RATIO = 0.05d;
     private static final double BASE_EXPONENTIAL_RECOVERY_PER_MIN = 0.32d;
+    public static final String ACTION_HEARING_REST_FINISHED = "com.midairlogn.mlnetease.action.HEARING_REST_FINISHED";
+    public static final String EXTRA_FORCE_CONTINUE_AFTER_REST = "extra_force_continue_after_rest";
+    private static final int REST_FINISH_REQUEST_CODE = 1003;
 
     private final Context appContext;
     private final MusicPlayerManager musicPlayerManager;
     private final SettingsManager settingsManager;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private final AlarmManager alarmManager;
 
     private double accumulatedDose;
     private long playbackSessionStartElapsedMs = -1L;
@@ -74,12 +82,13 @@ public class HearingProtectionController implements
     private boolean restActive;
     private long restEndElapsedMs;
 
-    private final Runnable restFinishedRunnable = this::completeRestAndResume;
+    private final Runnable restFinishedRunnable = this::requestRestCompletion;
 
     public HearingProtectionController(Context context, MusicPlayerManager musicPlayerManager) {
         this.appContext = context.getApplicationContext();
         this.musicPlayerManager = musicPlayerManager;
         this.settingsManager = new SettingsManager(appContext);
+        this.alarmManager = (AlarmManager) appContext.getSystemService(Context.ALARM_SERVICE);
     }
 
     public void start() {
@@ -88,6 +97,10 @@ public class HearingProtectionController implements
         musicPlayerManager.addOnPlaybackActionListener(this);
         accumulatedDose = settingsManager.getHearingProtectionAccumulatedDoseMs();
         restoreRestStateIfNeeded();
+        if (shouldCompleteRestNow()) {
+            requestRestCompletion();
+            return;
+        }
         restorePauseSessionIfNeeded();
         if (!restActive && musicPlayerManager.isPlaying()) {
             restoreActiveSessionIfNeeded();
@@ -106,7 +119,9 @@ public class HearingProtectionController implements
         musicPlayerManager.removeOnPlaybackStateChangedListener(this);
         musicPlayerManager.removeOnSongCompletionListener(this);
         musicPlayerManager.removeOnPlaybackActionListener(this);
-        foldCurrentPlaybackIntoDose();
+        if (!restActive) {
+            foldCurrentPlaybackIntoDose();
+        }
         playbackSessionStartElapsedMs = -1L;
         pauseStartedElapsedMs = -1L;
         clearPauseSession();
@@ -125,7 +140,7 @@ public class HearingProtectionController implements
             lastPlaybackIntensityMultiplier = 1.0d;
             restPendingAfterCurrentSong = false;
             if (wasRestActive) {
-                musicPlayerManager.playNext();
+                continueAfterRestViaService(true);
             }
             return;
         }
@@ -133,16 +148,27 @@ public class HearingProtectionController implements
         if (restActive) {
             long remainingMs = restEndElapsedMs - System.currentTimeMillis();
             if (remainingMs <= 0L) {
-                completeRestAndResume();
+                requestRestCompletion();
             } else {
                 scheduleRestFinished(remainingMs);
+                scheduleRestFinishAlarm(restEndElapsedMs);
             }
         }
 
-        if (!restActive && musicPlayerManager.isPlaying() && playbackSessionStartElapsedMs < 0L) {
-            playbackSessionStartElapsedMs = SystemClock.elapsedRealtime();
-            lastPlaybackIntensityMultiplier = getPlaybackIntensityMultiplier();
-            persistActiveSession();
+        if (!restActive && musicPlayerManager.isPlaying()) {
+            if (playbackSessionStartElapsedMs < 0L) {
+                playbackSessionStartElapsedMs = SystemClock.elapsedRealtime();
+                lastPlaybackIntensityMultiplier = getPlaybackIntensityMultiplier();
+                persistActiveSession();
+            } else {
+                double newMultiplier = getPlaybackIntensityMultiplier();
+                if (newMultiplier != lastPlaybackIntensityMultiplier) {
+                    foldCurrentPlaybackIntoDose();
+                    playbackSessionStartElapsedMs = SystemClock.elapsedRealtime();
+                    lastPlaybackIntensityMultiplier = newMultiplier;
+                    persistActiveSession();
+                }
+            }
         }
 
         if (!restPendingAfterCurrentSong && accumulatedDose >= getDoseThreshold()) {
@@ -152,6 +178,38 @@ public class HearingProtectionController implements
 
     public boolean isRestActive() {
         return restActive;
+    }
+
+    public boolean shouldCompleteRestNow() {
+        return restActive
+                && restEndElapsedMs > 0L
+                && restEndElapsedMs <= System.currentTimeMillis();
+    }
+
+    public void completeRestFromService() {
+        if (!shouldCompleteRestNow()) {
+            return;
+        }
+        completeRestAndResume();
+    }
+
+    public boolean cancelRestForUserAction() {
+        if (!restActive && settingsManager.isHearingProtectionRestActive()) {
+            restActive = true;
+            restEndElapsedMs = settingsManager.getHearingProtectionRestEndWallClockMs();
+        }
+        if (!restActive) {
+            return false;
+        }
+        cancelRest(true);
+        accumulatedDose = 0d;
+        persistAccumulatedDose();
+        playbackSessionStartElapsedMs = -1L;
+        pauseStartedElapsedMs = -1L;
+        lastPlaybackIntensityMultiplier = 1.0d;
+        clearActiveSession();
+        clearPauseSession();
+        return true;
     }
 
     public static HearingProtectionSnapshot getSnapshot(Context context) {
@@ -224,7 +282,7 @@ public class HearingProtectionController implements
             if (restActive) {
                 return;
             }
-            applyPauseRecoveryIfNeeded(System.currentTimeMillis(), now);
+            applyPauseRecoveryIfNeeded(now);
             if (playbackSessionStartElapsedMs < 0L) {
                 playbackSessionStartElapsedMs = now;
                 lastPlaybackIntensityMultiplier = getPlaybackIntensityMultiplier();
@@ -266,10 +324,8 @@ public class HearingProtectionController implements
                 || MusicPlayerManager.PLAYBACK_ACTION_NEXT.equals(action)
                 || MusicPlayerManager.PLAYBACK_ACTION_PREVIOUS.equals(action);
         if (restActive && isManualStartAction) {
-            cancelRest(true);
-            accumulatedDose = 0d;
-            persistAccumulatedDose();
-            if (MusicPlayerManager.PLAYBACK_ACTION_RESUME.equals(action)) {
+            boolean cancelledRest = cancelRestForUserAction();
+            if (MusicPlayerManager.PLAYBACK_ACTION_RESUME.equals(action) && musicPlayerManager.isPlaying()) {
                 playbackSessionStartElapsedMs = SystemClock.elapsedRealtime();
                 lastPlaybackIntensityMultiplier = getPlaybackIntensityMultiplier();
                 clearPauseSession();
@@ -279,6 +335,11 @@ public class HearingProtectionController implements
                 clearActiveSession();
             }
             pauseStartedElapsedMs = -1L;
+            if (cancelledRest
+                    && MusicPlayerManager.PLAYBACK_ACTION_RESUME.equals(action)
+                    && !musicPlayerManager.isPlaying()) {
+                handler.post(this::continueAfterRestViaService);
+            }
             return;
         }
         if (MusicPlayerManager.PLAYBACK_ACTION_NEXT.equals(action)
@@ -314,12 +375,12 @@ public class HearingProtectionController implements
         if (remainingMs <= 0L) {
             restActive = true;
             restEndElapsedMs = savedRestEnd;
-            completeRestAndResume();
             return;
         }
         restActive = true;
         restEndElapsedMs = savedRestEnd;
         scheduleRestFinished(remainingMs);
+        scheduleRestFinishAlarm(restEndElapsedMs);
     }
 
     private void restorePauseSessionIfNeeded() {
@@ -360,6 +421,8 @@ public class HearingProtectionController implements
         settingsManager.setHearingProtectionRestState(true, restEndElapsedMs);
         musicPlayerManager.pause();
         scheduleRestFinished(restDurationMs);
+        scheduleRestFinishAlarm(restEndElapsedMs);
+        requestPlaybackStateRefresh(appContext);
         Toast.makeText(appContext, appContext.getString(
                 R.string.hearing_protection_rest_started,
                 settingsManager.getHearingProtectionRestMinutes()
@@ -385,9 +448,10 @@ public class HearingProtectionController implements
         pauseStartedElapsedMs = -1L;
         playbackSessionStartElapsedMs = -1L;
         lastPlaybackIntensityMultiplier = 1.0d;
+        cancelRestFinishAlarm();
         settingsManager.clearHearingProtectionRestState();
+        requestPlaybackStateRefresh(appContext);
         Toast.makeText(appContext, R.string.hearing_protection_rest_finished, Toast.LENGTH_SHORT).show();
-        musicPlayerManager.playNext();
     }
 
     private void cancelRest(boolean notifyUser) {
@@ -398,8 +462,10 @@ public class HearingProtectionController implements
         handler.removeCallbacks(restFinishedRunnable);
         restActive = false;
         restEndElapsedMs = 0L;
+        cancelRestFinishAlarm();
         settingsManager.clearHearingProtectionRestState();
         clearPauseSession();
+        requestPlaybackStateRefresh(appContext);
         if (notifyUser) {
             Toast.makeText(appContext, R.string.hearing_protection_rest_cancelled, Toast.LENGTH_SHORT).show();
         }
@@ -421,7 +487,7 @@ public class HearingProtectionController implements
         }
     }
 
-    private void applyPauseRecoveryIfNeeded(long nowWallClockMs, long nowElapsedRealtimeMs) {
+    private void applyPauseRecoveryIfNeeded(long nowElapsedRealtimeMs) {
         if (pauseStartedElapsedMs < 0L) {
             return;
         }
@@ -589,6 +655,84 @@ public class HearingProtectionController implements
         // If microphone-based ambient sampling is added later, pauses in >70 dB environments
         // should reduce this multiplier toward 0.5 or 0.0 depending on the measured noise floor.
         return 1.0d;
+    }
+
+    private void scheduleRestFinishAlarm(long triggerAtWallClockMs) {
+        if (alarmManager == null) {
+            return;
+        }
+        PendingIntent pendingIntent = buildRestFinishedPendingIntent();
+        long safeTriggerMs = Math.max(System.currentTimeMillis(), triggerAtWallClockMs);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+                && !alarmManager.canScheduleExactAlarms()) {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, safeTriggerMs, pendingIntent);
+        } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, safeTriggerMs, pendingIntent);
+        } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, safeTriggerMs, pendingIntent);
+        } else {
+            alarmManager.set(AlarmManager.RTC_WAKEUP, safeTriggerMs, pendingIntent);
+        }
+    }
+
+    private void cancelRestFinishAlarm() {
+        if (alarmManager == null) {
+            return;
+        }
+        alarmManager.cancel(buildRestFinishedPendingIntent());
+    }
+
+    private PendingIntent buildRestFinishedPendingIntent() {
+        Intent intent = new Intent(appContext, MusicService.class);
+        intent.setAction(ACTION_HEARING_REST_FINISHED);
+        return PendingIntent.getService(
+                appContext,
+                REST_FINISH_REQUEST_CODE,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+    }
+
+    public static void startMusicServiceForRestCompletion(Context context) {
+        startMusicServiceForRestCompletion(context, false);
+    }
+
+    public static void requestPlaybackStateRefresh(Context context) {
+        Context appContext = context.getApplicationContext();
+        Intent intent = new Intent(appContext, MusicService.class);
+        intent.setAction(MusicService.ACTION_REFRESH_PLAYBACK_STATE);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            appContext.startForegroundService(intent);
+        } else {
+            appContext.startService(intent);
+        }
+    }
+
+    public static void startMusicServiceForRestCompletion(Context context, boolean forceContinueAfterRest) {
+        Context appContext = context.getApplicationContext();
+        Intent intent = new Intent(appContext, MusicService.class);
+        intent.setAction(ACTION_HEARING_REST_FINISHED);
+        intent.putExtra(EXTRA_FORCE_CONTINUE_AFTER_REST, forceContinueAfterRest);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            appContext.startForegroundService(intent);
+        } else {
+            appContext.startService(intent);
+        }
+    }
+
+    private void requestRestCompletion() {
+        if (!shouldCompleteRestNow()) {
+            return;
+        }
+        continueAfterRestViaService();
+    }
+
+    private void continueAfterRestViaService() {
+        continueAfterRestViaService(false);
+    }
+
+    private void continueAfterRestViaService(boolean forceContinueAfterRest) {
+        startMusicServiceForRestCompletion(appContext, forceContinueAfterRest);
     }
 
 }
