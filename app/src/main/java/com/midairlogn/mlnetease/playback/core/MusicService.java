@@ -940,6 +940,7 @@ public class MusicService extends Service {
                 if (shouldContinueAfterRest) {
                     continuePlaybackAfterExpiredRest();
                 }
+                updatePlaybackState(musicPlayerManager.isPlaying(), true);
             } else if (ACTION_CANCEL_REST_AND_CONTINUE.equals(action)
                     || ACTION_CANCEL_REST_AND_RESUME_CURRENT.equals(action)
                     || ACTION_CANCEL_REST_AND_NEXT.equals(action)
