@@ -185,6 +185,10 @@ public class HearingProtectionController implements
     }
 
     public boolean cancelRestForUserAction() {
+        if (!restActive && settingsManager.isHearingProtectionRestActive()) {
+            restActive = true;
+            restEndElapsedMs = settingsManager.getHearingProtectionRestEndWallClockMs();
+        }
         if (!restActive) {
             return false;
         }
@@ -409,6 +413,7 @@ public class HearingProtectionController implements
         musicPlayerManager.pause();
         scheduleRestFinished(restDurationMs);
         scheduleRestFinishAlarm(restEndElapsedMs);
+        requestPlaybackStateRefresh(appContext);
         Toast.makeText(appContext, appContext.getString(
                 R.string.hearing_protection_rest_started,
                 settingsManager.getHearingProtectionRestMinutes()
@@ -436,6 +441,7 @@ public class HearingProtectionController implements
         lastPlaybackIntensityMultiplier = 1.0d;
         cancelRestFinishAlarm();
         settingsManager.clearHearingProtectionRestState();
+        requestPlaybackStateRefresh(appContext);
         Toast.makeText(appContext, R.string.hearing_protection_rest_finished, Toast.LENGTH_SHORT).show();
     }
 
@@ -450,6 +456,7 @@ public class HearingProtectionController implements
         cancelRestFinishAlarm();
         settingsManager.clearHearingProtectionRestState();
         clearPauseSession();
+        requestPlaybackStateRefresh(appContext);
         if (notifyUser) {
             Toast.makeText(appContext, R.string.hearing_protection_rest_cancelled, Toast.LENGTH_SHORT).show();
         }
@@ -674,6 +681,17 @@ public class HearingProtectionController implements
 
     public static void startMusicServiceForRestCompletion(Context context) {
         startMusicServiceForRestCompletion(context, false);
+    }
+
+    public static void requestPlaybackStateRefresh(Context context) {
+        Context appContext = context.getApplicationContext();
+        Intent intent = new Intent(appContext, MusicService.class);
+        intent.setAction(MusicService.ACTION_REFRESH_PLAYBACK_STATE);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            appContext.startForegroundService(intent);
+        } else {
+            appContext.startService(intent);
+        }
     }
 
     public static void startMusicServiceForRestCompletion(Context context, boolean forceContinueAfterRest) {
