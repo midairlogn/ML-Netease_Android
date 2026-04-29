@@ -2,7 +2,6 @@ package com.midairlogn.mlnetease.hearing;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
@@ -655,7 +654,9 @@ public class HearingProtectionController implements
         PendingIntent pendingIntent = buildRestFinishedPendingIntent();
         long safeTriggerMs = Math.max(System.currentTimeMillis(), triggerAtWallClockMs);
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, safeTriggerMs, pendingIntent);
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, safeTriggerMs, pendingIntent);
+        } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, safeTriggerMs, pendingIntent);
         } else {
             alarmManager.set(AlarmManager.RTC_WAKEUP, safeTriggerMs, pendingIntent);
         }
@@ -669,9 +670,9 @@ public class HearingProtectionController implements
     }
 
     private PendingIntent buildRestFinishedPendingIntent() {
-        Intent intent = new Intent(ACTION_HEARING_REST_FINISHED);
-        intent.setComponent(new ComponentName(appContext, HearingProtectionRestReceiver.class));
-        return PendingIntent.getBroadcast(
+        Intent intent = new Intent(appContext, MusicService.class);
+        intent.setAction(ACTION_HEARING_REST_FINISHED);
+        return PendingIntent.getService(
                 appContext,
                 REST_FINISH_REQUEST_CODE,
                 intent,

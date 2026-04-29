@@ -68,6 +68,7 @@ public class MusicService extends Service {
     private boolean hasAudioFocus = false;
     private boolean pausedByFocusLoss = false;
     private boolean resumeOnFocusGain = false;
+    private boolean pendingAutoContinueAfterRest = false;
     private String lastSongId = "";
     private String lastPicUrl = "";
     private Bitmap lastBitmap = null;
@@ -158,7 +159,9 @@ public class MusicService extends Service {
                 break;
             case AudioManager.AUDIOFOCUS_GAIN:
                 hasAudioFocus = true;
-                if (pausedByFocusLoss && resumeOnFocusGain && musicPlayerManager != null && !musicPlayerManager.isPlaying()) {
+                if (pendingAutoContinueAfterRest) {
+                    continuePlaybackAfterExpiredRest();
+                } else if (pausedByFocusLoss && resumeOnFocusGain && musicPlayerManager != null && !musicPlayerManager.isPlaying()) {
                     musicPlayerManager.resume();
                 }
                 pausedByFocusLoss = false;
@@ -341,6 +344,25 @@ public class MusicService extends Service {
             audioManager.abandonAudioFocus(audioFocusChangeListener);
         }
         hasAudioFocus = false;
+    }
+
+    private boolean continuePlaybackAfterExpiredRest() {
+        pendingAutoContinueAfterRest = false;
+        pausedByFocusLoss = false;
+        resumeOnFocusGain = false;
+        if (!requestAudioFocus()) {
+            pendingAutoContinueAfterRest = true;
+            return false;
+        }
+        int previousIndex = musicPlayerManager.getCurrentIndex();
+        musicPlayerManager.continueAfterHearingProtectionRest();
+        boolean playbackAdvanced = musicPlayerManager.isPlaying()
+                || musicPlayerManager.getCurrentIndex() != previousIndex;
+        if (!playbackAdvanced) {
+            pendingAutoContinueAfterRest = true;
+            return false;
+        }
+        return true;
     }
 
     private boolean handleRestCancellationAction(String action) {
@@ -897,6 +919,9 @@ public class MusicService extends Service {
                 // updatePlaybackState handles this check automatically via lastNotifiedFloatingState.
                 updatePlaybackState(musicPlayerManager.isPlaying());
             } else if (ACTION_REFRESH_PLAYBACK_STATE.equals(action)) {
+                if (pendingAutoContinueAfterRest && hearingProtectionController != null && !isHearingProtectionRestActive()) {
+                    continuePlaybackAfterExpiredRest();
+                }
                 updatePlaybackState(musicPlayerManager.isPlaying(), true);
             } else if (HearingProtectionController.ACTION_HEARING_REST_FINISHED.equals(action)) {
                 boolean forceContinueAfterRest = intent.getBooleanExtra(
@@ -909,8 +934,8 @@ public class MusicService extends Service {
                     hearingProtectionController.completeRestFromService();
                 }
                 boolean shouldContinueAfterRest = forceContinueAfterRest || restExpired;
-                if (shouldContinueAfterRest && requestAudioFocus()) {
-                    musicPlayerManager.continueAfterHearingProtectionRest();
+                if (shouldContinueAfterRest) {
+                    continuePlaybackAfterExpiredRest();
                 }
             } else if (ACTION_CANCEL_REST_AND_CONTINUE.equals(action)
                     || ACTION_CANCEL_REST_AND_RESUME_CURRENT.equals(action)
