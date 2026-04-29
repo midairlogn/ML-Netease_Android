@@ -155,10 +155,20 @@ public class HearingProtectionController implements
             }
         }
 
-        if (!restActive && musicPlayerManager.isPlaying() && playbackSessionStartElapsedMs < 0L) {
-            playbackSessionStartElapsedMs = SystemClock.elapsedRealtime();
-            lastPlaybackIntensityMultiplier = getPlaybackIntensityMultiplier();
-            persistActiveSession();
+        if (!restActive && musicPlayerManager.isPlaying()) {
+            if (playbackSessionStartElapsedMs < 0L) {
+                playbackSessionStartElapsedMs = SystemClock.elapsedRealtime();
+                lastPlaybackIntensityMultiplier = getPlaybackIntensityMultiplier();
+                persistActiveSession();
+            } else {
+                double newMultiplier = getPlaybackIntensityMultiplier();
+                if (newMultiplier != lastPlaybackIntensityMultiplier) {
+                    foldCurrentPlaybackIntoDose();
+                    playbackSessionStartElapsedMs = SystemClock.elapsedRealtime();
+                    lastPlaybackIntensityMultiplier = newMultiplier;
+                    persistActiveSession();
+                }
+            }
         }
 
         if (!restPendingAfterCurrentSong && accumulatedDose >= getDoseThreshold()) {
