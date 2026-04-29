@@ -299,8 +299,15 @@ public class HearingProtectionController implements
             cancelRest(true);
             accumulatedDose = 0d;
             persistAccumulatedDose();
-            playbackSessionStartElapsedMs = -1L;
-            clearActiveSession();
+            if (MusicPlayerManager.PLAYBACK_ACTION_RESUME.equals(action) && musicPlayerManager.isPlaying()) {
+                playbackSessionStartElapsedMs = SystemClock.elapsedRealtime();
+                lastPlaybackIntensityMultiplier = getPlaybackIntensityMultiplier();
+                clearPauseSession();
+                persistActiveSession();
+            } else {
+                playbackSessionStartElapsedMs = -1L;
+                clearActiveSession();
+            }
             pauseStartedElapsedMs = -1L;
             if (MusicPlayerManager.PLAYBACK_ACTION_RESUME.equals(action)
                     || MusicPlayerManager.PLAYBACK_ACTION_PLAY.equals(action)) {
