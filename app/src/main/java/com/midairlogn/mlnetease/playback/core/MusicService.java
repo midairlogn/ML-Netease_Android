@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.view.KeyEvent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioAttributes;
@@ -354,11 +355,11 @@ public class MusicService extends Service {
     }
 
     private boolean performRestCancellationAction(String action) {
+        if (!requestAudioFocus()) {
+            return isHearingProtectionRestActive();
+        }
         if (hearingProtectionController == null || !hearingProtectionController.cancelRestForUserAction()) {
             return false;
-        }
-        if (!requestAudioFocus()) {
-            return true;
         }
         pausedByFocusLoss = false;
         resumeOnFocusGain = false;
@@ -380,6 +381,39 @@ public class MusicService extends Service {
             return true;
         }
         return false;
+    }
+
+    private boolean handleMediaButtonIntent(Intent intent) {
+        if (intent == null || !Intent.ACTION_MEDIA_BUTTON.equals(intent.getAction())) {
+            return false;
+        }
+        KeyEvent keyEvent = intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
+        if (keyEvent == null || keyEvent.getAction() != KeyEvent.ACTION_DOWN) {
+            return true;
+        }
+        switch (keyEvent.getKeyCode()) {
+            case KeyEvent.KEYCODE_MEDIA_PLAY:
+                handleNotificationPlay();
+                return true;
+            case KeyEvent.KEYCODE_MEDIA_PAUSE:
+                handleNotificationPause();
+                return true;
+            case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+                if (musicPlayerManager.isPlaying()) {
+                    handleNotificationPause();
+                } else {
+                    handleNotificationPlay();
+                }
+                return true;
+            case KeyEvent.KEYCODE_MEDIA_NEXT:
+                handleNotificationNext();
+                return true;
+            case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
+                handleNotificationPrevious();
+                return true;
+            default:
+                return false;
+        }
     }
 
     private void handleNotificationPlay() {
@@ -827,6 +861,10 @@ public class MusicService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (handleMediaButtonIntent(intent)) {
+            updatePlaybackState(musicPlayerManager.isPlaying(), true);
+            return START_STICKY;
+        }
         if (intent != null && intent.getAction() != null) {
             String action = intent.getAction();
             if ("ACTION_TOGGLE_MODE".equals(action)) {
