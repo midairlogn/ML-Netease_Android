@@ -51,6 +51,7 @@ public class MusicService extends Service {
     public static final String ACTION_CANCEL_REST_AND_CONTINUE = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_CONTINUE";
     public static final String ACTION_CANCEL_REST_AND_NEXT = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_NEXT";
     public static final String ACTION_CANCEL_REST_AND_PREVIOUS = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_PREVIOUS";
+    public static final String ACTION_CANCEL_REST_AND_RESUME_CURRENT = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_RESUME_CURRENT";
     private MediaSessionCompat mediaSession;
     private MusicPlayerManager musicPlayerManager;
     private NotificationManager notificationManager;
@@ -354,6 +355,11 @@ public class MusicService extends Service {
         resumeOnFocusGain = false;
         if (ACTION_CANCEL_REST_AND_CONTINUE.equals(action)) {
             musicPlayerManager.continueAfterHearingProtectionRest();
+            return true;
+        }
+        if (ACTION_CANCEL_REST_AND_RESUME_CURRENT.equals(action)) {
+            musicPlayerManager.markPausedForResume();
+            musicPlayerManager.resume();
             return true;
         }
         if (ACTION_CANCEL_REST_AND_NEXT.equals(action)) {
@@ -806,6 +812,7 @@ public class MusicService extends Service {
                     musicPlayerManager.continueAfterHearingProtectionRest();
                 }
             } else if (ACTION_CANCEL_REST_AND_CONTINUE.equals(action)
+                    || ACTION_CANCEL_REST_AND_RESUME_CURRENT.equals(action)
                     || ACTION_CANCEL_REST_AND_NEXT.equals(action)
                     || ACTION_CANCEL_REST_AND_PREVIOUS.equals(action)) {
                 performRestCancellationAction(action);

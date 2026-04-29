@@ -141,6 +141,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
             public void onStopTrackingTouch(SeekBar seekBar) {
                 isTracking = false;
                 musicPlayerManager.seekTo(seekBar.getProgress());
+                HearingProtectionTransportController.handleResume(PlayerActivity.this);
             }
         });
     }

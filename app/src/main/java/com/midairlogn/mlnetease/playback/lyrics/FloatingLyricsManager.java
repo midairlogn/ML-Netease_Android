@@ -194,9 +194,6 @@ public class FloatingLyricsManager {
         btnPlay.setOnClickListener(v -> {
             resetAutoCollapseTimer();
             HearingProtectionTransportController.handlePlayPause(context);
-            btnPlay.setImageResource(musicPlayerManager.isPlaying()
-                    ? android.R.drawable.ic_media_pause
-                    : android.R.drawable.ic_media_play);
         });
         btnNext.setOnClickListener(v -> {
             resetAutoCollapseTimer();

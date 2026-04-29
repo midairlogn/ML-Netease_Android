@@ -689,6 +689,18 @@ public class MusicPlayerManager {
         updateProgressDispatcherState();
     }
 
+    public void markPausedForResume() {
+        if (playlist.isEmpty() || currentIndex < 0 || currentIndex >= playlist.size()) {
+            return;
+        }
+        if (isPaused && !mediaPlayer.isPlaying()) {
+            return;
+        }
+        isPaused = true;
+        notifyPlaybackStateChanged(false);
+        updateProgressDispatcherState();
+    }
+
     public void resume() {
         notifyPlaybackAction(true, PLAYBACK_ACTION_RESUME);
         if (isPaused && !mediaPlayer.isPlaying()) {
