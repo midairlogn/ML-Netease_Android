@@ -21,6 +21,7 @@ import android.widget.TextView;
 import android.widget.RelativeLayout;
 
 import com.midairlogn.mlnetease.R;
+import com.midairlogn.mlnetease.hearing.HearingProtectionTransportController;
 import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
 import com.midairlogn.mlnetease.playback.core.MusicService;
 import com.midairlogn.mlnetease.playback.ui.PlayerActivity;
@@ -188,21 +189,18 @@ public class FloatingLyricsManager {
         });
         btnPrev.setOnClickListener(v -> {
             resetAutoCollapseTimer();
-            musicPlayerManager.playPrevious();
+            HearingProtectionTransportController.handlePrevious(context);
         });
         btnPlay.setOnClickListener(v -> {
             resetAutoCollapseTimer();
-            if (musicPlayerManager.isPlaying()) {
-                musicPlayerManager.pause();
-                btnPlay.setImageResource(android.R.drawable.ic_media_play);
-            } else {
-                musicPlayerManager.resume();
-                btnPlay.setImageResource(android.R.drawable.ic_media_pause);
-            }
+            HearingProtectionTransportController.handlePlayPause(context);
+            btnPlay.setImageResource(musicPlayerManager.isPlaying()
+                    ? android.R.drawable.ic_media_pause
+                    : android.R.drawable.ic_media_play);
         });
         btnNext.setOnClickListener(v -> {
             resetAutoCollapseTimer();
-            musicPlayerManager.playNext();
+            HearingProtectionTransportController.handleNext(context);
         });
         btnSettings.setOnClickListener(v -> {
             resetAutoCollapseTimer();

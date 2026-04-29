@@ -184,6 +184,21 @@ public class HearingProtectionController implements
         completeRestAndResume();
     }
 
+    public boolean cancelRestForUserAction() {
+        if (!restActive) {
+            return false;
+        }
+        cancelRest(true);
+        accumulatedDose = 0d;
+        persistAccumulatedDose();
+        playbackSessionStartElapsedMs = -1L;
+        pauseStartedElapsedMs = -1L;
+        lastPlaybackIntensityMultiplier = 1.0d;
+        clearActiveSession();
+        clearPauseSession();
+        return true;
+    }
+
     public static HearingProtectionSnapshot getSnapshot(Context context) {
         Context appContext = context.getApplicationContext();
         SettingsManager settingsManager = new SettingsManager(appContext);
@@ -296,9 +311,7 @@ public class HearingProtectionController implements
                 || MusicPlayerManager.PLAYBACK_ACTION_NEXT.equals(action)
                 || MusicPlayerManager.PLAYBACK_ACTION_PREVIOUS.equals(action);
         if (restActive && isManualStartAction) {
-            cancelRest(true);
-            accumulatedDose = 0d;
-            persistAccumulatedDose();
+            boolean cancelledRest = cancelRestForUserAction();
             if (MusicPlayerManager.PLAYBACK_ACTION_RESUME.equals(action) && musicPlayerManager.isPlaying()) {
                 playbackSessionStartElapsedMs = SystemClock.elapsedRealtime();
                 lastPlaybackIntensityMultiplier = getPlaybackIntensityMultiplier();
@@ -309,8 +322,9 @@ public class HearingProtectionController implements
                 clearActiveSession();
             }
             pauseStartedElapsedMs = -1L;
-            if (MusicPlayerManager.PLAYBACK_ACTION_RESUME.equals(action)
-                    || MusicPlayerManager.PLAYBACK_ACTION_PLAY.equals(action)) {
+            if (cancelledRest
+                    && MusicPlayerManager.PLAYBACK_ACTION_RESUME.equals(action)
+                    && !musicPlayerManager.isPlaying()) {
                 handler.post(this::continueAfterRestViaService);
             }
             return;

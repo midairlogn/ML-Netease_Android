@@ -47,7 +47,10 @@ public class MusicService extends Service {
     private static final String TAG = "MusicService";
     private static final String CHANNEL_ID = "music_channel";
     private static final int NOTIFICATION_ID = 1;
-    private static final String ACTION_UPDATE_SETTINGS = "ACTION_UPDATE_SETTINGS";
+    public static final String ACTION_UPDATE_SETTINGS = "ACTION_UPDATE_SETTINGS";
+    public static final String ACTION_CANCEL_REST_AND_CONTINUE = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_CONTINUE";
+    public static final String ACTION_CANCEL_REST_AND_NEXT = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_NEXT";
+    public static final String ACTION_CANCEL_REST_AND_PREVIOUS = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_PREVIOUS";
     private MediaSessionCompat mediaSession;
     private MusicPlayerManager musicPlayerManager;
     private NotificationManager notificationManager;
@@ -242,6 +245,9 @@ public class MusicService extends Service {
 
             @Override
             public void onPlay() {
+                if (handleRestCancellationAction(ACTION_CANCEL_REST_AND_CONTINUE)) {
+                    return;
+                }
                 if (!requestAudioFocus()) {
                     return;
                 }
@@ -260,6 +266,9 @@ public class MusicService extends Service {
 
             @Override
             public void onSkipToNext() {
+                if (handleRestCancellationAction(ACTION_CANCEL_REST_AND_NEXT)) {
+                    return;
+                }
                 if (!requestAudioFocus()) {
                     return;
                 }
@@ -268,6 +277,9 @@ public class MusicService extends Service {
 
             @Override
             public void onSkipToPrevious() {
+                if (handleRestCancellationAction(ACTION_CANCEL_REST_AND_PREVIOUS)) {
+                    return;
+                }
                 if (!requestAudioFocus()) {
                     return;
                 }
@@ -323,6 +335,36 @@ public class MusicService extends Service {
             audioManager.abandonAudioFocus(audioFocusChangeListener);
         }
         hasAudioFocus = false;
+    }
+
+    private boolean handleRestCancellationAction(String action) {
+        return hearingProtectionController != null
+                && hearingProtectionController.isRestActive()
+                && performRestCancellationAction(action);
+    }
+
+    private boolean performRestCancellationAction(String action) {
+        if (hearingProtectionController == null || !hearingProtectionController.cancelRestForUserAction()) {
+            return false;
+        }
+        if (!requestAudioFocus()) {
+            return true;
+        }
+        pausedByFocusLoss = false;
+        resumeOnFocusGain = false;
+        if (ACTION_CANCEL_REST_AND_CONTINUE.equals(action)) {
+            musicPlayerManager.continueAfterHearingProtectionRest();
+            return true;
+        }
+        if (ACTION_CANCEL_REST_AND_NEXT.equals(action)) {
+            musicPlayerManager.playNext();
+            return true;
+        }
+        if (ACTION_CANCEL_REST_AND_PREVIOUS.equals(action)) {
+            musicPlayerManager.playPrevious();
+            return true;
+        }
+        return false;
     }
 
     private void updateMetadata(Song song) {
@@ -763,6 +805,10 @@ public class MusicService extends Service {
                 if (shouldContinueAfterRest && requestAudioFocus()) {
                     musicPlayerManager.continueAfterHearingProtectionRest();
                 }
+            } else if (ACTION_CANCEL_REST_AND_CONTINUE.equals(action)
+                    || ACTION_CANCEL_REST_AND_NEXT.equals(action)
+                    || ACTION_CANCEL_REST_AND_PREVIOUS.equals(action)) {
+                performRestCancellationAction(action);
             }
         }
         MediaButtonReceiver.handleIntent(mediaSession, intent);
