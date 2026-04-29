@@ -653,7 +653,10 @@ public class HearingProtectionController implements
         }
         PendingIntent pendingIntent = buildRestFinishedPendingIntent();
         long safeTriggerMs = Math.max(System.currentTimeMillis(), triggerAtWallClockMs);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+                && !alarmManager.canScheduleExactAlarms()) {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, safeTriggerMs, pendingIntent);
+        } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, safeTriggerMs, pendingIntent);
         } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
             alarmManager.setExact(AlarmManager.RTC_WAKEUP, safeTriggerMs, pendingIntent);

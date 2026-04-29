@@ -42,6 +42,7 @@
     <string name="hearing_protection_duration_minutes_decimal">%1$.1f 分钟</string>
     <string name="hearing_protection_rest_cancelled">已取消听力保护休息计时。</string>
     <string name="hearing_protection_rest_finished">休息结束，正在恢复播放。</string>
+    <string name="hint_grant_exact_alarm">请允许精确闹钟权限，以便听力保护按时恢复播放。</string>
     <string name="title_lyric_highlight_color">悬浮窗歌词颜色</string>
     <string name="title_font_size">悬浮窗歌词字体</string>
     <string name="preview">预览</string>
