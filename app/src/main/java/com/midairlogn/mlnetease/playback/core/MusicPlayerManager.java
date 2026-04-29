@@ -727,6 +727,13 @@ public class MusicPlayerManager {
         play(targetIndex);
     }
 
+    public boolean canContinueAfterHearingProtectionRest() {
+        if (playlist.isEmpty()) {
+            return false;
+        }
+        return resolveNextIndexForHearingProtection() >= 0;
+    }
+
     public void togglePlayPause() {
         if (mediaPlayer.isPlaying()) {
             pause();

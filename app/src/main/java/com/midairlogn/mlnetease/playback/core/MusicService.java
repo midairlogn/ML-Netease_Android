@@ -350,6 +350,9 @@ public class MusicService extends Service {
         pendingAutoContinueAfterRest = false;
         pausedByFocusLoss = false;
         resumeOnFocusGain = false;
+        if (!musicPlayerManager.canContinueAfterHearingProtectionRest()) {
+            return true;
+        }
         if (!requestAudioFocus()) {
             pendingAutoContinueAfterRest = true;
             return false;
