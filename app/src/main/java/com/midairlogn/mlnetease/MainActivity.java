@@ -13,6 +13,8 @@ import android.net.Uri;
 import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.Manifest;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -79,6 +81,22 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     private boolean pendingExternalAudioIntent = false;
     private AlertDialog activeDialog;
     private boolean pendingAppShortcutIntent = false;
+
+    private final ActivityResultLauncher<String[]> permissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
+                boolean allGranted = true;
+                for (Boolean granted : result.values()) {
+                    if (!granted) {
+                        allGranted = false;
+                        break;
+                    }
+                }
+                if (!allGranted) {
+                    showPermissionDeniedDialog();
+                } else {
+                    checkOverlayPermission();
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -309,9 +327,41 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         }
 
         if (!permissionsNeeded.isEmpty()) {
-            ActivityCompat.requestPermissions(this, permissionsNeeded.toArray(new String[0]), REQUEST_CODE_PERMISSIONS);
+            permissionLauncher.launch(permissionsNeeded.toArray(new String[0]));
         } else {
             checkOverlayPermission();
+        }
+    }
+
+    private void showPermissionDeniedDialog() {
+        boolean shouldShowRationale = false;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            shouldShowRationale = ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.POST_NOTIFICATIONS)
+                    || ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_MEDIA_AUDIO);
+        } else {
+            shouldShowRationale = ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                    || ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        }
+
+        if (shouldShowRationale) {
+            // User denied but didn't check "Don't ask again", we can show a simple toast or do nothing
+            Toast.makeText(this, R.string.hint_partial_permission, Toast.LENGTH_LONG).show();
+            checkOverlayPermission();
+        } else {
+            // User denied and checked "Don't ask again", need to go to settings
+            AlertDialog dialog = new AlertDialog.Builder(this)
+                    .setTitle(R.string.permissions_required)
+                    .setMessage(R.string.hint_partial_permission)
+                    .setPositiveButton(R.string.go_to_settings, (dialogInterface, which) -> {
+                        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.parse("package:" + getPackageName()));
+                        startActivity(intent);
+                        startMusicService();
+                    })
+                    .setNegativeButton(R.string.cancel, (dialogInterface, which) ->
+                            new android.os.Handler(getMainLooper()).post(this::checkOverlayPermission))
+                    .create();
+            showManagedDialog(dialog);
         }
     }
 
@@ -350,32 +400,6 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_CODE_PERMISSIONS) {
-            boolean allGranted = true;
-            for (int result : grantResults) {
-                if (result != PackageManager.PERMISSION_GRANTED) {
-                    allGranted = false;
-                    break;
-                }
-            }
-            if (!allGranted) {
-                AlertDialog dialog = new AlertDialog.Builder(this)
-                        .setTitle(R.string.permissions_required)
-                        .setMessage(R.string.hint_partial_permission)
-                        .setPositiveButton(R.string.go_to_settings, (dialogInterface, which) -> {
-                            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                    Uri.parse("package:" + getPackageName()));
-                            startActivity(intent);
-                            startMusicService();
-                        })
-                        .setNegativeButton(R.string.cancel, (dialogInterface, which) ->
-                                new android.os.Handler(getMainLooper()).post(this::checkOverlayPermission))
-                        .create();
-                showManagedDialog(dialog);
-            } else {
-                checkOverlayPermission();
-            }
-        }
     }
 
     @Override

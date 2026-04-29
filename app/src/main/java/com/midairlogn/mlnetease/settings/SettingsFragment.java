@@ -389,10 +389,17 @@ public class SettingsFragment extends Fragment {
         switchFloatingLyrics.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
                 if (!Settings.canDrawOverlays(requireContext())) {
-                    Toast.makeText(requireContext(), R.string.hint_grant_overlay, Toast.LENGTH_LONG).show();
-                    Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:" + requireContext().getPackageName()));
-                    startActivity(intent);
+                    AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                            .setTitle(R.string.permission_required)
+                            .setMessage(R.string.hint_overlay_permission)
+                            .setPositiveButton(R.string.go_to_settings, (dialogInterface, which) -> {
+                                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                        Uri.parse("package:" + requireContext().getPackageName()));
+                                startActivity(intent);
+                            })
+                            .setNegativeButton(R.string.cancel, null)
+                            .create();
+                    showManagedDialog(dialog);
                     buttonView.setChecked(false);
                     return;
                 }
@@ -684,11 +691,9 @@ public class SettingsFragment extends Fragment {
         if (alarmManager == null || alarmManager.canScheduleExactAlarms()) {
             return true;
         }
-        Toast.makeText(requireContext(), R.string.hint_grant_exact_alarm, Toast.LENGTH_LONG).show();
-        Intent intent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
-                Uri.parse("package:" + requireContext().getPackageName()));
-        startActivity(intent);
-        return false;
+        // Instead of forcing the user, we just return true here to allow enabling the feature.
+        // The HearingProtectionController already has a fallback to inexact alarms.
+        return true;
     }
 
     @Override
@@ -804,10 +809,17 @@ public class SettingsFragment extends Fragment {
                 switchFloatingLyrics.setOnCheckedChangeListener((buttonView, isChecked) -> {
                     if (isChecked) {
                         if (!Settings.canDrawOverlays(requireContext())) {
-                            Toast.makeText(requireContext(), R.string.hint_grant_overlay, Toast.LENGTH_LONG).show();
-                            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                    Uri.parse("package:" + requireContext().getPackageName()));
-                            startActivity(intent);
+                            AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                                    .setTitle(R.string.permission_required)
+                                    .setMessage(R.string.hint_overlay_permission)
+                                    .setPositiveButton(R.string.go_to_settings, (dialogInterface, which) -> {
+                                        Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                                Uri.parse("package:" + requireContext().getPackageName()));
+                                        startActivity(intent);
+                                    })
+                                    .setNegativeButton(R.string.cancel, null)
+                                    .create();
+                            showManagedDialog(dialog);
                             buttonView.setChecked(false);
                             return;
                         }
