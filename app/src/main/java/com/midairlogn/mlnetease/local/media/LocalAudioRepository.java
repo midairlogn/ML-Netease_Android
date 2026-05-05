@@ -37,7 +37,9 @@ public final class LocalAudioRepository {
         };
         String selection = MediaStore.Audio.Media.IS_MUSIC + " != 0 AND " + MediaStore.Audio.Media.DURATION + " >= ?";
         String[] selectionArgs = new String[]{String.valueOf(15_000)};
-        String orderBy = MediaStore.Audio.Media.TITLE + " COLLATE NOCASE ASC";
+        String orderBy = MediaStore.Audio.Media.DATE_MODIFIED + " DESC, "
+                + MediaStore.Audio.Media.DATE_ADDED + " DESC, "
+                + MediaStore.Audio.Media._ID + " DESC";
 
         try (Cursor cursor = context.getContentResolver().query(collection, projection, selection, selectionArgs, orderBy)) {
             if (cursor == null) {
