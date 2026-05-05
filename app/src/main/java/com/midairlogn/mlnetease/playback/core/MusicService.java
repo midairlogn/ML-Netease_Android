@@ -48,6 +48,8 @@ public class MusicService extends Service {
     private static final String TAG = "MusicService";
     private static final String CHANNEL_ID = "music_channel";
     private static final int NOTIFICATION_ID = 1;
+    private static final long POST_REST_PLAYBACK_START_TIMEOUT_MS = 4_000L;
+    private static final int MAX_POST_REST_PLAYBACK_RETRIES = 2;
     public static final String ACTION_UPDATE_SETTINGS = "ACTION_UPDATE_SETTINGS";
     public static final String ACTION_CANCEL_REST_AND_CONTINUE = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_CONTINUE";
     public static final String ACTION_CANCEL_REST_AND_NEXT = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_NEXT";
@@ -69,6 +71,8 @@ public class MusicService extends Service {
     private boolean pausedByFocusLoss = false;
     private boolean resumeOnFocusGain = false;
     private boolean pendingAutoContinueAfterRest = false;
+    private boolean awaitingPostRestPlaybackStart = false;
+    private int postRestPlaybackRetryCount = 0;
     private String lastSongId = "";
     private String lastPicUrl = "";
     private Bitmap lastBitmap = null;
@@ -85,6 +89,15 @@ public class MusicService extends Service {
     private boolean lastNotifiedFloatingState = false;
 
     private android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable postRestPlaybackStartTimeoutRunnable = () -> {
+        if (!awaitingPostRestPlaybackStart || musicPlayerManager.isPlaying()) {
+            return;
+        }
+        awaitingPostRestPlaybackStart = false;
+        if (!pendingAutoContinueAfterRest && canAttemptPostRestRetry()) {
+            continuePlaybackAfterExpiredRest();
+        }
+    };
 
     private final MainApplication.AppVisibilityListener appVisibilityListener = isForeground -> {
         if (floatingLyricsManager != null) {
@@ -119,6 +132,7 @@ public class MusicService extends Service {
 
     private final MusicPlayerManager.OnPlaybackStateChangedListener playbackStateChangedListener = isPlaying -> {
         if (isPlaying) {
+            clearPostRestPlaybackWait(true);
             if (!hasAudioFocus && !requestAudioFocus()) {
                 musicPlayerManager.pause();
                 return;
@@ -346,26 +360,51 @@ public class MusicService extends Service {
         hasAudioFocus = false;
     }
 
+    private void clearPostRestPlaybackWait(boolean resetRetryCount) {
+        awaitingPostRestPlaybackStart = false;
+        if (resetRetryCount) {
+            postRestPlaybackRetryCount = 0;
+        }
+        handler.removeCallbacks(postRestPlaybackStartTimeoutRunnable);
+    }
+
+    private void awaitPostRestPlaybackStart() {
+        awaitingPostRestPlaybackStart = true;
+        handler.removeCallbacks(postRestPlaybackStartTimeoutRunnable);
+        handler.postDelayed(postRestPlaybackStartTimeoutRunnable, POST_REST_PLAYBACK_START_TIMEOUT_MS);
+    }
+
+    private boolean canAttemptPostRestRetry() {
+        return !isHearingProtectionRestActive()
+                && musicPlayerManager.canContinueAfterHearingProtectionRest()
+                && postRestPlaybackRetryCount < MAX_POST_REST_PLAYBACK_RETRIES;
+    }
+
     private boolean continuePlaybackAfterExpiredRest() {
         pendingAutoContinueAfterRest = false;
         pausedByFocusLoss = false;
         resumeOnFocusGain = false;
         if (!musicPlayerManager.canContinueAfterHearingProtectionRest()) {
+            clearPostRestPlaybackWait(true);
             return true;
         }
         if (!requestAudioFocus()) {
+            clearPostRestPlaybackWait(false);
             pendingAutoContinueAfterRest = true;
             return false;
         }
-        int previousIndex = musicPlayerManager.getCurrentIndex();
+        if (postRestPlaybackRetryCount >= MAX_POST_REST_PLAYBACK_RETRIES) {
+            clearPostRestPlaybackWait(true);
+            return false;
+        }
+        postRestPlaybackRetryCount++;
         musicPlayerManager.continueAfterHearingProtectionRest();
-        boolean playbackAdvanced = musicPlayerManager.isPlaying()
-                || musicPlayerManager.getCurrentIndex() != previousIndex;
-        if (!playbackAdvanced) {
-            pendingAutoContinueAfterRest = true;
-            return false;
+        if (musicPlayerManager.isPlaying()) {
+            clearPostRestPlaybackWait(true);
+            return true;
         }
-        return true;
+        awaitPostRestPlaybackStart();
+        return false;
     }
 
     private boolean handleRestCancellationAction(String action) {
@@ -380,6 +419,8 @@ public class MusicService extends Service {
     }
 
     private boolean performRestCancellationAction(String action) {
+        clearPostRestPlaybackWait(true);
+        pendingAutoContinueAfterRest = false;
         if (!requestAudioFocus()) {
             return isHearingProtectionRestActive();
         }
@@ -922,7 +963,9 @@ public class MusicService extends Service {
                 // updatePlaybackState handles this check automatically via lastNotifiedFloatingState.
                 updatePlaybackState(musicPlayerManager.isPlaying());
             } else if (ACTION_REFRESH_PLAYBACK_STATE.equals(action)) {
-                if (pendingAutoContinueAfterRest && hearingProtectionController != null && !isHearingProtectionRestActive()) {
+                if ((pendingAutoContinueAfterRest || (!awaitingPostRestPlaybackStart && canAttemptPostRestRetry()))
+                        && hearingProtectionController != null
+                        && !isHearingProtectionRestActive()) {
                     continuePlaybackAfterExpiredRest();
                 }
                 updatePlaybackState(musicPlayerManager.isPlaying(), true);
@@ -941,6 +984,7 @@ public class MusicService extends Service {
                     continuePlaybackAfterExpiredRest();
                 }
                 updatePlaybackState(musicPlayerManager.isPlaying(), true);
+                return START_STICKY;
             } else if (ACTION_CANCEL_REST_AND_CONTINUE.equals(action)
                     || ACTION_CANCEL_REST_AND_RESUME_CURRENT.equals(action)
                     || ACTION_CANCEL_REST_AND_NEXT.equals(action)
@@ -982,6 +1026,7 @@ public class MusicService extends Service {
         }
         pausedByFocusLoss = false;
         resumeOnFocusGain = false;
+        clearPostRestPlaybackWait(true);
         abandonAudioFocus();
         musicPlayerManager.removeOnSongChangedListener(songChangedListener);
         musicPlayerManager.removeOnFullInfoAvailableListener(fullInfoAvailableListener);
