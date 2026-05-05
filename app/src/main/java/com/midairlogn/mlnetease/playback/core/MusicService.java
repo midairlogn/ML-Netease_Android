@@ -94,10 +94,7 @@ public class MusicService extends Service {
             return;
         }
         awaitingPostRestPlaybackStart = false;
-        if (!pendingAutoContinueAfterRest
-                && !isHearingProtectionRestActive()
-                && musicPlayerManager.canContinueAfterHearingProtectionRest()
-                && postRestPlaybackRetryCount < MAX_POST_REST_PLAYBACK_RETRIES) {
+        if (!pendingAutoContinueAfterRest && canAttemptPostRestRetry()) {
             continuePlaybackAfterExpiredRest();
         }
     };
@@ -377,6 +374,12 @@ public class MusicService extends Service {
         handler.postDelayed(postRestPlaybackStartTimeoutRunnable, POST_REST_PLAYBACK_START_TIMEOUT_MS);
     }
 
+    private boolean canAttemptPostRestRetry() {
+        return !isHearingProtectionRestActive()
+                && musicPlayerManager.canContinueAfterHearingProtectionRest()
+                && postRestPlaybackRetryCount < MAX_POST_REST_PLAYBACK_RETRIES;
+    }
+
     private boolean continuePlaybackAfterExpiredRest() {
         pendingAutoContinueAfterRest = false;
         pausedByFocusLoss = false;
@@ -388,6 +391,10 @@ public class MusicService extends Service {
         if (!requestAudioFocus()) {
             clearPostRestPlaybackWait(false);
             pendingAutoContinueAfterRest = true;
+            return false;
+        }
+        if (postRestPlaybackRetryCount >= MAX_POST_REST_PLAYBACK_RETRIES) {
+            clearPostRestPlaybackWait(true);
             return false;
         }
         postRestPlaybackRetryCount++;
@@ -412,6 +419,8 @@ public class MusicService extends Service {
     }
 
     private boolean performRestCancellationAction(String action) {
+        clearPostRestPlaybackWait(true);
+        pendingAutoContinueAfterRest = false;
         if (!requestAudioFocus()) {
             return isHearingProtectionRestActive();
         }
@@ -954,7 +963,9 @@ public class MusicService extends Service {
                 // updatePlaybackState handles this check automatically via lastNotifiedFloatingState.
                 updatePlaybackState(musicPlayerManager.isPlaying());
             } else if (ACTION_REFRESH_PLAYBACK_STATE.equals(action)) {
-                if (pendingAutoContinueAfterRest && hearingProtectionController != null && !isHearingProtectionRestActive()) {
+                if ((pendingAutoContinueAfterRest || (!awaitingPostRestPlaybackStart && canAttemptPostRestRetry()))
+                        && hearingProtectionController != null
+                        && !isHearingProtectionRestActive()) {
                     continuePlaybackAfterExpiredRest();
                 }
                 updatePlaybackState(musicPlayerManager.isPlaying(), true);
