@@ -1,6 +1,13 @@
 package com.midairlogn.mlnetease.home.shortcut;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public final class HomeShortcutIdParser {
+    private static final Pattern STANDALONE_ID_PATTERN = Pattern.compile("^(\\d+)$");
+    private static final Pattern RESOURCE_PATH_ID_PATTERN = Pattern.compile("(?:^|[^\\w])(?:album|playlist|song)/(\\d+)(?:/|\\b)");
+    private static final Pattern RESOURCE_QUERY_ID_PATTERN = Pattern.compile("(?:^|[^\\w])(?:album|playlist|song)\\?id=(\\d+)(?:[&#/?]|$)");
+
     private HomeShortcutIdParser() {
     }
 
@@ -14,16 +21,19 @@ public final class HomeShortcutIdParser {
             return "";
         }
 
-        if (normalized.contains("music.163.com")) {
-            int index = normalized.indexOf("id=");
-            if (index != -1) {
-                String sub = normalized.substring(index + 3);
-                int end = sub.indexOf("&");
-                if (end != -1) {
-                    sub = sub.substring(0, end);
-                }
-                normalized = sub.trim();
-            }
+        Matcher standaloneMatcher = STANDALONE_ID_PATTERN.matcher(normalized);
+        if (standaloneMatcher.matches()) {
+            return standaloneMatcher.group(1);
+        }
+
+        Matcher resourcePathMatcher = RESOURCE_PATH_ID_PATTERN.matcher(normalized);
+        if (resourcePathMatcher.find()) {
+            return resourcePathMatcher.group(1);
+        }
+
+        Matcher resourceQueryMatcher = RESOURCE_QUERY_ID_PATTERN.matcher(normalized);
+        if (resourceQueryMatcher.find()) {
+            return resourceQueryMatcher.group(1);
         }
 
         return normalized;
