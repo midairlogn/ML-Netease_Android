@@ -89,8 +89,13 @@ public class MusicService extends Service {
     private boolean lastNotifiedFloatingState = false;
 
     private android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+
+    private boolean isPlaybackActive() {
+        return musicPlayerManager != null && musicPlayerManager.isPlaying();
+    }
+
     private final Runnable postRestPlaybackStartTimeoutRunnable = () -> {
-        if (!awaitingPostRestPlaybackStart || musicPlayerManager.isPlaying()) {
+        if (!awaitingPostRestPlaybackStart || isPlaybackActive()) {
             return;
         }
         awaitingPostRestPlaybackStart = false;
@@ -145,26 +150,26 @@ public class MusicService extends Service {
 
     private final MusicPlayerManager.OnSeekListener seekListener = msec -> {
         // Ensure PlaybackState is updated with new position in MediaSession
-        updatePlaybackState(musicPlayerManager.isPlaying());
+        updatePlaybackState(isPlaybackActive());
     };
 
     private final MusicPlayerManager.OnPlaybackModeChangedListener playbackModeChangedListener = mode -> {
         // Ensure PlaybackState is updated with new Custom Action icon for mode
-        updatePlaybackState(musicPlayerManager.isPlaying());
+        updatePlaybackState(isPlaybackActive());
     };
 
     private final AudioManager.OnAudioFocusChangeListener audioFocusChangeListener = focusChange -> {
         switch (focusChange) {
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
-                if (musicPlayerManager != null && musicPlayerManager.isPlaying()) {
+                if (isPlaybackActive()) {
                     pausedByFocusLoss = true;
                     resumeOnFocusGain = true;
                     musicPlayerManager.pause();
                 }
                 break;
             case AudioManager.AUDIOFOCUS_LOSS:
-                if (musicPlayerManager != null && musicPlayerManager.isPlaying()) {
+                if (isPlaybackActive()) {
                     pausedByFocusLoss = true;
                     musicPlayerManager.pause();
                 }
@@ -175,7 +180,7 @@ public class MusicService extends Service {
                 hasAudioFocus = true;
                 if (pendingAutoContinueAfterRest) {
                     continuePlaybackAfterExpiredRest();
-                } else if (pausedByFocusLoss && resumeOnFocusGain && musicPlayerManager != null && !musicPlayerManager.isPlaying()) {
+                } else if (pausedByFocusLoss && resumeOnFocusGain && musicPlayerManager != null && !isPlaybackActive()) {
                     musicPlayerManager.resume();
                 }
                 pausedByFocusLoss = false;
@@ -233,7 +238,7 @@ public class MusicService extends Service {
         }
 
         // Ensure PlaybackState is initialized with CustomActions
-        updatePlaybackState(musicPlayerManager.isPlaying());
+        updatePlaybackState(isPlaybackActive());
     }
 
     private void initMediaSession() {
@@ -259,7 +264,7 @@ public class MusicService extends Service {
                     if (floatingLyricsManager != null) {
                         floatingLyricsManager.onSettingChanged();
                     }
-                    updatePlaybackState(musicPlayerManager.isPlaying());
+                    updatePlaybackState(isPlaybackActive());
                 }
             }
 
@@ -400,7 +405,7 @@ public class MusicService extends Service {
         }
         postRestPlaybackRetryCount++;
         musicPlayerManager.continueAfterHearingProtectionRest();
-        if (musicPlayerManager.isPlaying()) {
+        if (isPlaybackActive()) {
             clearPostRestPlaybackWait(true);
             return true;
         }
@@ -466,7 +471,7 @@ public class MusicService extends Service {
                 handleNotificationPause();
                 return true;
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-                if (musicPlayerManager.isPlaying()) {
+                if (isPlaybackActive()) {
                     handleNotificationPause();
                 } else {
                     handleNotificationPlay();
@@ -551,7 +556,7 @@ public class MusicService extends Service {
                 lastPicUrl = "";
                 fetchingPicUrl = null;
                 updateMediaSessionMetadata(song, embeddedBitmap);
-                showNotification(song, musicPlayerManager.isPlaying(), embeddedBitmap, isNewSong, "metadata:embedded-art");
+                showNotification(song, isPlaybackActive(), embeddedBitmap, isNewSong, "metadata:embedded-art");
                 return;
             }
         }
@@ -560,7 +565,7 @@ public class MusicService extends Service {
         if (song.picUrl != null && ImageUtils.isSameImage(song.picUrl, lastPicUrl) && lastBitmap != null) {
             updateMediaSessionMetadata(song, lastBitmap);
             if (isNewSong) {
-                showNotification(song, musicPlayerManager.isPlaying(), lastBitmap, false, "metadata:cached-art");
+                showNotification(song, isPlaybackActive(), lastBitmap, false, "metadata:cached-art");
             }
             return;
         }
@@ -574,7 +579,7 @@ public class MusicService extends Service {
         if (isNewSong) {
             Bitmap logo = BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground);
             updateMediaSessionMetadata(song, logo);
-            showNotification(song, musicPlayerManager.isPlaying(), logo, false, "metadata:new-song");
+            showNotification(song, isPlaybackActive(), logo, false, "metadata:new-song");
         }
 
         if (song.picUrl == null || song.picUrl.isEmpty()) {
@@ -614,7 +619,7 @@ public class MusicService extends Service {
                 lastPicUrl = song.picUrl;
 
                 updateMediaSessionMetadata(song, finalAlbumArt);
-                showNotification(song, musicPlayerManager.isPlaying(), finalAlbumArt, true, "metadata:art-ready");
+                showNotification(song, isPlaybackActive(), finalAlbumArt, true, "metadata:art-ready");
             });
         });
     }
@@ -929,7 +934,7 @@ public class MusicService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (handleMediaButtonIntent(intent)) {
-            updatePlaybackState(musicPlayerManager.isPlaying(), true);
+            updatePlaybackState(isPlaybackActive(), true);
             return START_STICKY;
         }
         if (intent != null && intent.getAction() != null) {
@@ -949,7 +954,7 @@ public class MusicService extends Service {
                 if (floatingLyricsManager != null) {
                     floatingLyricsManager.onSettingChanged();
                 }
-                updatePlaybackState(musicPlayerManager.isPlaying());
+                updatePlaybackState(isPlaybackActive());
             } else if (ACTION_UPDATE_SETTINGS.equals(action)) {
                 SettingsManager sm = new SettingsManager(this);
                 musicPlayerManager.setAppVolume(sm.getAppVolume());
@@ -962,14 +967,14 @@ public class MusicService extends Service {
                 }
                 // Only update notification if the floating window toggle changed.
                 // updatePlaybackState handles this check automatically via lastNotifiedFloatingState.
-                updatePlaybackState(musicPlayerManager.isPlaying());
+                updatePlaybackState(isPlaybackActive());
             } else if (ACTION_REFRESH_PLAYBACK_STATE.equals(action)) {
                 if ((pendingAutoContinueAfterRest || (!awaitingPostRestPlaybackStart && canAttemptPostRestRetry()))
                         && hearingProtectionController != null
                         && !isHearingProtectionRestActive()) {
                     continuePlaybackAfterExpiredRest();
                 }
-                updatePlaybackState(musicPlayerManager.isPlaying(), true);
+                updatePlaybackState(isPlaybackActive(), true);
             } else if (HearingProtectionController.ACTION_HEARING_REST_FINISHED.equals(action)) {
                 boolean forceContinueAfterRest = intent.getBooleanExtra(
                         HearingProtectionController.EXTRA_FORCE_CONTINUE_AFTER_REST,
@@ -984,7 +989,7 @@ public class MusicService extends Service {
                 if (shouldContinueAfterRest) {
                     continuePlaybackAfterExpiredRest();
                 }
-                updatePlaybackState(musicPlayerManager.isPlaying(), true);
+                updatePlaybackState(isPlaybackActive(), true);
                 return START_STICKY;
             } else if (ACTION_CANCEL_REST_AND_CONTINUE.equals(action)
                     || ACTION_CANCEL_REST_AND_RESUME_CURRENT.equals(action)
@@ -994,19 +999,19 @@ public class MusicService extends Service {
                 return START_STICKY;
             } else if (ACTION_NOTIFICATION_PLAY.equals(action)) {
                 handleNotificationPlay();
-                updatePlaybackState(musicPlayerManager.isPlaying(), true);
+                updatePlaybackState(isPlaybackActive(), true);
                 return START_STICKY;
             } else if (ACTION_NOTIFICATION_PAUSE.equals(action)) {
                 handleNotificationPause();
-                updatePlaybackState(musicPlayerManager.isPlaying(), true);
+                updatePlaybackState(isPlaybackActive(), true);
                 return START_STICKY;
             } else if (ACTION_NOTIFICATION_NEXT.equals(action)) {
                 handleNotificationNext();
-                updatePlaybackState(musicPlayerManager.isPlaying(), true);
+                updatePlaybackState(isPlaybackActive(), true);
                 return START_STICKY;
             } else if (ACTION_NOTIFICATION_PREVIOUS.equals(action)) {
                 handleNotificationPrevious();
-                updatePlaybackState(musicPlayerManager.isPlaying(), true);
+                updatePlaybackState(isPlaybackActive(), true);
                 return START_STICKY;
             }
         }

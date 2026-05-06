@@ -36,6 +36,7 @@ public class MusicPlayerManager {
     private int currentIndex = -1;
     private boolean isPaused = false;
     private volatile boolean isSwitchingSong = false;
+    private volatile boolean playbackActive = false;
     private boolean lastNotifiedState = false;
     private volatile boolean forceNextPlaybackStateDispatch = false;
     private Context context;
@@ -173,6 +174,7 @@ public class MusicPlayerManager {
         setAppVolume(settingsManager.getAppVolume());
 
         mediaPlayer.setOnCompletionListener(mp -> {
+            playbackActive = false;
             if (isCompletionListenerEnabled) {
                 Song completedSong = getCurrentSong();
                 int completedIndex = currentIndex;
@@ -446,7 +448,7 @@ public class MusicPlayerManager {
             resumePosition = 0;
         }
 
-        boolean wasPlaying = isPlaying();
+        boolean wasPlaying = playbackActive;
         boolean isNewSong = (index != currentIndex);
         currentIndex = index;
         persistPlaybackSnapshot();
@@ -460,11 +462,13 @@ public class MusicPlayerManager {
             // while we are loading the new one. This prevents race conditions where the old song
             // finishes and triggers playNext() -> play(index+1).
             try {
-                if (mediaPlayer.isPlaying()) {
+                if (playbackActive) {
                     mediaPlayer.stop();
                 }
+                playbackActive = false;
                 mediaPlayer.reset();
             } catch (Exception e) {
+                playbackActive = false;
                 e.printStackTrace();
             }
         }
@@ -662,6 +666,7 @@ public class MusicPlayerManager {
             return;
         }
         try {
+            playbackActive = false;
             mediaPlayer.reset();
             setAppVolume(settingsManager.getAppVolume());
             if (remote && headers != null && !headers.isEmpty()) {
@@ -689,18 +694,21 @@ public class MusicPlayerManager {
                     releaseLoudnessEnhancer();
                 }
                 mp.start();
+                playbackActive = true;
                 isPaused = false;
                 isCompletionListenerEnabled = true;
                 notifyPlaybackStateChanged(true);
             });
 
             mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+                playbackActive = false;
                 handlePlaybackFailure(expectedIndex, requestId, "MediaPlayer Error what=" + what + " extra=" + extra);
                 return true;
             });
 
             mediaPlayer.prepareAsync();
         } catch (Exception e) {
+            playbackActive = false;
             if (requestId == activePlayRequestId) {
                 isSwitchingSong = false;
             }
@@ -712,10 +720,17 @@ public class MusicPlayerManager {
 
     public void pause() {
         notifyPlaybackAction(true, PLAYBACK_ACTION_PAUSE);
-        if (mediaPlayer.isPlaying()) {
+        if (!playbackActive) {
+            updateProgressDispatcherState();
+            return;
+        }
+        try {
             mediaPlayer.pause();
+            playbackActive = false;
             isPaused = true;
             notifyPlaybackStateChanged(false);
+        } catch (IllegalStateException ignored) {
+            playbackActive = false;
         }
         updateProgressDispatcherState();
     }
@@ -724,20 +739,26 @@ public class MusicPlayerManager {
         if (playlist.isEmpty() || currentIndex < 0 || currentIndex >= playlist.size()) {
             return;
         }
-        if (isPaused && !mediaPlayer.isPlaying()) {
+        if (isPaused && !playbackActive) {
             return;
         }
         isPaused = true;
+        playbackActive = false;
         notifyPlaybackStateChanged(false);
         updateProgressDispatcherState();
     }
 
     public void resume() {
         notifyPlaybackAction(true, PLAYBACK_ACTION_RESUME);
-        if (isPaused && !mediaPlayer.isPlaying()) {
-            mediaPlayer.start();
-            isPaused = false;
-            notifyPlaybackStateChanged(true);
+        if (isPaused && !playbackActive) {
+            try {
+                mediaPlayer.start();
+                playbackActive = true;
+                isPaused = false;
+                notifyPlaybackStateChanged(true);
+            } catch (IllegalStateException ignored) {
+                playbackActive = false;
+            }
         }
         updateProgressDispatcherState();
     }
@@ -766,7 +787,7 @@ public class MusicPlayerManager {
     }
 
     public void togglePlayPause() {
-        if (mediaPlayer.isPlaying()) {
+        if (playbackActive) {
             pause();
         } else {
             resume();
@@ -804,9 +825,10 @@ public class MusicPlayerManager {
                 if (currentIndex < playlist.size() - 1) {
                     nextIndex = currentIndex + 1;
                 } else {
-                    if (mediaPlayer.isPlaying()) {
+                    if (playbackActive) {
                         pause();
                     } else {
+                        playbackActive = false;
                         isPaused = true;
                         notifyPlaybackStateChanged(false);
                     }
@@ -913,11 +935,7 @@ public class MusicPlayerManager {
     }
 
     public boolean isPlaying() {
-        try {
-            return mediaPlayer.isPlaying();
-        } catch (Exception e) {
-            return false;
-        }
+        return playbackActive;
     }
 
     public Song getCurrentSong() {
@@ -1280,7 +1298,7 @@ public class MusicPlayerManager {
     }
 
     private boolean shouldRunProgressDispatcher() {
-        return !isSwitchingSong && isPlaying() && !progressUpdateListeners.isEmpty();
+        return !isSwitchingSong && playbackActive && !progressUpdateListeners.isEmpty();
     }
 
     private void startProgressDispatcher() {
