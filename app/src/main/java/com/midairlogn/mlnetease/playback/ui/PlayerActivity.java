@@ -1,18 +1,24 @@
 package com.midairlogn.mlnetease.playback.ui;
 
+import android.net.Uri;
 import android.os.Bundle;
 import android.media.AudioManager;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.midairlogn.mlnetease.playback.ui.pager.CoverFragment;
+import com.midairlogn.mlnetease.download.core.PreparedAudioFile;
+import com.midairlogn.mlnetease.download.core.RemoteAudioPreparationHelper;
 import com.midairlogn.mlnetease.download.model.DownloadTaskSnapshot;
 import com.midairlogn.mlnetease.hearing.HearingProtectionTransportController;
 import com.midairlogn.mlnetease.playback.ui.pager.LyricsFragment;
@@ -21,8 +27,13 @@ import com.midairlogn.mlnetease.download.core.SongDownloadStarter;
 import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
 import com.midairlogn.mlnetease.settings.SettingsManager;
 import com.midairlogn.mlnetease.shared.model.Song;
+import com.midairlogn.mlnetease.sharing.ShareUtils;
+import com.midairlogn.mlnetease.sharing.SongShareHelper;
 import com.midairlogn.mlnetease.shared.ui.UiLaunchGuards;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Locale;
 
 public class PlayerActivity extends AppCompatActivity implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener, MusicPlayerManager.OnFullInfoAvailableListener, MusicPlayerManager.OnPlaybackModeChangedListener, MusicPlayerManager.OnSeekListener, MusicPlayerManager.OnProgressUpdateListener {
@@ -31,13 +42,19 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
     private TextView currentTime, totalTime;
     private SeekBar seekBar;
     private ImageButton btnPlayPause, btnPrev, btnNext;
-    private ImageButton btnMode, btnPlaylist, btnDownloadSong, btnFavouriteSong;
+    private ImageButton btnMode, btnPlaylist, btnDownloadSong, btnFavouriteSong, btnShareSong;
     private ImageButton btnBack;
     private ViewPager2 viewPager;
     private MusicPlayerManager musicPlayerManager;
     private SettingsManager settingsManager;
+    private SongShareHelper songShareHelper;
     private Toast currentToast;
     private boolean isTracking = false;
+    private AlertDialog activeDialog;
+    private AlertDialog shareProgressDialog;
+    private final ExecutorService shareExecutor = Executors.newSingleThreadExecutor();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final AtomicBoolean shareInProgress = new AtomicBoolean(false);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +64,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
 
         musicPlayerManager = MusicPlayerManager.getInstance(this);
         settingsManager = new SettingsManager(this);
+        songShareHelper = new SongShareHelper(this);
 
         initViews();
         setupViewPager();
@@ -83,6 +101,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         btnMode = findViewById(R.id.btn_mode);
         btnPlaylist = findViewById(R.id.btn_playlist);
         btnFavouriteSong = findViewById(R.id.btn_favourite_song);
+        btnShareSong = findViewById(R.id.btn_share_song);
         btnDownloadSong = findViewById(R.id.btn_download_song);
         btnBack = findViewById(R.id.btn_back);
         viewPager = findViewById(R.id.view_pager);
@@ -122,6 +141,8 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
             }
         });
 
+        btnShareSong.setOnClickListener(v -> shareCurrentSong());
+
         btnFavouriteSong.setOnClickListener(v -> toggleFavourite());
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -151,6 +172,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
             songTitle.setText(R.string.song_title);
             songArtist.setText(R.string.artist_name);
             btnDownloadSong.setVisibility(android.view.View.VISIBLE);
+            btnShareSong.setVisibility(android.view.View.VISIBLE);
             renderFavouriteState(null);
             return;
         }
@@ -158,7 +180,125 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         songTitle.setText(song.name);
         songArtist.setText(song.artists);
         btnDownloadSong.setVisibility(song.isLocal() ? android.view.View.GONE : android.view.View.VISIBLE);
+        btnShareSong.setVisibility(android.view.View.VISIBLE);
         renderFavouriteState(song);
+    }
+
+    private void shareCurrentSong() {
+        Song currentSong = musicPlayerManager.getCurrentSong();
+        if (currentSong == null) {
+            Toast.makeText(this, R.string.no_music, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (currentSong.isLocal()) {
+            shareLocalSong(currentSong);
+            return;
+        }
+        showRemoteShareDialog(currentSong);
+    }
+
+    private void shareLocalSong(Song song) {
+        Uri uri = songShareHelper.shareLocalSong(song);
+        if (uri == null) {
+            Toast.makeText(this, R.string.share_not_available, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String mimeType = song.mimeType == null || song.mimeType.trim().isEmpty() ? "audio/*" : song.mimeType.trim();
+        ShareUtils.shareAudio(this, getString(R.string.share_song), uri, mimeType);
+    }
+
+    private void showRemoteShareDialog(Song song) {
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.share_song_as)
+                .setItems(new CharSequence[]{getString(R.string.share_link), getString(R.string.share_audio)}, (d, which) -> {
+                    if (which == 0) {
+                        ShareUtils.shareText(this, getString(R.string.share_song), ShareUtils.buildSongUrl(song.id));
+                    } else {
+                        shareRemoteSongAudio(song);
+                    }
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .create();
+        if (UiLaunchGuards.showAlertDialogOnce(activeDialog, dialog)) {
+            activeDialog = dialog;
+            dialog.setOnDismissListener(ignored -> activeDialog = null);
+        }
+    }
+
+    private void shareRemoteSongAudio(Song song) {
+        if (!shareInProgress.compareAndSet(false, true)) {
+            return;
+        }
+        showShareProgressDialog();
+        shareExecutor.execute(() -> {
+            try {
+                PreparedAudioFile preparedAudioFile = songShareHelper.prepareRemoteAudioForSharing(
+                        song,
+                        () -> {
+                            if (Thread.currentThread().isInterrupted()) {
+                                throw new InterruptedException();
+                            }
+                        },
+                        new RemoteAudioPreparationHelper.ProgressListener() {
+                            @Override
+                            public void onFetchingMetadata(String title) {
+                                updateShareProgressMessage(R.string.download_fetching_metadata);
+                            }
+
+                            @Override
+                            public void onDownloadingAudio(String title, long downloadedBytes, long totalBytes) {
+                                updateShareProgressMessage(R.string.download_audio_progress);
+                            }
+
+                            @Override
+                            public void onFetchingCover(String title) {
+                                updateShareProgressMessage(R.string.download_cover_progress);
+                            }
+
+                            @Override
+                            public void onWritingMetadata(String title) {
+                                updateShareProgressMessage(R.string.download_writing_tags);
+                            }
+                        }
+                );
+                Uri uri = songShareHelper.getSharableUri(preparedAudioFile.file);
+                mainHandler.post(() -> {
+                    dismissShareProgressDialog();
+                    ShareUtils.shareAudio(this, getString(R.string.share_song), uri, preparedAudioFile.mimeType);
+                    shareInProgress.set(false);
+                });
+            } catch (Exception e) {
+                mainHandler.post(() -> {
+                    dismissShareProgressDialog();
+                    Toast.makeText(this, getString(R.string.share_audio_failed) + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    shareInProgress.set(false);
+                });
+            }
+        });
+    }
+
+    private void showShareProgressDialog() {
+        dismissShareProgressDialog();
+        shareProgressDialog = new AlertDialog.Builder(this)
+                .setMessage(R.string.share_audio_preparing)
+                .setCancelable(false)
+                .create();
+        shareProgressDialog.show();
+    }
+
+    private void updateShareProgressMessage(int messageRes) {
+        mainHandler.post(() -> {
+            if (shareProgressDialog != null && shareProgressDialog.isShowing()) {
+                shareProgressDialog.setMessage(getString(messageRes));
+            }
+        });
+    }
+
+    private void dismissShareProgressDialog() {
+        if (shareProgressDialog != null) {
+            shareProgressDialog.dismiss();
+            shareProgressDialog = null;
+        }
     }
 
     private void toggleFavourite() {
@@ -285,6 +425,8 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
 
     @Override
     protected void onDestroy() {
+        dismissShareProgressDialog();
+        shareExecutor.shutdownNow();
         super.onDestroy();
         musicPlayerManager.removeOnSongChangedListener(this);
         musicPlayerManager.removeOnFullInfoAvailableListener(this);

@@ -49,6 +49,16 @@
     <string name="lyrics_preview_line_one">当前歌词预览</string>
     <string name="lyrics_preview_line_two">下一句歌词预览</string>
     <string name="download">下载</string>
+    <string name="share">分享</string>
+    <string name="share_song">分享歌曲</string>
+    <string name="share_playlist">分享歌单</string>
+    <string name="share_album">分享专辑</string>
+    <string name="share_song_as">分享歌曲方式</string>
+    <string name="share_link">分享链接</string>
+    <string name="share_audio">分享音频</string>
+    <string name="share_audio_preparing">正在准备分享音频</string>
+    <string name="share_audio_failed">分享音频失败：</string>
+    <string name="share_not_available">当前项目暂不支持分享</string>
     <string name="favourite">收藏</string>
     <string name="unfavourite">取消收藏</string>
     <string name="favourite_added">已加入收藏</string>

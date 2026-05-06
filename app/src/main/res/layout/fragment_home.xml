@@ -96,18 +96,43 @@
         android:orientation="vertical"
         android:layout_marginBottom="8dp">
 
-        <Button
-            android:id="@+id/btn_add_to_shortcut"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:minHeight="48dp"
             android:layout_marginBottom="8dp"
-            android:paddingHorizontal="16dp"
-            android:text="@string/add_to_shortcut"
-            android:textAllCaps="false"
-            android:textColor="@color/text_on_brand"
-            android:backgroundTint="@color/brand_primary"
-            android:visibility="gone"/>
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_add_to_shortcut"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:minHeight="48dp"
+                android:minWidth="0dp"
+                android:layout_marginEnd="8dp"
+                android:paddingHorizontal="16dp"
+                android:text="@string/add_to_shortcut"
+                android:textAllCaps="false"
+                android:textColor="@color/text_on_brand"
+                android:backgroundTint="@color/brand_primary"
+                android:visibility="gone"/>
+
+            <Button
+                android:id="@+id/btn_share_collection"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:minHeight="48dp"
+                android:minWidth="0dp"
+                android:layout_marginStart="8dp"
+                android:paddingHorizontal="16dp"
+                android:text="@string/share"
+                android:textAllCaps="false"
+                android:textColor="@color/text_on_brand"
+                android:backgroundTint="@color/brand_primary"
+                android:visibility="gone"/>
+        </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"

@@ -35,6 +35,7 @@ import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
 import com.midairlogn.mlnetease.settings.SettingsManager;
 import com.midairlogn.mlnetease.shared.adapter.SongAdapter;
 import com.midairlogn.mlnetease.shared.model.Song;
+import com.midairlogn.mlnetease.sharing.ShareUtils;
 import com.midairlogn.mlnetease.shared.ui.UiLaunchGuards;
 
 import org.json.JSONArray;
@@ -55,6 +56,7 @@ public class HomeFragment extends Fragment {
     private Button btnPlayAll;
     private Button btnDownloadAll;
     private Button btnAddToShortcut;
+    private Button btnShareCollection;
     private Button btnManageShortcuts;
     private LinearLayout emptyShortcutLayout;
     private List<HomeShortcut> currentShortcuts = new ArrayList<>();
@@ -109,6 +111,7 @@ public class HomeFragment extends Fragment {
         btnPlayAll = view.findViewById(R.id.btn_play_all);
         btnDownloadAll = view.findViewById(R.id.btn_download_all);
         btnAddToShortcut = view.findViewById(R.id.btn_add_to_shortcut);
+        btnShareCollection = view.findViewById(R.id.btn_share_collection);
         view.findViewById(R.id.btn_manage_shortcuts_empty).setOnClickListener(v -> showManageShortcutsDialog());
         btnManageShortcuts.setOnClickListener(v -> showManageShortcutsDialog());
 
@@ -163,6 +166,8 @@ public class HomeFragment extends Fragment {
             }
         });
 
+        btnShareCollection.setOnClickListener(v -> shareCurrentCollection());
+
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         adapter = new SongAdapter();
         shortcutAdapter = new HomeShortcutAdapter();
@@ -201,10 +206,12 @@ public class HomeFragment extends Fragment {
                 if (checkedId == R.id.radio_song) {
                     btnPlayAll.setVisibility(View.GONE);
                     btnDownloadAll.setVisibility(View.GONE);
+                    btnShareCollection.setVisibility(View.GONE);
                 } else {
                     btnPlayAll.setVisibility(savedSongs.isEmpty() ? View.GONE : View.VISIBLE);
                     boolean showDownload = !savedSongs.isEmpty() && ("playlist".equals(lastSearchedType) || "album".equals(lastSearchedType));
                     btnDownloadAll.setVisibility(showDownload ? View.VISIBLE : View.GONE);
+                    btnShareCollection.setVisibility(showDownload ? View.VISIBLE : View.GONE);
                 }
             }
         }
@@ -444,6 +451,7 @@ public class HomeFragment extends Fragment {
         adapter.setSongs(new ArrayList<>());
         btnAddToShortcut.setVisibility(View.GONE);
         btnDownloadAll.setVisibility(View.GONE);
+        btnShareCollection.setVisibility(View.GONE);
         lastSearchedTitle = "";
         updateViewMode();
     }
@@ -453,6 +461,7 @@ public class HomeFragment extends Fragment {
             recyclerView.setAdapter(shortcutAdapter);
             btnPlayAll.setVisibility(View.GONE);
             btnDownloadAll.setVisibility(View.GONE);
+            btnShareCollection.setVisibility(View.GONE);
             btnResetSearch.setVisibility(View.GONE);
             btnManageShortcuts.setVisibility(currentShortcuts.isEmpty() ? View.GONE : View.VISIBLE);
             emptyShortcutLayout.setVisibility(View.GONE);
@@ -621,6 +630,7 @@ public class HomeFragment extends Fragment {
                 btnPlayAll.setVisibility(songs.isEmpty() ? View.GONE : View.VISIBLE);
                 boolean showDownload = !songs.isEmpty() && !isShortcut && ("playlist".equals(lastSearchedType) || "album".equals(lastSearchedType));
                 btnDownloadAll.setVisibility(showDownload ? View.VISIBLE : View.GONE);
+                btnShareCollection.setVisibility(showDownload ? View.VISIBLE : View.GONE);
                 btnAddToShortcut.setVisibility(songs.isEmpty() ? View.GONE : View.VISIBLE);
 
                 boolean alreadyExists = false;
@@ -671,6 +681,7 @@ public class HomeFragment extends Fragment {
                 adapter.setSongs(songs);
                 btnPlayAll.setVisibility(View.GONE);
                 btnDownloadAll.setVisibility(View.GONE);
+                btnShareCollection.setVisibility(View.GONE);
             });
 
         } catch (Exception e) {
@@ -704,6 +715,7 @@ public class HomeFragment extends Fragment {
                 adapter.setSongs(songs);
                 btnPlayAll.setVisibility(View.GONE);
                 btnDownloadAll.setVisibility(View.GONE);
+                btnShareCollection.setVisibility(View.GONE);
             });
 
         } catch (Exception e) {
@@ -718,6 +730,22 @@ public class HomeFragment extends Fragment {
         ManageShortcutsDialog dialog = new ManageShortcutsDialog();
         dialog.setOnDismissListener(() -> loadShortcuts());
         UiLaunchGuards.showDialogFragmentOnce(getParentFragmentManager(), dialog, "ManageShortcuts");
+    }
+
+    private void shareCurrentCollection() {
+        if (lastSearchedId == null || lastSearchedId.trim().isEmpty()) {
+            Toast.makeText(getContext(), R.string.share_not_available, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if ("playlist".equals(lastSearchedType)) {
+            ShareUtils.shareText(requireContext(), getString(R.string.share_playlist), ShareUtils.buildPlaylistUrl(lastSearchedId));
+            return;
+        }
+        if ("album".equals(lastSearchedType)) {
+            ShareUtils.shareText(requireContext(), getString(R.string.share_album), ShareUtils.buildAlbumUrl(lastSearchedId));
+            return;
+        }
+        Toast.makeText(getContext(), R.string.share_not_available, Toast.LENGTH_SHORT).show();
     }
 
     private void hideKeyboard(View view) {
