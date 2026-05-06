@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/mini_player_root"
     android:layout_width="match_parent"
-    android:layout_height="40dp"
+    android:layout_height="56dp"
     android:background="@color/nav_bar_background"
     android:clickable="true"
     android:focusable="true"
@@ -20,8 +20,8 @@
     <!-- Album Art Thumbnail -->
     <ImageView
         android:id="@+id/mini_player_thumb"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
         android:layout_marginStart="16dp"
         android:contentDescription="@string/mini_player_album_art"
         android:scaleType="centerCrop"
@@ -52,7 +52,7 @@
             android:maxLines="1"
             android:text="@string/song_title"
             android:textColor="@color/text_primary"
-            android:textSize="14sp"
+            android:textSize="15sp"
             android:textStyle="bold" />
 
         <TextView
@@ -60,7 +60,7 @@
             android:layout_height="wrap_content"
             android:text=" - "
             android:textColor="@color/text_secondary"
-            android:textSize="14sp" />
+            android:textSize="15sp" />
 
         <TextView
             android:id="@+id/mini_player_artist"
@@ -70,7 +70,7 @@
             android:maxLines="1"
             android:text="@string/artist_name"
             android:textColor="@color/text_secondary"
-            android:textSize="14sp" />
+            android:textSize="15sp" />
     </LinearLayout>
 
     <!-- Controls -->
@@ -87,8 +87,8 @@
 
         <!-- Play/Pause with Progress -->
         <FrameLayout
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             android:layout_marginEnd="12dp">
 
             <ProgressBar
@@ -104,8 +104,8 @@
 
             <ImageView
                 android:id="@+id/mini_player_play_pause"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
                 android:layout_gravity="center"
                 android:contentDescription="@string/mini_player_play_pause"
                 android:src="@android:drawable/ic_media_play"
@@ -115,8 +115,8 @@
         <!-- Playlist Button -->
         <ImageButton
             android:id="@+id/mini_player_playlist"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             android:padding="4dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/open_playlist"
