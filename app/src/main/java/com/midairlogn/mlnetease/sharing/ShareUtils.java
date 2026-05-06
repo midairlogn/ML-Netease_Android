@@ -1,4 +1,4 @@
-package com.midairlogn.mlnetease.shared.ui;
+package com.midairlogn.mlnetease.sharing;
 
 import android.content.ClipData;
 import android.content.Context;

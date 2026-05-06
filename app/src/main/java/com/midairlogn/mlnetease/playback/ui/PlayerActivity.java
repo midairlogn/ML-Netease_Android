@@ -27,8 +27,8 @@ import com.midairlogn.mlnetease.download.core.SongDownloadStarter;
 import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
 import com.midairlogn.mlnetease.settings.SettingsManager;
 import com.midairlogn.mlnetease.shared.model.Song;
-import com.midairlogn.mlnetease.shared.ui.ShareUtils;
-import com.midairlogn.mlnetease.shared.ui.SongShareHelper;
+import com.midairlogn.mlnetease.sharing.ShareUtils;
+import com.midairlogn.mlnetease.sharing.SongShareHelper;
 import com.midairlogn.mlnetease.shared.ui.UiLaunchGuards;
 
 import java.util.concurrent.ExecutorService;
