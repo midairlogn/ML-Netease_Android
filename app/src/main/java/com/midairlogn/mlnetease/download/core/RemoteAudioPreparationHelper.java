@@ -59,16 +59,16 @@ public class RemoteAudioPreparationHelper {
 
     public PreparedAudioFile prepareSharedAudio(Song song, File outputDirectory, CancellationSignal cancellationSignal,
                                                 ProgressListener progressListener) throws Exception {
-        return prepare(song, outputDirectory, cancellationSignal, progressListener, true);
+        return prepare(song, outputDirectory, cancellationSignal, progressListener);
     }
 
     public PreparedAudioFile prepareDownloadAudio(Song song, File outputDirectory, CancellationSignal cancellationSignal,
                                                   ProgressListener progressListener) throws Exception {
-        return prepare(song, outputDirectory, cancellationSignal, progressListener, false);
+        return prepare(song, outputDirectory, cancellationSignal, progressListener);
     }
 
     private PreparedAudioFile prepare(Song song, File outputDirectory, CancellationSignal cancellationSignal,
-                                      ProgressListener progressListener, boolean forceUniqueFileName) throws Exception {
+                                      ProgressListener progressListener) throws Exception {
         if (song == null) {
             throw new IllegalArgumentException("Song is required");
         }
@@ -101,9 +101,6 @@ public class RemoteAudioPreparationHelper {
         DownloadCustomizationSettings customizationSettings = settingsManager.getDownloadCustomizationSettings();
         Song finalSong = new Song(song.id, title, artist, album, pic);
         String displayName = DownloadFileUtils.buildDisplayName(finalSong, extension, customizationSettings);
-        if (forceUniqueFileName) {
-            displayName = appendUniquePrefix(displayName);
-        }
 
         File downloadedAudio = createOutputFile(outputDirectory, "raw_", extension);
         File taggedAudio = null;
@@ -278,9 +275,5 @@ public class RemoteAudioPreparationHelper {
 
     private File createOutputFile(File directory, String prefix, String extension) throws IOException {
         return File.createTempFile(prefix, "." + extension, directory);
-    }
-
-    private String appendUniquePrefix(String displayName) {
-        return System.currentTimeMillis() + "_" + displayName;
     }
 }

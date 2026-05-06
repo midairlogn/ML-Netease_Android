@@ -24,12 +24,9 @@ import com.midairlogn.mlnetease.MainActivity;
 import com.midairlogn.mlnetease.download.model.DownloadTask;
 import com.midairlogn.mlnetease.download.model.DownloadTaskSnapshot;
 import com.midairlogn.mlnetease.download.model.DownloadTaskStatus;
-import com.midairlogn.mlnetease.network.NeteaseApi;
 import com.midairlogn.mlnetease.settings.SettingsManager;
 import com.midairlogn.mlnetease.shared.model.Song;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
@@ -51,7 +48,6 @@ public class SongDownloadService extends Service {
     private final OkHttpClient httpClient = new OkHttpClient();
 
     private NotificationManager notificationManager;
-    private NeteaseApi neteaseApi;
     private SettingsManager settingsManager;
     private DownloadTaskManager taskManager;
     private RemoteAudioPreparationHelper remoteAudioPreparationHelper;
@@ -120,7 +116,6 @@ public class SongDownloadService extends Service {
         super.onCreate();
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         settingsManager = new SettingsManager(this);
-        neteaseApi = new NeteaseApi(this, settingsManager);
         taskManager = DownloadTaskManager.getInstance(this);
         remoteAudioPreparationHelper = new RemoteAudioPreparationHelper(this, settingsManager, httpClient);
         recoverInterruptedTasksIfNeeded();

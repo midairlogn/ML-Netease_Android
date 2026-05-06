@@ -90,6 +90,16 @@
         <item>简体中文</item>
     </string-array>
     <string name="download">Download</string>
+    <string name="share">Share</string>
+    <string name="share_song">Share song</string>
+    <string name="share_playlist">Share playlist</string>
+    <string name="share_album">Share album</string>
+    <string name="share_song_as">Share song as</string>
+    <string name="share_link">Share link</string>
+    <string name="share_audio">Share audio</string>
+    <string name="share_audio_preparing">Preparing audio for sharing</string>
+    <string name="share_audio_failed">Could not share audio: </string>
+    <string name="share_not_available">Share is not available for this item</string>
     <string name="favourite">Favourite</string>
     <string name="unfavourite">Unfavourite</string>
     <string name="favourite_added">Added to favourites</string>
