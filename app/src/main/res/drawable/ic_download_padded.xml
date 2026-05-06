@@ -1,5 +1,5 @@
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
-    android:drawable="@android:drawable/stat_sys_download_done"
+    android:drawable="@drawable/ic_stat_sys_download_done"
     android:insetLeft="1dp"
     android:insetRight="1dp"
     android:insetTop="1dp"

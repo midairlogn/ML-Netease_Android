@@ -94,7 +94,7 @@
                 android:layout_height="96dp"
                 android:alpha="0.28"
                 android:contentDescription="@null"
-                android:src="@android:drawable/stat_sys_download_done"
+                android:src="@drawable/ic_stat_sys_download_done"
                 app:tint="@color/text_secondary" />
 
             <TextView
