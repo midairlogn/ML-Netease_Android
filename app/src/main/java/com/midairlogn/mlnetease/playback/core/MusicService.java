@@ -190,6 +190,7 @@ public class MusicService extends Service {
     public void onCreate() {
         super.onCreate();
         musicPlayerManager = MusicPlayerManager.getInstance(this);
+        musicPlayerManager.restorePlaybackSnapshotIfNeeded();
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

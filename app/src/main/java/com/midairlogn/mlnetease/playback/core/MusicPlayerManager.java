@@ -190,9 +190,34 @@ public class MusicPlayerManager {
         return instance;
     }
 
+    public void restorePlaybackSnapshotIfNeeded() {
+        if (!playlist.isEmpty() || !settingsManager.isHearingProtectionRestActive()) {
+            return;
+        }
+        SettingsManager.PlaybackSnapshot snapshot = settingsManager.getPlaybackSnapshot();
+        if (snapshot.songs.isEmpty()) {
+            return;
+        }
+        playlist = new ArrayList<>(snapshot.songs);
+        currentIndex = snapshot.currentIndex;
+        notifyPlaylistChanged();
+        if (currentIndex >= 0 && currentIndex < playlist.size()) {
+            notifySongChanged(playlist.get(currentIndex));
+        }
+    }
+
+    private void persistPlaybackSnapshot() {
+        if (!settingsManager.isHearingProtectionEnabled()) {
+            settingsManager.clearPlaybackSnapshot();
+            return;
+        }
+        settingsManager.setPlaybackSnapshot(playlist, currentIndex);
+    }
+
     public void setPlaylist(List<Song> songs) {
         this.playlist = new ArrayList<>(songs);
         this.currentIndex = -1; // Reset current index since playlist changed
+        persistPlaybackSnapshot();
         notifyPlaylistChanged();
     }
 
@@ -233,6 +258,7 @@ public class MusicPlayerManager {
 
     public void addToPlaylist(Song song) {
         playlist.add(song);
+        persistPlaybackSnapshot();
         notifyPlaylistChanged();
     }
 
@@ -266,6 +292,7 @@ public class MusicPlayerManager {
         }
 
         if (playlistChanged) {
+            persistPlaybackSnapshot();
             notifyPlaylistChanged();
         }
 
@@ -309,6 +336,7 @@ public class MusicPlayerManager {
                 play(currentIndex);
             }
         }
+        persistPlaybackSnapshot();
         notifyPlaylistChanged();
     }
 
@@ -335,6 +363,7 @@ public class MusicPlayerManager {
         if (currentSong != null) {
             currentIndex = playlist.indexOf(currentSong);
         }
+        persistPlaybackSnapshot();
         notifyPlaylistChanged();
     }
 
@@ -364,6 +393,7 @@ public class MusicPlayerManager {
         }
         this.playlist = new ArrayList<>(songs);
         this.currentIndex = -1;
+        persistPlaybackSnapshot();
         notifyPlaylistChanged();
         play(Math.max(0, Math.min(startIndex, this.playlist.size() - 1)));
     }
@@ -419,6 +449,7 @@ public class MusicPlayerManager {
         boolean wasPlaying = isPlaying();
         boolean isNewSong = (index != currentIndex);
         currentIndex = index;
+        persistPlaybackSnapshot();
         isSwitchingSong = true;
         updateProgressDispatcherState();
         // Temporarily disable completion listener to prevent race conditions during song loading/switching

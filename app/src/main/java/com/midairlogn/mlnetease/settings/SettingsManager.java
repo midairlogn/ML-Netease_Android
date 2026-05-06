@@ -54,6 +54,8 @@ public class SettingsManager {
     private static final String KEY_HEARING_PROTECTION_PAUSE_START_WALL_CLOCK_MS = "hearing_protection_pause_start_wall_clock_ms";
     private static final String KEY_HEARING_PROTECTION_PAUSE_BASE_DOSE_MS = "hearing_protection_pause_base_dose_ms";
     private static final String KEY_HEARING_PROTECTION_PAUSE_INTENSITY = "hearing_protection_pause_intensity";
+    private static final String KEY_PLAYBACK_SNAPSHOT_QUEUE = "playback_snapshot_queue";
+    private static final String KEY_PLAYBACK_SNAPSHOT_INDEX = "playback_snapshot_index";
     private static final String KEY_DOWNLOAD_FILENAME_TEMPLATE = "download_filename_template";
     private static final String KEY_DOWNLOAD_FILENAME_SEPARATOR = "download_filename_separator";
     private static final String KEY_DOWNLOAD_METADATA_ENABLED = "download_metadata_enabled";
@@ -79,10 +81,14 @@ public class SettingsManager {
 
     private final Context appContext;
     private SharedPreferences prefs;
+    private String lastPlaybackSnapshotQueue = null;
+    private int lastPlaybackSnapshotIndex = Integer.MIN_VALUE;
 
     public SettingsManager(Context context) {
         appContext = context.getApplicationContext();
         prefs = appContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        lastPlaybackSnapshotQueue = prefs.getString(KEY_PLAYBACK_SNAPSHOT_QUEUE, null);
+        lastPlaybackSnapshotIndex = prefs.getInt(KEY_PLAYBACK_SNAPSHOT_INDEX, -1);
     }
 
     public void setMusicU(String musicU) {
@@ -538,6 +544,59 @@ public class SettingsManager {
                 .apply();
     }
 
+    public void setPlaybackSnapshot(List<Song> songs, int currentIndex) {
+        JSONArray array = new JSONArray();
+        if (songs != null) {
+            for (Song song : songs) {
+                if (song == null) {
+                    continue;
+                }
+                array.put(serializePlaybackSong(song));
+            }
+        }
+        String serializedQueue = array.toString();
+        if (serializedQueue.equals(lastPlaybackSnapshotQueue) && currentIndex == lastPlaybackSnapshotIndex) {
+            return;
+        }
+        prefs.edit()
+                .putString(KEY_PLAYBACK_SNAPSHOT_QUEUE, serializedQueue)
+                .putInt(KEY_PLAYBACK_SNAPSHOT_INDEX, currentIndex)
+                .apply();
+        lastPlaybackSnapshotQueue = serializedQueue;
+        lastPlaybackSnapshotIndex = currentIndex;
+    }
+
+    public PlaybackSnapshot getPlaybackSnapshot() {
+        List<Song> songs = new ArrayList<>();
+        String raw = prefs.getString(KEY_PLAYBACK_SNAPSHOT_QUEUE, "[]");
+        try {
+            JSONArray array = new JSONArray(raw);
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject item = array.optJSONObject(i);
+                if (item == null) {
+                    continue;
+                }
+                songs.add(deserializePlaybackSong(item));
+            }
+        } catch (Exception ignored) {
+        }
+        int savedIndex = prefs.getInt(KEY_PLAYBACK_SNAPSHOT_INDEX, -1);
+        int normalizedIndex = songs.isEmpty() ? -1 : clamp(savedIndex, -1, songs.size() - 1);
+        return new PlaybackSnapshot(songs, normalizedIndex);
+    }
+
+    public void clearPlaybackSnapshot() {
+        if (lastPlaybackSnapshotQueue == null && lastPlaybackSnapshotIndex == -1) {
+            return;
+        }
+        prefs.edit()
+                .remove(KEY_PLAYBACK_SNAPSHOT_QUEUE)
+                .remove(KEY_PLAYBACK_SNAPSHOT_INDEX)
+                .apply();
+        lastPlaybackSnapshotQueue = null;
+        lastPlaybackSnapshotIndex = -1;
+    }
+
     private int clampHearingProtectionListenMinutes(int minutes) {
         return Math.max(15, Math.min(minutes, 240));
     }
@@ -869,6 +928,47 @@ public class SettingsManager {
             }
         }
         setFavouriteSongs(favourites);
+    }
+
+    private JSONObject serializePlaybackSong(Song song) {
+        JSONObject item = new JSONObject();
+        try {
+            item.put("id", song.id == null ? "" : song.id);
+            item.put("name", song.name == null ? "" : song.name);
+            item.put("artists", song.artists == null ? "" : song.artists);
+            item.put("album", song.album == null ? "" : song.album);
+            item.put("picUrl", song.picUrl == null ? "" : song.picUrl);
+            item.put("sourceType", song.sourceType == null ? Song.SOURCE_REMOTE : song.sourceType);
+            item.put("mediaUri", song.mediaUri == null ? "" : song.mediaUri);
+            item.put("mimeType", song.mimeType == null ? "" : song.mimeType);
+            item.put("durationMs", Math.max(0L, song.durationMs));
+        } catch (Exception ignored) {
+        }
+        return item;
+    }
+
+    private Song deserializePlaybackSong(JSONObject item) {
+        return new Song(
+                item.optString("id", ""),
+                item.optString("name", ""),
+                item.optString("artists", ""),
+                item.optString("album", ""),
+                item.optString("picUrl", ""),
+                item.optString("sourceType", Song.SOURCE_REMOTE),
+                item.optString("mediaUri", ""),
+                item.optString("mimeType", ""),
+                item.optLong("durationMs", 0L)
+        );
+    }
+
+    public static final class PlaybackSnapshot {
+        public final List<Song> songs;
+        public final int currentIndex;
+
+        PlaybackSnapshot(List<Song> songs, int currentIndex) {
+            this.songs = songs;
+            this.currentIndex = currentIndex;
+        }
     }
 
     private SecretKey deriveBackupKey(char[] passwordChars, byte[] salt) throws Exception {
