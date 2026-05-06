@@ -98,6 +98,8 @@
     <string name="share_link">Share link</string>
     <string name="share_audio">Share audio</string>
     <string name="share_audio_preparing">Preparing audio for sharing</string>
+    <string name="share_progress_indeterminate">Please wait...</string>
+    <string name="share_progress_size_format">%1$s / %2$s</string>
     <string name="share_audio_failed">Could not share audio: </string>
     <string name="share_not_available">Share is not available for this item</string>
     <string name="favourite">Favourite</string>

@@ -5,6 +5,10 @@ import android.os.Bundle;
 import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.format.Formatter;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.ProgressBar;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -52,6 +56,10 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
     private boolean isTracking = false;
     private AlertDialog activeDialog;
     private AlertDialog shareProgressDialog;
+    private TextView shareProgressMessageView;
+    private TextView shareProgressSizeView;
+    private TextView shareProgressPercentView;
+    private ProgressBar shareProgressBar;
     private final ExecutorService shareExecutor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final AtomicBoolean shareInProgress = new AtomicBoolean(false);
@@ -242,22 +250,26 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
                         new RemoteAudioPreparationHelper.ProgressListener() {
                             @Override
                             public void onFetchingMetadata(String title) {
-                                updateShareProgressMessage(R.string.download_fetching_metadata);
+                                updateShareProgressState(R.string.download_fetching_metadata, -1, -1L, -1L);
                             }
 
                             @Override
                             public void onDownloadingAudio(String title, long downloadedBytes, long totalBytes) {
-                                updateShareProgressMessage(R.string.download_audio_progress);
+                                int percent = -1;
+                                if (totalBytes > 0L) {
+                                    percent = (int) Math.max(0, Math.min(100, Math.round((downloadedBytes * 100f) / totalBytes)));
+                                }
+                                updateShareProgressState(R.string.download_audio_progress, percent, downloadedBytes, totalBytes);
                             }
 
                             @Override
                             public void onFetchingCover(String title) {
-                                updateShareProgressMessage(R.string.download_cover_progress);
+                                updateShareProgressState(R.string.download_cover_progress, -1, -1L, -1L);
                             }
 
                             @Override
                             public void onWritingMetadata(String title) {
-                                updateShareProgressMessage(R.string.download_writing_tags);
+                                updateShareProgressState(R.string.download_writing_tags, -1, -1L, -1L);
                             }
                         }
                 );
@@ -279,17 +291,48 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
 
     private void showShareProgressDialog() {
         dismissShareProgressDialog();
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_share_progress, null);
+        shareProgressMessageView = dialogView.findViewById(R.id.text_share_progress_message);
+        shareProgressSizeView = dialogView.findViewById(R.id.text_share_progress_size);
+        shareProgressPercentView = dialogView.findViewById(R.id.text_share_progress_percent);
+        shareProgressBar = dialogView.findViewById(R.id.progress_share_audio);
+        shareProgressMessageView.setText(R.string.share_audio_preparing);
+        shareProgressSizeView.setText(R.string.share_progress_indeterminate);
+        shareProgressPercentView.setText(R.string.share_progress_indeterminate);
+        shareProgressBar.setIndeterminate(true);
         shareProgressDialog = new AlertDialog.Builder(this)
-                .setMessage(R.string.share_audio_preparing)
+                .setView(dialogView)
                 .setCancelable(false)
                 .create();
         shareProgressDialog.show();
     }
 
-    private void updateShareProgressMessage(int messageRes) {
+    private void updateShareProgressState(int messageRes, int percent, long downloadedBytes, long totalBytes) {
         mainHandler.post(() -> {
             if (shareProgressDialog != null && shareProgressDialog.isShowing()) {
-                shareProgressDialog.setMessage(getString(messageRes));
+                if (shareProgressMessageView != null) {
+                    shareProgressMessageView.setText(messageRes);
+                }
+                if (shareProgressBar != null && shareProgressPercentView != null && shareProgressSizeView != null) {
+                    if (percent >= 0) {
+                        shareProgressBar.setIndeterminate(false);
+                        shareProgressBar.setProgress(percent);
+                        if (totalBytes > 0L) {
+                            shareProgressSizeView.setText(getString(
+                                    R.string.share_progress_size_format,
+                                    Formatter.formatShortFileSize(this, downloadedBytes),
+                                    Formatter.formatShortFileSize(this, totalBytes)
+                            ));
+                        } else {
+                            shareProgressSizeView.setText(Formatter.formatShortFileSize(this, Math.max(0L, downloadedBytes)));
+                        }
+                        shareProgressPercentView.setText(getString(R.string.download_percent_format, percent));
+                    } else {
+                        shareProgressBar.setIndeterminate(true);
+                        shareProgressSizeView.setText(R.string.share_progress_indeterminate);
+                        shareProgressPercentView.setText(R.string.share_progress_indeterminate);
+                    }
+                }
             }
         });
     }
@@ -299,6 +342,10 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
             shareProgressDialog.dismiss();
             shareProgressDialog = null;
         }
+        shareProgressMessageView = null;
+        shareProgressSizeView = null;
+        shareProgressPercentView = null;
+        shareProgressBar = null;
     }
 
     private void toggleFavourite() {

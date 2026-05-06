@@ -57,6 +57,8 @@
     <string name="share_link">分享链接</string>
     <string name="share_audio">分享音频</string>
     <string name="share_audio_preparing">正在准备分享音频</string>
+    <string name="share_progress_indeterminate">请稍候...</string>
+    <string name="share_progress_size_format">%1$s / %2$s</string>
     <string name="share_audio_failed">分享音频失败：</string>
     <string name="share_not_available">当前项目暂不支持分享</string>
     <string name="favourite">收藏</string>
