@@ -81,10 +81,14 @@ public class SettingsManager {
 
     private final Context appContext;
     private SharedPreferences prefs;
+    private String lastPlaybackSnapshotQueue = null;
+    private int lastPlaybackSnapshotIndex = Integer.MIN_VALUE;
 
     public SettingsManager(Context context) {
         appContext = context.getApplicationContext();
         prefs = appContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        lastPlaybackSnapshotQueue = prefs.getString(KEY_PLAYBACK_SNAPSHOT_QUEUE, null);
+        lastPlaybackSnapshotIndex = prefs.getInt(KEY_PLAYBACK_SNAPSHOT_INDEX, -1);
     }
 
     public void setMusicU(String musicU) {
@@ -550,10 +554,16 @@ public class SettingsManager {
                 array.put(serializePlaybackSong(song));
             }
         }
+        String serializedQueue = array.toString();
+        if (serializedQueue.equals(lastPlaybackSnapshotQueue) && currentIndex == lastPlaybackSnapshotIndex) {
+            return;
+        }
         prefs.edit()
-                .putString(KEY_PLAYBACK_SNAPSHOT_QUEUE, array.toString())
+                .putString(KEY_PLAYBACK_SNAPSHOT_QUEUE, serializedQueue)
                 .putInt(KEY_PLAYBACK_SNAPSHOT_INDEX, currentIndex)
                 .apply();
+        lastPlaybackSnapshotQueue = serializedQueue;
+        lastPlaybackSnapshotIndex = currentIndex;
     }
 
     public PlaybackSnapshot getPlaybackSnapshot() {
@@ -576,10 +586,15 @@ public class SettingsManager {
     }
 
     public void clearPlaybackSnapshot() {
+        if (lastPlaybackSnapshotQueue == null && lastPlaybackSnapshotIndex == -1) {
+            return;
+        }
         prefs.edit()
                 .remove(KEY_PLAYBACK_SNAPSHOT_QUEUE)
                 .remove(KEY_PLAYBACK_SNAPSHOT_INDEX)
                 .apply();
+        lastPlaybackSnapshotQueue = null;
+        lastPlaybackSnapshotIndex = -1;
     }
 
     private int clampHearingProtectionListenMinutes(int minutes) {

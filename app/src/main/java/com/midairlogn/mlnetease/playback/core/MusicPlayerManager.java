@@ -191,7 +191,7 @@ public class MusicPlayerManager {
     }
 
     public void restorePlaybackSnapshotIfNeeded() {
-        if (!playlist.isEmpty()) {
+        if (!playlist.isEmpty() || !settingsManager.isHearingProtectionRestActive()) {
             return;
         }
         SettingsManager.PlaybackSnapshot snapshot = settingsManager.getPlaybackSnapshot();
@@ -207,6 +207,10 @@ public class MusicPlayerManager {
     }
 
     private void persistPlaybackSnapshot() {
+        if (!settingsManager.isHearingProtectionEnabled()) {
+            settingsManager.clearPlaybackSnapshot();
+            return;
+        }
         settingsManager.setPlaybackSnapshot(playlist, currentIndex);
     }
 
