@@ -39,9 +39,9 @@ public final class ShareUtils {
     public static void shareAudio(@NonNull Context context, @NonNull String chooserTitle, @NonNull Uri uri, @NonNull String mimeType) {
         Intent intent = new Intent(Intent.ACTION_SEND)
                 .setType(mimeType)
-                .putExtra(Intent.EXTRA_STREAM, uri)
-                .setClipData(ClipData.newRawUri(context.getString(R.string.share_audio), uri))
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                .putExtra(Intent.EXTRA_STREAM, uri);
+        intent.setClipData(ClipData.newRawUri(context.getString(R.string.share_audio), uri));
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         context.startActivity(Intent.createChooser(intent, chooserTitle));
     }
 
