@@ -280,25 +280,10 @@ public class SongDownloadService extends Service {
         String title = song == null || song.name == null || song.name.trim().isEmpty()
                 ? getString(R.string.download)
                 : song.name.trim();
-        DownloadCustomizationSettings customizationSettings = settingsManager.getDownloadCustomizationSettings();
         String quality = settingsManager.getQuality();
         String extension = DownloadFileUtils.getAudioExtensionForQuality(quality);
-        String displayName = DownloadFileUtils.buildDisplayName(song, extension, customizationSettings);
         String mimeType = "mp3".equals(extension) ? "audio/mpeg" : "audio/flac";
         String relativePath = DownloadFileUtils.buildRelativePath(task.request.type, task.request.title);
-
-        if (DownloadFileUtils.audioExists(this, displayName, relativePath)) {
-            taskManager.updateTaskProgress(
-                    task.id,
-                    index,
-                    title,
-                    getString(R.string.download_song_skipped_exists),
-                    computeOverallProgress(task, index, 100),
-                    0L,
-                    -1L
-            );
-            return;
-        }
 
         PreparedAudioFile preparedAudioFile = remoteAudioPreparationHelper.prepareDownloadAudio(
                 song,
@@ -371,6 +356,19 @@ public class SongDownloadService extends Service {
         );
 
         try {
+            if (DownloadFileUtils.audioExists(this, preparedAudioFile.displayName, relativePath)) {
+                taskManager.updateTaskProgress(
+                        task.id,
+                        index,
+                        title,
+                        getString(R.string.download_song_skipped_exists),
+                        computeOverallProgress(task, index, 100),
+                        0L,
+                        -1L
+                );
+                return;
+            }
+
             taskManager.updateTaskProgress(
                     task.id,
                     index,
@@ -382,7 +380,7 @@ public class SongDownloadService extends Service {
             );
             updateNotificationForCurrentState();
 
-            Uri savedUri = DownloadFileUtils.createPendingAudio(this, displayName, mimeType, relativePath);
+            Uri savedUri = DownloadFileUtils.createPendingAudio(this, preparedAudioFile.displayName, mimeType, relativePath);
             boolean publishSuccess = false;
             try {
                 DownloadFileUtils.writeAudio(this, savedUri, preparedAudioFile.file);
