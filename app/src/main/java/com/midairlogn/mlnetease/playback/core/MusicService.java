@@ -52,6 +52,9 @@ public class MusicService extends Service {
     private static final int MAX_POST_REST_PLAYBACK_RETRIES = 2;
     private static final long POST_REST_AUDIO_FOCUS_RETRY_DELAY_MS = 1_500L;
     private static final int MAX_POST_REST_AUDIO_FOCUS_RETRIES = 6;
+    private static final String FOCUS_ACTION_RESUME_CURRENT = "focus:resume_current";
+    private static final String FOCUS_ACTION_NEXT = "focus:next";
+    private static final String FOCUS_ACTION_PREVIOUS = "focus:previous";
     public static final String ACTION_UPDATE_SETTINGS = "ACTION_UPDATE_SETTINGS";
     public static final String ACTION_CANCEL_REST_AND_CONTINUE = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_CONTINUE";
     public static final String ACTION_CANCEL_REST_AND_NEXT = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_NEXT";
@@ -73,6 +76,7 @@ public class MusicService extends Service {
     private boolean pausedByFocusLoss = false;
     private boolean resumeOnFocusGain = false;
     private boolean pendingAutoContinueAfterRest = false;
+    private String pendingFocusGainAction = null;
     private boolean awaitingPostRestPlaybackStart = false;
     private int postRestPlaybackRetryCount = 0;
     private int postRestAudioFocusRetryCount = 0;
@@ -196,6 +200,8 @@ public class MusicService extends Service {
                 hasAudioFocus = true;
                 if (pendingAutoContinueAfterRest) {
                     continuePlaybackAfterExpiredRest();
+                } else if (pendingFocusGainAction != null) {
+                    performPendingFocusGainAction();
                 } else if (pausedByFocusLoss && resumeOnFocusGain && musicPlayerManager != null && !isPlaybackActive()) {
                     musicPlayerManager.resume();
                 }
@@ -307,6 +313,7 @@ public class MusicService extends Service {
 
             @Override
             public void onStop() {
+                pendingFocusGainAction = null;
                 pausedByFocusLoss = false;
                 resumeOnFocusGain = false;
                 musicPlayerManager.pause();
@@ -392,12 +399,65 @@ public class MusicService extends Service {
     private void schedulePostRestAudioFocusRetry() {
         if (postRestAudioFocusRetryCount >= MAX_POST_REST_AUDIO_FOCUS_RETRIES) {
             pendingAutoContinueAfterRest = false;
-            handler.removeCallbacks(postRestAudioFocusRetryRunnable);
+            clearPostRestPlaybackWait(true);
             return;
         }
         postRestAudioFocusRetryCount++;
         handler.removeCallbacks(postRestAudioFocusRetryRunnable);
         handler.postDelayed(postRestAudioFocusRetryRunnable, POST_REST_AUDIO_FOCUS_RETRY_DELAY_MS);
+    }
+
+    private boolean requestAudioFocusForAction(String action) {
+        AudioFocusOutcome focusOutcome = requestAudioFocus();
+        if (focusOutcome == AudioFocusOutcome.GRANTED) {
+            pendingFocusGainAction = null;
+            return true;
+        }
+        pendingFocusGainAction = focusOutcome == AudioFocusOutcome.DELAYED ? action : null;
+        return false;
+    }
+
+    private void performPendingFocusGainAction() {
+        String pendingAction = pendingFocusGainAction;
+        pendingFocusGainAction = null;
+        if (pendingAction == null) {
+            return;
+        }
+        executeActionWithAudioFocus(pendingAction);
+    }
+
+    private boolean executeActionWithAudioFocus(String action) {
+        if (ACTION_CANCEL_REST_AND_CONTINUE.equals(action)
+                || ACTION_CANCEL_REST_AND_RESUME_CURRENT.equals(action)
+                || ACTION_CANCEL_REST_AND_NEXT.equals(action)
+                || ACTION_CANCEL_REST_AND_PREVIOUS.equals(action)) {
+            if (hearingProtectionController == null || !hearingProtectionController.cancelRestForUserAction()) {
+                return false;
+            }
+        }
+        pausedByFocusLoss = false;
+        resumeOnFocusGain = false;
+        if (ACTION_CANCEL_REST_AND_CONTINUE.equals(action)) {
+            musicPlayerManager.continueAfterHearingProtectionRest();
+            return true;
+        }
+        if (ACTION_CANCEL_REST_AND_RESUME_CURRENT.equals(action)
+                || FOCUS_ACTION_RESUME_CURRENT.equals(action)) {
+            musicPlayerManager.markPausedForResume();
+            musicPlayerManager.resume();
+            return true;
+        }
+        if (ACTION_CANCEL_REST_AND_NEXT.equals(action)
+                || FOCUS_ACTION_NEXT.equals(action)) {
+            musicPlayerManager.playNext();
+            return true;
+        }
+        if (ACTION_CANCEL_REST_AND_PREVIOUS.equals(action)
+                || FOCUS_ACTION_PREVIOUS.equals(action)) {
+            musicPlayerManager.playPrevious();
+            return true;
+        }
+        return false;
     }
 
     private boolean continuePlaybackAfterExpiredRest() {
@@ -451,32 +511,10 @@ public class MusicService extends Service {
     private boolean performRestCancellationAction(String action) {
         clearPostRestPlaybackWait(true);
         pendingAutoContinueAfterRest = false;
-        if (requestAudioFocus() != AudioFocusOutcome.GRANTED) {
+        if (!requestAudioFocusForAction(action)) {
             return isHearingProtectionRestActive();
         }
-        if (hearingProtectionController == null || !hearingProtectionController.cancelRestForUserAction()) {
-            return false;
-        }
-        pausedByFocusLoss = false;
-        resumeOnFocusGain = false;
-        if (ACTION_CANCEL_REST_AND_CONTINUE.equals(action)) {
-            musicPlayerManager.continueAfterHearingProtectionRest();
-            return true;
-        }
-        if (ACTION_CANCEL_REST_AND_RESUME_CURRENT.equals(action)) {
-            musicPlayerManager.markPausedForResume();
-            musicPlayerManager.resume();
-            return true;
-        }
-        if (ACTION_CANCEL_REST_AND_NEXT.equals(action)) {
-            musicPlayerManager.playNext();
-            return true;
-        }
-        if (ACTION_CANCEL_REST_AND_PREVIOUS.equals(action)) {
-            musicPlayerManager.playPrevious();
-            return true;
-        }
-        return false;
+        return executeActionWithAudioFocus(action);
     }
 
     private boolean handleMediaButtonIntent(Intent intent) {
@@ -520,15 +558,14 @@ public class MusicService extends Service {
             performRestCancellationAction(ACTION_CANCEL_REST_AND_CONTINUE);
             return;
         }
-        if (requestAudioFocus() != AudioFocusOutcome.GRANTED) {
+        if (!requestAudioFocusForAction(FOCUS_ACTION_RESUME_CURRENT)) {
             return;
         }
-        pausedByFocusLoss = false;
-        resumeOnFocusGain = false;
-        musicPlayerManager.resume();
+        executeActionWithAudioFocus(FOCUS_ACTION_RESUME_CURRENT);
     }
 
     private void handleExternalPauseRequest() {
+        pendingFocusGainAction = null;
         pausedByFocusLoss = false;
         resumeOnFocusGain = false;
         musicPlayerManager.pause();
@@ -540,10 +577,10 @@ public class MusicService extends Service {
             performRestCancellationAction(ACTION_CANCEL_REST_AND_NEXT);
             return;
         }
-        if (requestAudioFocus() != AudioFocusOutcome.GRANTED) {
+        if (!requestAudioFocusForAction(FOCUS_ACTION_NEXT)) {
             return;
         }
-        musicPlayerManager.playNext();
+        executeActionWithAudioFocus(FOCUS_ACTION_NEXT);
     }
 
     private void handleExternalPreviousRequest() {
@@ -551,10 +588,10 @@ public class MusicService extends Service {
             performRestCancellationAction(ACTION_CANCEL_REST_AND_PREVIOUS);
             return;
         }
-        if (requestAudioFocus() != AudioFocusOutcome.GRANTED) {
+        if (!requestAudioFocusForAction(FOCUS_ACTION_PREVIOUS)) {
             return;
         }
-        musicPlayerManager.playPrevious();
+        executeActionWithAudioFocus(FOCUS_ACTION_PREVIOUS);
     }
 
     private void handleNotificationPlay() {
