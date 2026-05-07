@@ -33,6 +33,16 @@ public final class HearingProtectionTransportController {
         musicPlayerManager.resume();
     }
 
+    public static void handleSeekResumeCurrent(Context context) {
+        Context appContext = context.getApplicationContext();
+        MusicPlayerManager musicPlayerManager = MusicPlayerManager.getInstance(appContext);
+        if (HearingProtectionController.getSnapshot(appContext).restActive) {
+            dispatchServiceAction(appContext, MusicService.ACTION_CANCEL_REST_AND_RESUME_CURRENT);
+            return;
+        }
+        musicPlayerManager.resume();
+    }
+
     public static void handleNext(Context context) {
         Context appContext = context.getApplicationContext();
         if (HearingProtectionController.getSnapshot(appContext).restActive) {

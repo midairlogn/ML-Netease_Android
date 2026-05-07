@@ -165,7 +165,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
             return;
         }
         manager.seekTo((int) time);
-        HearingProtectionTransportController.handleResume(requireContext());
+        HearingProtectionTransportController.handleSeekResumeCurrent(requireContext());
         if (clearTimelineOverlay) {
             clearTimelineOverlay();
         }
