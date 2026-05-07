@@ -270,48 +270,22 @@ public class MusicService extends Service {
 
             @Override
             public void onPlay() {
-                if (isHearingProtectionRestActive()) {
-                    performRestCancellationAction(ACTION_CANCEL_REST_AND_CONTINUE);
-                    return;
-                }
-                if (!requestAudioFocus()) {
-                    return;
-                }
-                pausedByFocusLoss = false;
-                resumeOnFocusGain = false;
-                musicPlayerManager.resume();
+                handleExternalPlayRequest();
             }
 
             @Override
             public void onPause() {
-                pausedByFocusLoss = false;
-                resumeOnFocusGain = false;
-                musicPlayerManager.pause();
-                abandonAudioFocus();
+                handleExternalPauseRequest();
             }
 
             @Override
             public void onSkipToNext() {
-                if (isHearingProtectionRestActive()) {
-                    performRestCancellationAction(ACTION_CANCEL_REST_AND_NEXT);
-                    return;
-                }
-                if (!requestAudioFocus()) {
-                    return;
-                }
-                musicPlayerManager.playNext();
+                handleExternalNextRequest();
             }
 
             @Override
             public void onSkipToPrevious() {
-                if (isHearingProtectionRestActive()) {
-                    performRestCancellationAction(ACTION_CANCEL_REST_AND_PREVIOUS);
-                    return;
-                }
-                if (!requestAudioFocus()) {
-                    return;
-                }
-                musicPlayerManager.playPrevious();
+                handleExternalPreviousRequest();
             }
 
             @Override
@@ -465,30 +439,33 @@ public class MusicService extends Service {
         }
         switch (keyEvent.getKeyCode()) {
             case KeyEvent.KEYCODE_MEDIA_PLAY:
-                handleNotificationPlay();
+            case KeyEvent.KEYCODE_HEADSETHOOK:
+                handleExternalPlayRequest();
                 return true;
             case KeyEvent.KEYCODE_MEDIA_PAUSE:
-                handleNotificationPause();
+                handleExternalPauseRequest();
                 return true;
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-                if (isPlaybackActive()) {
-                    handleNotificationPause();
+                if (isHearingProtectionRestActive()) {
+                    handleExternalPlayRequest();
+                } else if (isPlaybackActive()) {
+                    handleExternalPauseRequest();
                 } else {
-                    handleNotificationPlay();
+                    handleExternalPlayRequest();
                 }
                 return true;
             case KeyEvent.KEYCODE_MEDIA_NEXT:
-                handleNotificationNext();
+                handleExternalNextRequest();
                 return true;
             case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
-                handleNotificationPrevious();
+                handleExternalPreviousRequest();
                 return true;
             default:
                 return false;
         }
     }
 
-    private void handleNotificationPlay() {
+    private void handleExternalPlayRequest() {
         if (isHearingProtectionRestActive()) {
             performRestCancellationAction(ACTION_CANCEL_REST_AND_CONTINUE);
             return;
@@ -501,14 +478,14 @@ public class MusicService extends Service {
         musicPlayerManager.resume();
     }
 
-    private void handleNotificationPause() {
+    private void handleExternalPauseRequest() {
         pausedByFocusLoss = false;
         resumeOnFocusGain = false;
         musicPlayerManager.pause();
         abandonAudioFocus();
     }
 
-    private void handleNotificationNext() {
+    private void handleExternalNextRequest() {
         if (isHearingProtectionRestActive()) {
             performRestCancellationAction(ACTION_CANCEL_REST_AND_NEXT);
             return;
@@ -519,7 +496,7 @@ public class MusicService extends Service {
         musicPlayerManager.playNext();
     }
 
-    private void handleNotificationPrevious() {
+    private void handleExternalPreviousRequest() {
         if (isHearingProtectionRestActive()) {
             performRestCancellationAction(ACTION_CANCEL_REST_AND_PREVIOUS);
             return;
@@ -528,6 +505,22 @@ public class MusicService extends Service {
             return;
         }
         musicPlayerManager.playPrevious();
+    }
+
+    private void handleNotificationPlay() {
+        handleExternalPlayRequest();
+    }
+
+    private void handleNotificationPause() {
+        handleExternalPauseRequest();
+    }
+
+    private void handleNotificationNext() {
+        handleExternalNextRequest();
+    }
+
+    private void handleNotificationPrevious() {
+        handleExternalPreviousRequest();
     }
 
     private void updateMetadata(Song song) {
@@ -969,7 +962,10 @@ public class MusicService extends Service {
                 // updatePlaybackState handles this check automatically via lastNotifiedFloatingState.
                 updatePlaybackState(isPlaybackActive());
             } else if (ACTION_REFRESH_PLAYBACK_STATE.equals(action)) {
-                if ((pendingAutoContinueAfterRest || (!awaitingPostRestPlaybackStart && canAttemptPostRestRetry()))
+                // A plain playback-state refresh is used by both expired-rest and manual-cancel
+                // flows. Only continue playback here when we already know an expired-rest retry
+                // is pending, otherwise seek/lyric rest cancellation can incorrectly advance.
+                if (pendingAutoContinueAfterRest
                         && hearingProtectionController != null
                         && !isHearingProtectionRestActive()) {
                     continuePlaybackAfterExpiredRest();

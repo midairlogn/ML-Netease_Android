@@ -683,9 +683,11 @@ public class HearingProtectionController implements
     }
 
     private PendingIntent buildRestFinishedPendingIntent() {
-        Intent intent = new Intent(appContext, MusicService.class);
+        // Deliver the alarm through the manifest receiver so it can restart the
+        // playback service via startForegroundService() when the app is backgrounded.
+        Intent intent = new Intent(appContext, HearingProtectionRestReceiver.class);
         intent.setAction(ACTION_HEARING_REST_FINISHED);
-        return PendingIntent.getService(
+        return PendingIntent.getBroadcast(
                 appContext,
                 REST_FINISH_REQUEST_CODE,
                 intent,
