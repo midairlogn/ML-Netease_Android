@@ -962,7 +962,10 @@ public class MusicService extends Service {
                 // updatePlaybackState handles this check automatically via lastNotifiedFloatingState.
                 updatePlaybackState(isPlaybackActive());
             } else if (ACTION_REFRESH_PLAYBACK_STATE.equals(action)) {
-                if ((pendingAutoContinueAfterRest || (!awaitingPostRestPlaybackStart && canAttemptPostRestRetry()))
+                // A plain playback-state refresh is used by both expired-rest and manual-cancel
+                // flows. Only continue playback here when we already know an expired-rest retry
+                // is pending, otherwise seek/lyric rest cancellation can incorrectly advance.
+                if (pendingAutoContinueAfterRest
                         && hearingProtectionController != null
                         && !isHearingProtectionRestActive()) {
                     continuePlaybackAfterExpiredRest();
