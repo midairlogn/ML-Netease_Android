@@ -54,6 +54,8 @@ public class MusicPlayerManager {
     private static final float MIN_ALLOWED_GAIN_DB = -20.0f;
     private static final float MAX_ALLOWED_GAIN_DB = 6.0f;
     private static final float MIN_EFFECTIVE_GAIN_DB = 0.1f;
+    private static final long APP_VOLUME_RAMP_DURATION_MS = 180L;
+    private static final long APP_VOLUME_RAMP_STEP_MS = 16L;
     private int resumePosition = 0;
     private boolean isCompletionListenerEnabled = false;
     private final AtomicLong playRequestIdGenerator = new AtomicLong(0);
@@ -63,6 +65,8 @@ public class MusicPlayerManager {
     private int loudnessEnhancerAudioSessionId = -1;
     private float pendingLoudnessGainDb = 0f;
     private boolean hasPendingLoudnessNormalization = false;
+    private float currentAppVolumeScalar = 1f;
+    private Runnable appVolumeRampRunnable;
     private static final class NormalizationMetadata {
         final boolean hasGain;
         final float gainDb;
@@ -1072,9 +1076,53 @@ public class MusicPlayerManager {
     }
 
     public void setAppVolume(int percent) {
+        setAppVolume(percent, true);
+    }
+
+    private void setAppVolume(int percent, boolean smooth) {
         float volumeScalar = volumePercentToScalar(percent);
+        if (!smooth || !playbackActive) {
+            cancelAppVolumeRamp();
+            applyAppVolumeScalar(volumeScalar);
+            return;
+        }
+
+        startAppVolumeRamp(volumeScalar);
+    }
+
+    private void startAppVolumeRamp(float targetScalar) {
+        cancelAppVolumeRamp();
+        final float startScalar = currentAppVolumeScalar;
+        final long startTimeMs = android.os.SystemClock.uptimeMillis();
+        appVolumeRampRunnable = new Runnable() {
+            @Override
+            public void run() {
+                long elapsedMs = android.os.SystemClock.uptimeMillis() - startTimeMs;
+                float fraction = Math.min(1f, elapsedMs / (float) APP_VOLUME_RAMP_DURATION_MS);
+                float nextScalar = startScalar + ((targetScalar - startScalar) * fraction);
+                applyAppVolumeScalar(nextScalar);
+                if (fraction < 1f && appVolumeRampRunnable == this) {
+                    mainHandler.postDelayed(this, APP_VOLUME_RAMP_STEP_MS);
+                } else if (appVolumeRampRunnable == this) {
+                    appVolumeRampRunnable = null;
+                    applyAppVolumeScalar(targetScalar);
+                }
+            }
+        };
+        mainHandler.post(appVolumeRampRunnable);
+    }
+
+    private void cancelAppVolumeRamp() {
+        if (appVolumeRampRunnable != null) {
+            mainHandler.removeCallbacks(appVolumeRampRunnable);
+            appVolumeRampRunnable = null;
+        }
+    }
+
+    private void applyAppVolumeScalar(float volumeScalar) {
         try {
             mediaPlayer.setVolume(volumeScalar, volumeScalar);
+            currentAppVolumeScalar = volumeScalar;
         } catch (IllegalStateException ignored) {
         }
     }
@@ -1222,6 +1270,7 @@ public class MusicPlayerManager {
     public void release() {
         cancelActiveFullInfoRequest();
         stopProgressDispatcher();
+        cancelAppVolumeRamp();
         clearLoudnessNormalization();
         try {
             mediaPlayer.release();

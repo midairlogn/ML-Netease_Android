@@ -70,6 +70,7 @@ import javax.crypto.AEADBadTagException;
 public class SettingsFragment extends Fragment {
 
     private static final String BACKUP_FILE_EXTENSION = ".mlns";
+    private static final long APP_VOLUME_UPDATE_DEBOUNCE_MS = 80L;
 
     private SettingsManager settingsManager;
     private EditText inputMusicU;
@@ -99,6 +100,7 @@ public class SettingsFragment extends Fragment {
     private final Handler hearingProtectionUiHandler = new Handler(Looper.getMainLooper());
     private Runnable musicUSaveRunnable;
     private Runnable searchLimitSaveRunnable;
+    private Runnable appVolumeUpdateRunnable;
     private final Runnable hearingProtectionUiRefreshRunnable = new Runnable() {
         @Override
         public void run() {
@@ -312,14 +314,19 @@ public class SettingsFragment extends Fragment {
                     return;
                 }
                 settingsManager.setAppVolume(progress);
-                notifySettingsChanged();
+                scheduleAppVolumeUpdate();
             }
 
             @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                cancelPendingAppVolumeUpdate();
+            }
 
             @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                settingsManager.setAppVolume(seekBar.getProgress());
+                notifyAppVolumeChanged();
+            }
         });
         textAppVolumeValue.setOnClickListener(v -> {
             int defaultVolume = SettingsManager.DEFAULT_APP_VOLUME;
@@ -329,7 +336,7 @@ public class SettingsFragment extends Fragment {
             seekbarAppVolume.setProgress(defaultVolume);
             textAppVolumeValue.setText(defaultVolume + "%");
             settingsManager.setAppVolume(defaultVolume);
-            notifySettingsChanged();
+            notifyAppVolumeChanged();
         });
 
         switchDynamicVolume.setChecked(settingsManager.isDynamicVolumeEnabled());
@@ -591,6 +598,7 @@ public class SettingsFragment extends Fragment {
             debounceHandler.removeCallbacks(searchLimitSaveRunnable);
             searchLimitSaveRunnable = null;
         }
+        cancelPendingAppVolumeUpdate();
         debounceHandler.removeCallbacksAndMessages(null);
     }
 
@@ -668,6 +676,27 @@ public class SettingsFragment extends Fragment {
         requireContext().startService(intent);
     }
 
+    private void scheduleAppVolumeUpdate() {
+        cancelPendingAppVolumeUpdate();
+        appVolumeUpdateRunnable = this::notifyAppVolumeChanged;
+        debounceHandler.postDelayed(appVolumeUpdateRunnable, APP_VOLUME_UPDATE_DEBOUNCE_MS);
+    }
+
+    private void cancelPendingAppVolumeUpdate() {
+        if (appVolumeUpdateRunnable != null) {
+            debounceHandler.removeCallbacks(appVolumeUpdateRunnable);
+            appVolumeUpdateRunnable = null;
+        }
+    }
+
+    private void notifyAppVolumeChanged() {
+        if (getActivity() == null) return;
+        cancelPendingAppVolumeUpdate();
+        Intent intent = new Intent(requireContext(), MusicService.class);
+        intent.setAction(MusicService.ACTION_UPDATE_APP_VOLUME);
+        requireContext().startService(intent);
+    }
+
     @Override
     public void onResume() {
         super.onResume();
@@ -699,6 +728,9 @@ public class SettingsFragment extends Fragment {
     }
 
     private void flushPendingSaves() {
+        if (appVolumeUpdateRunnable != null) {
+            notifyAppVolumeChanged();
+        }
         if (musicUSaveRunnable != null) {
             debounceHandler.removeCallbacks(musicUSaveRunnable);
             musicUSaveRunnable.run();
