@@ -70,6 +70,7 @@
     <string name="download_manager_subtitle">查看下载队列、进度、预计剩余时间，并控制每个任务。</string>
     <string name="download_manager_idle">当前没有下载任务</string>
     <string name="download_manager_queue_count">队列中有 %1$d 个任务</string>
+    <string name="download_notification_tasks_progress">正在下载任务 %1$d/%2$d</string>
     <string name="download_all">下载全部</string>
     <string name="download_added">已加入下载任务</string>
     <string name="download_added_named">已加入下载队列：%1$s</string>
@@ -262,6 +263,9 @@
     <string name="settings_backup_read_error">无法打开文件</string>
     <string name="settings_backup_write_error">无法写入数据文件</string>
     <string name="delete_shortcut">删除收藏</string>
+    <string name="dont_show_again">不再显示</string>
+    <string name="hearing_protection_background_prompt_title">保持听力保护运行</string>
+    <string name="hearing_protection_background_prompt_message">部分厂商系统可能会在后台停止听力保护。如果休息提醒或自动恢复播放不稳定，请打开系统设置，手动允许后台活动、关闭电池优化，并为本应用开启自启动/手动启动相关设置。</string>
     <string name="local_music_nav">本地</string>
     <string name="local_music_scan">扫描本地音乐</string>
     <string name="local_music_pick">选择音频文件</string>

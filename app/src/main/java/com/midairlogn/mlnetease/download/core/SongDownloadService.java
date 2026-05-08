@@ -28,7 +28,6 @@ import com.midairlogn.mlnetease.settings.SettingsManager;
 import com.midairlogn.mlnetease.shared.model.Song;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -177,6 +176,7 @@ public class SongDownloadService extends Service {
                         break;
                     }
                     taskManager.activateTask(activeTask.id);
+                    updateNotificationForCurrentState();
                 }
 
                 if (taskManager.shouldCancel(activeTask.id)) {
@@ -249,7 +249,6 @@ public class SongDownloadService extends Service {
                     0L,
                     -1L
             );
-            updateNotificationForCurrentState();
 
             try {
                 downloadSong(task, song, i, total);
@@ -260,8 +259,6 @@ public class SongDownloadService extends Service {
                 e.printStackTrace();
                 taskManager.markSongCompleted(task.id, song, false, messageOrFallback(e, getString(R.string.download_failed)));
             }
-
-            updateNotificationForCurrentState();
         }
 
         if (taskManager.shouldCancel(task.id)) {
@@ -305,7 +302,6 @@ public class SongDownloadService extends Service {
                                 0L,
                                 -1L
                         );
-                        updateNotificationForCurrentState();
                     }
 
                     @Override
@@ -322,7 +318,6 @@ public class SongDownloadService extends Service {
                                 downloadedBytes,
                                 totalBytes
                         );
-                        updateNotificationForCurrentState();
                     }
 
                     @Override
@@ -336,7 +331,6 @@ public class SongDownloadService extends Service {
                                 0L,
                                 -1L
                         );
-                        updateNotificationForCurrentState();
                     }
 
                     @Override
@@ -350,7 +344,6 @@ public class SongDownloadService extends Service {
                                 0L,
                                 -1L
                         );
-                        updateNotificationForCurrentState();
                     }
                 }
         );
@@ -378,7 +371,6 @@ public class SongDownloadService extends Service {
                     0L,
                     -1L
             );
-            updateNotificationForCurrentState();
 
             Uri savedUri = DownloadFileUtils.createPendingAudio(this, preparedAudioFile.displayName, mimeType, relativePath);
             boolean publishSuccess = false;
@@ -437,22 +429,15 @@ public class SongDownloadService extends Service {
     }
 
     private void updateNotificationForCurrentState() {
-        DownloadTaskSnapshot active = null;
         List<DownloadTaskSnapshot> tasks = taskManager.getTaskSnapshots();
-        for (DownloadTaskSnapshot snapshot : tasks) {
-            if (snapshot.status == DownloadTaskStatus.ACTIVE) {
-                active = snapshot;
-                break;
-            }
-        }
-        Notification notification = active == null ? buildIdleNotification() : buildTaskNotification(active);
+        Notification notification = hasRunnableTasks(tasks) ? buildQueueNotification(tasks) : buildIdleNotification();
         notificationManager.notify(NOTIFICATION_ID, notification);
     }
 
     private Notification buildIdleNotification() {
         int queuedCount = 0;
         for (DownloadTaskSnapshot snapshot : taskManager.getTaskSnapshots()) {
-            if (snapshot.status == DownloadTaskStatus.WAITING || snapshot.status == DownloadTaskStatus.ACTIVE) {
+            if (isRunnableNotificationTask(snapshot)) {
                 queuedCount++;
             }
         }
@@ -467,35 +452,62 @@ public class SongDownloadService extends Service {
                 .build();
     }
 
-    private Notification buildTaskNotification(DownloadTaskSnapshot task) {
-        NotificationCompat.Builder builder = baseNotificationBuilder()
-                .setContentTitle(task.title)
-                .setContentText(task.statusMessage)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(buildNotificationDetail(task)))
-                .setOngoing(true)
-                .setProgress(100, task.progressPercent, false);
-
-        if (task.canPause) {
-            builder.addAction(0, getString(R.string.download_pause), buildServicePendingIntent(ACTION_PAUSE_TASK, task.id, 11));
-        } else if (task.canResume) {
-            builder.addAction(0, getString(R.string.download_resume), buildServicePendingIntent(ACTION_RESUME_TASK, task.id, 12));
+    private Notification buildQueueNotification(List<DownloadTaskSnapshot> tasks) {
+        int total = 0;
+        int current = 1;
+        for (DownloadTaskSnapshot task : tasks) {
+            if (!isRunnableNotificationTask(task)) {
+                continue;
+            }
+            total++;
+            if (task.status == DownloadTaskStatus.ACTIVE) {
+                current = total;
+            }
         }
-        if (task.canCancel) {
-            builder.addAction(0, getString(R.string.cancel), buildServicePendingIntent(ACTION_CANCEL_TASK, task.id, 13));
+
+        if (total == 0) {
+            return buildIdleNotification();
+        }
+
+        DownloadTaskSnapshot active = findActiveTask(tasks);
+        NotificationCompat.Builder builder = baseNotificationBuilder()
+                .setContentTitle(getString(R.string.download_manager_title))
+                .setContentText(getString(R.string.download_notification_tasks_progress, current, total))
+                .setOngoing(true)
+                .setProgress(0, 0, false);
+
+        if (active != null && active.canPause) {
+            builder.addAction(0, getString(R.string.download_pause), buildServicePendingIntent(ACTION_PAUSE_TASK, active.id, 11));
+        }
+        if (active != null && active.canCancel) {
+            builder.addAction(0, getString(R.string.cancel), buildServicePendingIntent(ACTION_CANCEL_TASK, active.id, 13));
         }
         return builder.build();
     }
 
-    private String buildNotificationDetail(DownloadTaskSnapshot task) {
-        StringBuilder builder = new StringBuilder();
-        if (task.currentSongTitle != null && !task.currentSongTitle.trim().isEmpty()) {
-            builder.append(task.currentSongTitle).append("\n");
+    @Nullable
+    private DownloadTaskSnapshot findActiveTask(List<DownloadTaskSnapshot> tasks) {
+        for (DownloadTaskSnapshot task : tasks) {
+            if (task != null && task.status == DownloadTaskStatus.ACTIVE) {
+                return task;
+            }
         }
-        builder.append(getString(R.string.download_task_counts, task.completedCount, task.totalCount));
-        if (task.etaMillis > 0L) {
-            builder.append(" • ").append(getString(R.string.download_eta_format, formatDuration(task.etaMillis)));
+        return null;
+    }
+
+    private boolean hasRunnableTasks(List<DownloadTaskSnapshot> tasks) {
+        for (DownloadTaskSnapshot task : tasks) {
+            if (isRunnableNotificationTask(task)) {
+                return true;
+            }
         }
-        return builder.toString();
+        return false;
+    }
+
+    private boolean isRunnableNotificationTask(DownloadTaskSnapshot task) {
+        return task != null && (task.status == DownloadTaskStatus.WAITING
+                || task.status == DownloadTaskStatus.ACTIVE
+                || task.status == DownloadTaskStatus.PAUSED);
     }
 
     private NotificationCompat.Builder baseNotificationBuilder() {
@@ -530,18 +542,6 @@ public class SongDownloadService extends Service {
         mainHandler.post(() -> Toast.makeText(this,
                 getString(R.string.download_completed_summary, successCount, total),
                 Toast.LENGTH_LONG).show());
-    }
-
-    private String formatDuration(long millis) {
-        long totalSeconds = Math.max(0L, millis / 1000L);
-        long minutes = totalSeconds / 60L;
-        long seconds = totalSeconds % 60L;
-        if (minutes >= 60L) {
-            long hours = minutes / 60L;
-            long remainingMinutes = minutes % 60L;
-            return String.format(Locale.US, "%dh %02dm", hours, remainingMinutes);
-        }
-        return String.format(Locale.US, "%dm %02ds", minutes, seconds);
     }
 
     private String messageOrFallback(Exception e, String fallback) {

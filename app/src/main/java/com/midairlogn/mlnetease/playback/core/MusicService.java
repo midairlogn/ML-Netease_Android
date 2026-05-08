@@ -56,6 +56,7 @@ public class MusicService extends Service {
     private static final String FOCUS_ACTION_NEXT = "focus:next";
     private static final String FOCUS_ACTION_PREVIOUS = "focus:previous";
     public static final String ACTION_UPDATE_SETTINGS = "ACTION_UPDATE_SETTINGS";
+    public static final String ACTION_UPDATE_APP_VOLUME = "com.midairlogn.mlnetease.action.UPDATE_APP_VOLUME";
     public static final String ACTION_CANCEL_REST_AND_CONTINUE = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_CONTINUE";
     public static final String ACTION_CANCEL_REST_AND_NEXT = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_NEXT";
     public static final String ACTION_CANCEL_REST_AND_PREVIOUS = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_PREVIOUS";
@@ -1048,6 +1049,12 @@ public class MusicService extends Service {
                 // Only update notification if the floating window toggle changed.
                 // updatePlaybackState handles this check automatically via lastNotifiedFloatingState.
                 updatePlaybackState(isPlaybackActive());
+            } else if (ACTION_UPDATE_APP_VOLUME.equals(action)) {
+                SettingsManager sm = new SettingsManager(this);
+                musicPlayerManager.setAppVolume(sm.getAppVolume());
+                if (hearingProtectionController != null) {
+                    hearingProtectionController.onSettingsChanged();
+                }
             } else if (ACTION_REFRESH_PLAYBACK_STATE.equals(action)) {
                 // A plain playback-state refresh is used by both expired-rest and manual-cancel
                 // flows. Only continue playback here when we already know an expired-rest retry

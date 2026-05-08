@@ -3,7 +3,6 @@ package com.midairlogn.mlnetease.settings;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.app.AlarmManager;
 import android.database.Cursor;
 import android.graphics.Typeface;
 import android.graphics.Color;
@@ -28,6 +27,7 @@ import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
@@ -70,6 +70,7 @@ import javax.crypto.AEADBadTagException;
 public class SettingsFragment extends Fragment {
 
     private static final String BACKUP_FILE_EXTENSION = ".mlns";
+    private static final long APP_VOLUME_UPDATE_DEBOUNCE_MS = 80L;
 
     private SettingsManager settingsManager;
     private EditText inputMusicU;
@@ -99,6 +100,7 @@ public class SettingsFragment extends Fragment {
     private final Handler hearingProtectionUiHandler = new Handler(Looper.getMainLooper());
     private Runnable musicUSaveRunnable;
     private Runnable searchLimitSaveRunnable;
+    private Runnable appVolumeUpdateRunnable;
     private final Runnable hearingProtectionUiRefreshRunnable = new Runnable() {
         @Override
         public void run() {
@@ -312,14 +314,19 @@ public class SettingsFragment extends Fragment {
                     return;
                 }
                 settingsManager.setAppVolume(progress);
-                notifySettingsChanged();
+                scheduleAppVolumeUpdate();
             }
 
             @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                cancelPendingAppVolumeUpdate();
+            }
 
             @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                settingsManager.setAppVolume(seekBar.getProgress());
+                notifyAppVolumeChanged();
+            }
         });
         textAppVolumeValue.setOnClickListener(v -> {
             int defaultVolume = SettingsManager.DEFAULT_APP_VOLUME;
@@ -329,7 +336,7 @@ public class SettingsFragment extends Fragment {
             seekbarAppVolume.setProgress(defaultVolume);
             textAppVolumeValue.setText(defaultVolume + "%");
             settingsManager.setAppVolume(defaultVolume);
-            notifySettingsChanged();
+            notifyAppVolumeChanged();
         });
 
         switchDynamicVolume.setChecked(settingsManager.isDynamicVolumeEnabled());
@@ -344,23 +351,8 @@ public class SettingsFragment extends Fragment {
             layoutHearingProtectionSettings.setVisibility(hearingProtectionEnabled ? View.VISIBLE : View.GONE);
         }
         refreshHearingProtectionSummary();
-        switchHearingProtection.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked && !ensureExactAlarmAccess()) {
-                buttonView.setChecked(false);
-                return;
-            }
-            settingsManager.setHearingProtectionEnabled(isChecked);
-            if (layoutHearingProtectionSettings != null) {
-                layoutHearingProtectionSettings.setVisibility(isChecked ? View.VISIBLE : View.GONE);
-            }
-            refreshHearingProtectionSummary();
-            if (isChecked) {
-                scheduleHearingProtectionUiRefresh();
-            } else {
-                stopHearingProtectionUiRefresh();
-            }
-            notifySettingsChanged();
-        });
+        switchHearingProtection.setOnCheckedChangeListener((buttonView, isChecked) ->
+                applyHearingProtectionEnabledState(isChecked));
         if (layoutHearingProtectionListenDuration != null) {
             layoutHearingProtectionListenDuration.setOnClickListener(v -> showHearingProtectionListenDurationDialog());
         }
@@ -606,6 +598,7 @@ public class SettingsFragment extends Fragment {
             debounceHandler.removeCallbacks(searchLimitSaveRunnable);
             searchLimitSaveRunnable = null;
         }
+        cancelPendingAppVolumeUpdate();
         debounceHandler.removeCallbacksAndMessages(null);
     }
 
@@ -683,17 +676,25 @@ public class SettingsFragment extends Fragment {
         requireContext().startService(intent);
     }
 
-    private boolean ensureExactAlarmAccess() {
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) {
-            return true;
+    private void scheduleAppVolumeUpdate() {
+        cancelPendingAppVolumeUpdate();
+        appVolumeUpdateRunnable = this::notifyAppVolumeChanged;
+        debounceHandler.postDelayed(appVolumeUpdateRunnable, APP_VOLUME_UPDATE_DEBOUNCE_MS);
+    }
+
+    private void cancelPendingAppVolumeUpdate() {
+        if (appVolumeUpdateRunnable != null) {
+            debounceHandler.removeCallbacks(appVolumeUpdateRunnable);
+            appVolumeUpdateRunnable = null;
         }
-        AlarmManager alarmManager = requireContext().getSystemService(AlarmManager.class);
-        if (alarmManager == null || alarmManager.canScheduleExactAlarms()) {
-            return true;
-        }
-        // Instead of forcing the user, we just return true here to allow enabling the feature.
-        // The HearingProtectionController already has a fallback to inexact alarms.
-        return true;
+    }
+
+    private void notifyAppVolumeChanged() {
+        if (getActivity() == null) return;
+        cancelPendingAppVolumeUpdate();
+        Intent intent = new Intent(requireContext(), MusicService.class);
+        intent.setAction(MusicService.ACTION_UPDATE_APP_VOLUME);
+        requireContext().startService(intent);
     }
 
     @Override
@@ -727,6 +728,9 @@ public class SettingsFragment extends Fragment {
     }
 
     private void flushPendingSaves() {
+        if (appVolumeUpdateRunnable != null) {
+            notifyAppVolumeChanged();
+        }
         if (musicUSaveRunnable != null) {
             debounceHandler.removeCallbacks(musicUSaveRunnable);
             musicUSaveRunnable.run();
@@ -786,14 +790,8 @@ public class SettingsFragment extends Fragment {
             if (switchHearingProtection != null) {
                 switchHearingProtection.setOnCheckedChangeListener(null);
                 switchHearingProtection.setChecked(hearingProtectionEnabled);
-                switchHearingProtection.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                    settingsManager.setHearingProtectionEnabled(isChecked);
-                    if (layoutHearingProtectionSettings != null) {
-                        layoutHearingProtectionSettings.setVisibility(isChecked ? View.VISIBLE : View.GONE);
-                    }
-                    refreshHearingProtectionSummary();
-                    notifySettingsChanged();
-                });
+                switchHearingProtection.setOnCheckedChangeListener((buttonView, isChecked) ->
+                        applyHearingProtectionEnabledState(isChecked));
             }
             if (layoutHearingProtectionSettings != null) {
                 layoutHearingProtectionSettings.setVisibility(hearingProtectionEnabled ? View.VISIBLE : View.GONE);
@@ -940,6 +938,68 @@ public class SettingsFragment extends Fragment {
                     settingsManager.isHearingProtectionEnabled() ? View.VISIBLE : View.GONE
             );
         }
+    }
+
+    private void applyHearingProtectionEnabledState(boolean enabled) {
+        settingsManager.setHearingProtectionEnabled(enabled);
+        if (layoutHearingProtectionSettings != null) {
+            layoutHearingProtectionSettings.setVisibility(enabled ? View.VISIBLE : View.GONE);
+        }
+        refreshHearingProtectionSummary();
+        if (enabled) {
+            scheduleHearingProtectionUiRefresh();
+            showHearingProtectionBackgroundPromptIfNeeded();
+        } else {
+            stopHearingProtectionUiRefresh();
+        }
+        notifySettingsChanged();
+    }
+
+    private void showHearingProtectionBackgroundPromptIfNeeded() {
+        if (!isAdded() || settingsManager == null
+                || settingsManager.isHearingProtectionBackgroundPromptDismissed()) {
+            return;
+        }
+
+        Context context = requireContext();
+        CheckBox dontShowAgain = new CheckBox(context);
+        dontShowAgain.setText(R.string.dont_show_again);
+        dontShowAgain.setTextColor(getResources().getColor(R.color.text_primary, null));
+        dontShowAgain.setPadding(0, dpToPx(8), 0, 0);
+
+        LinearLayout container = new LinearLayout(context);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(dpToPx(20), dpToPx(8), dpToPx(20), 0);
+
+        TextView message = new TextView(context);
+        message.setText(R.string.hearing_protection_background_prompt_message);
+        message.setTextColor(getResources().getColor(R.color.text_primary, null));
+        message.setTextSize(14f);
+        container.addView(message);
+        container.addView(dontShowAgain);
+
+        AlertDialog dialog = new AlertDialog.Builder(context)
+                .setTitle(R.string.hearing_protection_background_prompt_title)
+                .setView(container)
+                .setPositiveButton(R.string.go_to_settings, (dialogInterface, which) -> {
+                    if (dontShowAgain.isChecked()) {
+                        settingsManager.setHearingProtectionBackgroundPromptDismissed(true);
+                    }
+                    openAppSettings();
+                })
+                .setNegativeButton(R.string.cancel, (dialogInterface, which) -> {
+                    if (dontShowAgain.isChecked()) {
+                        settingsManager.setHearingProtectionBackgroundPromptDismissed(true);
+                    }
+                })
+                .create();
+        showManagedDialog(dialog);
+    }
+
+    private void openAppSettings() {
+        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.parse("package:" + requireContext().getPackageName()));
+        startActivity(intent);
     }
 
     private void showHearingProtectionListenDurationDialog() {
