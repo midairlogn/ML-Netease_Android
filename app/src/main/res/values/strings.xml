@@ -111,6 +111,7 @@
     <string name="download_manager_subtitle">Track queue progress, estimated time, and control each task.</string>
     <string name="download_manager_idle">No active downloads</string>
     <string name="download_manager_queue_count">%1$d tasks in queue</string>
+    <string name="download_notification_tasks_progress">Downloading tasks %1$d/%2$d</string>
     <string name="download_all">Download All</string>
     <string name="download_added">Download added</string>
     <string name="download_added_named">Added to downloads: %1$s</string>
