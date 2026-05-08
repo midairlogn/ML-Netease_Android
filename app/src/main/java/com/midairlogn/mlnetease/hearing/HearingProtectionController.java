@@ -80,7 +80,8 @@ public class HearingProtectionController implements
     private double lastPlaybackIntensityMultiplier = 1.0d;
     private boolean restPendingAfterCurrentSong;
     private boolean restActive;
-    private long restEndElapsedMs;
+    private long restEndWallClockMs;
+    private long restEndElapsedRealtimeMs;
 
     private final Runnable restFinishedRunnable = this::requestRestCompletion;
 
@@ -123,8 +124,7 @@ public class HearingProtectionController implements
             foldCurrentPlaybackIntoDose();
         }
         playbackSessionStartElapsedMs = -1L;
-        pauseStartedElapsedMs = -1L;
-        clearPauseSession();
+        pauseStartedElapsedMs = restActive ? -1L : pauseStartedElapsedMs;
     }
 
     public void onSettingsChanged() {
@@ -146,12 +146,12 @@ public class HearingProtectionController implements
         }
 
         if (restActive) {
-            long remainingMs = restEndElapsedMs - System.currentTimeMillis();
+            long remainingMs = getRemainingRestMs();
             if (remainingMs <= 0L) {
                 requestRestCompletion();
             } else {
                 scheduleRestFinished(remainingMs);
-                scheduleRestFinishAlarm(restEndElapsedMs);
+                scheduleRestFinishAlarm(restEndWallClockMs);
             }
         }
 
@@ -182,8 +182,8 @@ public class HearingProtectionController implements
 
     public boolean shouldCompleteRestNow() {
         return restActive
-                && restEndElapsedMs > 0L
-                && restEndElapsedMs <= System.currentTimeMillis();
+                && (restEndElapsedRealtimeMs > 0L || restEndWallClockMs > 0L)
+                && getRemainingRestMs() <= 0L;
     }
 
     public void completeRestFromService() {
@@ -196,7 +196,8 @@ public class HearingProtectionController implements
     public boolean cancelRestForUserAction() {
         if (!restActive && settingsManager.isHearingProtectionRestActive()) {
             restActive = true;
-            restEndElapsedMs = settingsManager.getHearingProtectionRestEndWallClockMs();
+            restEndWallClockMs = settingsManager.getHearingProtectionRestEndWallClockMs();
+            restEndElapsedRealtimeMs = settingsManager.getHearingProtectionRestEndElapsedRealtimeMs();
         }
         if (!restActive) {
             return false;
@@ -221,8 +222,13 @@ public class HearingProtectionController implements
         boolean restActive = settingsManager.isHearingProtectionRestActive();
         long restRemainingMs = 0L;
         if (restActive) {
-            long restEndWallClockMs = settingsManager.getHearingProtectionRestEndWallClockMs();
-            restRemainingMs = Math.max(0L, restEndWallClockMs - System.currentTimeMillis());
+            long restEndElapsedRealtimeMs = settingsManager.getHearingProtectionRestEndElapsedRealtimeMs();
+            if (restEndElapsedRealtimeMs > 0L) {
+                restRemainingMs = Math.max(0L, restEndElapsedRealtimeMs - SystemClock.elapsedRealtime());
+            } else {
+                long restEndWallClockMs = settingsManager.getHearingProtectionRestEndWallClockMs();
+                restRemainingMs = Math.max(0L, restEndWallClockMs - System.currentTimeMillis());
+            }
         }
 
         boolean activelyAccumulating = settingsManager.isHearingProtectionEnabled()
@@ -234,9 +240,14 @@ public class HearingProtectionController implements
         double activeIntensityMultiplier = 0d;
         long displayDoseMs = persistedDoseMs;
         if (activelyAccumulating) {
-            long activeStartWallClockMs = settingsManager.getHearingProtectionActiveSessionStartWallClockMs();
-            if (activeStartWallClockMs > 0L) {
-                activeSessionElapsedMs = Math.max(0L, System.currentTimeMillis() - activeStartWallClockMs);
+            long activeStartElapsedRealtimeMs = settingsManager.getHearingProtectionActiveSessionStartElapsedRealtimeMs();
+            if (activeStartElapsedRealtimeMs > 0L) {
+                activeSessionElapsedMs = Math.max(0L, SystemClock.elapsedRealtime() - activeStartElapsedRealtimeMs);
+            } else {
+                long activeStartWallClockMs = settingsManager.getHearingProtectionActiveSessionStartWallClockMs();
+                if (activeStartWallClockMs > 0L) {
+                    activeSessionElapsedMs = Math.max(0L, System.currentTimeMillis() - activeStartWallClockMs);
+                }
             }
             activeIntensityMultiplier = settingsManager.getHearingProtectionActiveSessionIntensity();
             if (activeIntensityMultiplier <= 0d) {
@@ -244,10 +255,23 @@ public class HearingProtectionController implements
             }
             displayDoseMs = Math.max(0L, persistedDoseMs + Math.round(activeSessionElapsedMs * activeIntensityMultiplier));
         } else if (!restActive && settingsManager.isHearingProtectionEnabled()) {
-            long pauseStartWallClockMs = settingsManager.getHearingProtectionPauseStartWallClockMs();
-            if (pauseStartWallClockMs > 0L) {
+            long pauseStartElapsedRealtimeMs = settingsManager.getHearingProtectionPauseStartElapsedRealtimeMs();
+            long pauseElapsedMsCandidate = 0L;
+            boolean hasPauseSession = false;
+            if (pauseStartElapsedRealtimeMs > 0L) {
                 pauseRecoveryActive = true;
-                pauseElapsedMs = Math.max(0L, System.currentTimeMillis() - pauseStartWallClockMs);
+                hasPauseSession = true;
+                pauseElapsedMsCandidate = Math.max(0L, SystemClock.elapsedRealtime() - pauseStartElapsedRealtimeMs);
+            } else {
+                long pauseStartWallClockMs = settingsManager.getHearingProtectionPauseStartWallClockMs();
+                if (pauseStartWallClockMs > 0L) {
+                    pauseRecoveryActive = true;
+                    hasPauseSession = true;
+                    pauseElapsedMsCandidate = Math.max(0L, System.currentTimeMillis() - pauseStartWallClockMs);
+                }
+            }
+            if (hasPauseSession) {
+                pauseElapsedMs = pauseElapsedMsCandidate;
                 long pauseBaseDoseMs = settingsManager.getHearingProtectionPauseBaseDoseMs();
                 double pauseIntensityMultiplier = settingsManager.getHearingProtectionPauseIntensity();
                 if (pauseIntensityMultiplier <= 0d) {
@@ -363,29 +387,34 @@ public class HearingProtectionController implements
             return;
         }
         long savedRestEnd = settingsManager.getHearingProtectionRestEndWallClockMs();
-        if (savedRestEnd <= 0L) {
+        long savedRestEndElapsedRealtime = settingsManager.getHearingProtectionRestEndElapsedRealtimeMs();
+        if (savedRestEnd <= 0L && savedRestEndElapsedRealtime <= 0L) {
             settingsManager.clearHearingProtectionRestState();
             return;
         }
-        long remainingMs = savedRestEnd - System.currentTimeMillis();
+        long remainingMs = savedRestEndElapsedRealtime > 0L
+                ? savedRestEndElapsedRealtime - SystemClock.elapsedRealtime()
+                : savedRestEnd - System.currentTimeMillis();
         if (remainingMs > TimeUnit.HOURS.toMillis(4)) {
             settingsManager.clearHearingProtectionRestState();
             return;
         }
+        restActive = true;
+        restEndWallClockMs = savedRestEnd > 0L ? savedRestEnd : System.currentTimeMillis() + Math.max(0L, remainingMs);
+        restEndElapsedRealtimeMs = savedRestEndElapsedRealtime > 0L
+                ? savedRestEndElapsedRealtime
+                : SystemClock.elapsedRealtime() + Math.max(0L, remainingMs);
         if (remainingMs <= 0L) {
-            restActive = true;
-            restEndElapsedMs = savedRestEnd;
             return;
         }
-        restActive = true;
-        restEndElapsedMs = savedRestEnd;
         scheduleRestFinished(remainingMs);
-        scheduleRestFinishAlarm(restEndElapsedMs);
+        scheduleRestFinishAlarm(restEndWallClockMs);
     }
 
     private void restorePauseSessionIfNeeded() {
+        long pauseStartElapsedRealtimeMs = settingsManager.getHearingProtectionPauseStartElapsedRealtimeMs();
         long pauseStartWallClockMs = settingsManager.getHearingProtectionPauseStartWallClockMs();
-        if (pauseStartWallClockMs <= 0L) {
+        if (pauseStartElapsedRealtimeMs <= 0L && pauseStartWallClockMs <= 0L) {
             clearPauseSession();
             return;
         }
@@ -393,17 +422,26 @@ public class HearingProtectionController implements
             clearPauseSession();
             return;
         }
-        long pauseElapsedMs = Math.max(0L, System.currentTimeMillis() - pauseStartWallClockMs);
-        pauseStartedElapsedMs = Math.max(0L, SystemClock.elapsedRealtime() - pauseElapsedMs);
+        if (pauseStartElapsedRealtimeMs > 0L) {
+            pauseStartedElapsedMs = pauseStartElapsedRealtimeMs;
+        } else {
+            long pauseElapsedMs = Math.max(0L, System.currentTimeMillis() - pauseStartWallClockMs);
+            pauseStartedElapsedMs = Math.max(0L, SystemClock.elapsedRealtime() - pauseElapsedMs);
+        }
         lastPlaybackIntensityMultiplier = resolvePersistedOrCurrentIntensity(
                 settingsManager.getHearingProtectionPauseIntensity()
         );
     }
 
     private void restoreActiveSessionIfNeeded() {
+        long activeStartElapsedRealtimeMs = settingsManager.getHearingProtectionActiveSessionStartElapsedRealtimeMs();
         long activeStartWallClockMs = settingsManager.getHearingProtectionActiveSessionStartWallClockMs();
-        if (activeStartWallClockMs <= 0L) {
+        if (activeStartElapsedRealtimeMs <= 0L && activeStartWallClockMs <= 0L) {
             clearActiveSession();
+            return;
+        }
+        if (activeStartElapsedRealtimeMs > 0L) {
+            playbackSessionStartElapsedMs = activeStartElapsedRealtimeMs;
             return;
         }
         long activeElapsedMs = Math.max(0L, System.currentTimeMillis() - activeStartWallClockMs);
@@ -417,11 +455,12 @@ public class HearingProtectionController implements
         playbackSessionStartElapsedMs = -1L;
         clearPauseSession();
         long restDurationMs = getRestDurationMs();
-        restEndElapsedMs = System.currentTimeMillis() + restDurationMs;
-        settingsManager.setHearingProtectionRestState(true, restEndElapsedMs);
+        restEndWallClockMs = System.currentTimeMillis() + restDurationMs;
+        restEndElapsedRealtimeMs = SystemClock.elapsedRealtime() + restDurationMs;
+        settingsManager.setHearingProtectionRestState(true, restEndWallClockMs, restEndElapsedRealtimeMs);
         musicPlayerManager.pause();
         scheduleRestFinished(restDurationMs);
-        scheduleRestFinishAlarm(restEndElapsedMs);
+        scheduleRestFinishAlarm(restEndWallClockMs);
         requestPlaybackStateRefresh(appContext);
         Toast.makeText(appContext, appContext.getString(
                 R.string.hearing_protection_rest_started,
@@ -440,7 +479,8 @@ public class HearingProtectionController implements
         }
         handler.removeCallbacks(restFinishedRunnable);
         restActive = false;
-        restEndElapsedMs = 0L;
+        restEndWallClockMs = 0L;
+        restEndElapsedRealtimeMs = 0L;
         accumulatedDose = 0d;
         persistAccumulatedDose();
         clearActiveSession();
@@ -461,7 +501,8 @@ public class HearingProtectionController implements
         }
         handler.removeCallbacks(restFinishedRunnable);
         restActive = false;
-        restEndElapsedMs = 0L;
+        restEndWallClockMs = 0L;
+        restEndElapsedRealtimeMs = 0L;
         cancelRestFinishAlarm();
         settingsManager.clearHearingProtectionRestState();
         clearPauseSession();
@@ -526,7 +567,11 @@ public class HearingProtectionController implements
         }
         long activeElapsedMs = Math.max(0L, SystemClock.elapsedRealtime() - playbackSessionStartElapsedMs);
         long startWallClockMs = System.currentTimeMillis() - activeElapsedMs;
-        settingsManager.setHearingProtectionActiveSession(startWallClockMs, (float) lastPlaybackIntensityMultiplier);
+        settingsManager.setHearingProtectionActiveSession(
+                startWallClockMs,
+                playbackSessionStartElapsedMs,
+                (float) lastPlaybackIntensityMultiplier
+        );
     }
 
     private void clearActiveSession() {
@@ -536,6 +581,7 @@ public class HearingProtectionController implements
     private void persistPauseSession() {
         settingsManager.setHearingProtectionPauseSession(
                 System.currentTimeMillis(),
+                pauseStartedElapsedMs,
                 Math.round(accumulatedDose),
                 (float) lastPlaybackIntensityMultiplier
         );
@@ -727,6 +773,19 @@ public class HearingProtectionController implements
             return;
         }
         continueAfterRestViaService();
+    }
+
+    private long getRemainingRestMs() {
+        if (!restActive) {
+            return 0L;
+        }
+        if (restEndElapsedRealtimeMs > 0L) {
+            return Math.max(0L, restEndElapsedRealtimeMs - SystemClock.elapsedRealtime());
+        }
+        if (restEndWallClockMs > 0L) {
+            return Math.max(0L, restEndWallClockMs - System.currentTimeMillis());
+        }
+        return 0L;
     }
 
     private void continueAfterRestViaService() {
