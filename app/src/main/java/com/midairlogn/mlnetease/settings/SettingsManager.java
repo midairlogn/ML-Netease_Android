@@ -57,6 +57,7 @@ public class SettingsManager {
     private static final String KEY_HEARING_PROTECTION_PAUSE_START_ELAPSED_REALTIME_MS = "hearing_protection_pause_start_elapsed_realtime_ms";
     private static final String KEY_HEARING_PROTECTION_PAUSE_BASE_DOSE_MS = "hearing_protection_pause_base_dose_ms";
     private static final String KEY_HEARING_PROTECTION_PAUSE_INTENSITY = "hearing_protection_pause_intensity";
+    private static final String KEY_HEARING_PROTECTION_BACKGROUND_PROMPT_DISMISSED = "hearing_protection_background_prompt_dismissed";
     private static final String KEY_PLAYBACK_SNAPSHOT_QUEUE = "playback_snapshot_queue";
     private static final String KEY_PLAYBACK_SNAPSHOT_INDEX = "playback_snapshot_index";
     private static final String KEY_DOWNLOAD_FILENAME_TEMPLATE = "download_filename_template";
@@ -570,6 +571,14 @@ public class SettingsManager {
                 .remove(KEY_HEARING_PROTECTION_PAUSE_BASE_DOSE_MS)
                 .remove(KEY_HEARING_PROTECTION_PAUSE_INTENSITY)
                 .apply();
+    }
+
+    public boolean isHearingProtectionBackgroundPromptDismissed() {
+        return prefs.getBoolean(KEY_HEARING_PROTECTION_BACKGROUND_PROMPT_DISMISSED, false);
+    }
+
+    public void setHearingProtectionBackgroundPromptDismissed(boolean dismissed) {
+        prefs.edit().putBoolean(KEY_HEARING_PROTECTION_BACKGROUND_PROMPT_DISMISSED, dismissed).apply();
     }
 
     public void setPlaybackSnapshot(List<Song> songs, int currentIndex) {

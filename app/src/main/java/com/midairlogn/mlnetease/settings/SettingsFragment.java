@@ -27,6 +27,7 @@ import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
@@ -915,10 +916,58 @@ public class SettingsFragment extends Fragment {
         refreshHearingProtectionSummary();
         if (enabled) {
             scheduleHearingProtectionUiRefresh();
+            showHearingProtectionBackgroundPromptIfNeeded();
         } else {
             stopHearingProtectionUiRefresh();
         }
         notifySettingsChanged();
+    }
+
+    private void showHearingProtectionBackgroundPromptIfNeeded() {
+        if (!isAdded() || settingsManager == null
+                || settingsManager.isHearingProtectionBackgroundPromptDismissed()) {
+            return;
+        }
+
+        Context context = requireContext();
+        CheckBox dontShowAgain = new CheckBox(context);
+        dontShowAgain.setText(R.string.dont_show_again);
+        dontShowAgain.setTextColor(getResources().getColor(R.color.text_primary, null));
+        dontShowAgain.setPadding(0, dpToPx(8), 0, 0);
+
+        LinearLayout container = new LinearLayout(context);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(dpToPx(20), dpToPx(8), dpToPx(20), 0);
+
+        TextView message = new TextView(context);
+        message.setText(R.string.hearing_protection_background_prompt_message);
+        message.setTextColor(getResources().getColor(R.color.text_primary, null));
+        message.setTextSize(14f);
+        container.addView(message);
+        container.addView(dontShowAgain);
+
+        AlertDialog dialog = new AlertDialog.Builder(context)
+                .setTitle(R.string.hearing_protection_background_prompt_title)
+                .setView(container)
+                .setPositiveButton(R.string.go_to_settings, (dialogInterface, which) -> {
+                    if (dontShowAgain.isChecked()) {
+                        settingsManager.setHearingProtectionBackgroundPromptDismissed(true);
+                    }
+                    openAppSettings();
+                })
+                .setNegativeButton(R.string.cancel, (dialogInterface, which) -> {
+                    if (dontShowAgain.isChecked()) {
+                        settingsManager.setHearingProtectionBackgroundPromptDismissed(true);
+                    }
+                })
+                .create();
+        showManagedDialog(dialog);
+    }
+
+    private void openAppSettings() {
+        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.parse("package:" + requireContext().getPackageName()));
+        startActivity(intent);
     }
 
     private void showHearingProtectionListenDurationDialog() {
