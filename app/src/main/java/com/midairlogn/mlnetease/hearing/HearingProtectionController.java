@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.midairlogn.mlnetease.R;
@@ -21,6 +22,8 @@ public class HearingProtectionController implements
         MusicPlayerManager.OnPlaybackStateChangedListener,
         MusicPlayerManager.OnSongCompletionListener,
         MusicPlayerManager.OnPlaybackActionListener {
+
+    private static final String TAG = "HearingProtection";
 
     public static final class HearingProtectionSnapshot {
         public final long committedDoseMs;
@@ -190,6 +193,7 @@ public class HearingProtectionController implements
         if (!shouldCompleteRestNow()) {
             return;
         }
+        Log.d(TAG, "completeRestFromService: completing expired rest");
         completeRestAndResume();
     }
 
@@ -202,6 +206,7 @@ public class HearingProtectionController implements
         if (!restActive) {
             return false;
         }
+        Log.d(TAG, "cancelRestForUserAction: cancelling rest and resetting dose");
         cancelRest(true);
         accumulatedDose = 0d;
         persistAccumulatedDose();
@@ -334,6 +339,7 @@ public class HearingProtectionController implements
         if (!restPendingAfterCurrentSong) {
             return false;
         }
+        Log.d(TAG, "songCompleted: dose threshold reached, starting rest");
         startRest();
         return true;
     }
@@ -396,6 +402,7 @@ public class HearingProtectionController implements
                 ? savedRestEndElapsedRealtime - SystemClock.elapsedRealtime()
                 : savedRestEnd - System.currentTimeMillis();
         if (remainingMs > TimeUnit.HOURS.toMillis(4)) {
+            Log.w(TAG, "restoreRestStateIfNeeded: clearing implausible rest duration, remainingMs=" + remainingMs);
             settingsManager.clearHearingProtectionRestState();
             return;
         }
@@ -404,6 +411,7 @@ public class HearingProtectionController implements
         restEndElapsedRealtimeMs = savedRestEndElapsedRealtime > 0L
                 ? savedRestEndElapsedRealtime
                 : SystemClock.elapsedRealtime() + Math.max(0L, remainingMs);
+        Log.d(TAG, "restoreRestStateIfNeeded: restored rest, remainingMs=" + Math.max(0L, remainingMs));
         if (remainingMs <= 0L) {
             return;
         }
@@ -458,6 +466,8 @@ public class HearingProtectionController implements
         restEndWallClockMs = System.currentTimeMillis() + restDurationMs;
         restEndElapsedRealtimeMs = SystemClock.elapsedRealtime() + restDurationMs;
         settingsManager.setHearingProtectionRestState(true, restEndWallClockMs, restEndElapsedRealtimeMs);
+        Log.i(TAG, "startRest: rest started, durationMs=" + restDurationMs
+                + ", doseMs=" + Math.round(accumulatedDose));
         musicPlayerManager.pause();
         scheduleRestFinished(restDurationMs);
         scheduleRestFinishAlarm(restEndWallClockMs);
@@ -477,6 +487,7 @@ public class HearingProtectionController implements
         if (!restActive) {
             return;
         }
+        Log.i(TAG, "completeRestAndResume: rest finished, resetting dose and rest state");
         handler.removeCallbacks(restFinishedRunnable);
         restActive = false;
         restEndWallClockMs = 0L;
@@ -499,6 +510,7 @@ public class HearingProtectionController implements
             settingsManager.clearHearingProtectionRestState();
             return;
         }
+        Log.i(TAG, "cancelRest: rest cancelled, notifyUser=" + notifyUser);
         handler.removeCallbacks(restFinishedRunnable);
         restActive = false;
         restEndWallClockMs = 0L;
@@ -525,6 +537,7 @@ public class HearingProtectionController implements
         clearPauseSession();
         if (settingsManager.isHearingProtectionEnabled() && accumulatedDose >= getDoseThreshold()) {
             restPendingAfterCurrentSong = true;
+            Log.d(TAG, "foldCurrentPlaybackIntoDose: threshold reached, rest pending after current song");
         }
     }
 
@@ -705,6 +718,7 @@ public class HearingProtectionController implements
 
     private void scheduleRestFinishAlarm(long triggerAtWallClockMs) {
         if (alarmManager == null) {
+            Log.w(TAG, "scheduleRestFinishAlarm: alarm manager unavailable");
             return;
         }
         PendingIntent pendingIntent = buildRestFinishedPendingIntent();
