@@ -16,9 +16,12 @@ import com.midairlogn.mlnetease.playback.lyrics.LyricsUtils;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import okhttp3.OkHttpClient;
@@ -86,27 +89,31 @@ public class RemoteAudioPreparationHelper {
         JSONObject info = fetchSongInfo(song.id, cancellationSignal);
         throwIfCanceled(cancellationSignal);
 
+        String quality = settingsManager.getQuality();
         String audioUrl = info.optString("url", "");
         if (audioUrl.isEmpty() || "null".equals(audioUrl)) {
             throw new IllegalStateException("Empty audio url");
         }
+
+        String serverExtension = resolveServerAudioExtension(info, audioUrl, quality);
 
         String title = info.optString("name", song.name);
         String artist = info.optString("ar_name", song.artists);
         String album = info.optString("al_name", song.album);
         String pic = info.optString("pic", song.picUrl);
         String lyric = mergeLyrics(info.optString("lyric", ""), info.optString("tlyric", ""));
-        String quality = settingsManager.getQuality();
-        String extension = DownloadFileUtils.getAudioExtensionForQuality(quality);
         DownloadCustomizationSettings customizationSettings = settingsManager.getDownloadCustomizationSettings();
         Song finalSong = new Song(song.id, title, artist, album, pic);
-        String displayName = DownloadFileUtils.buildDisplayName(finalSong, extension, customizationSettings);
 
-        File downloadedAudio = createOutputFile(outputDirectory, "raw_", extension);
+        File downloadedAudio = createOutputFile(outputDirectory, "raw_", serverExtension);
         File taggedAudio = null;
         try {
             fetchFileWithProgress(title, audioUrl, downloadedAudio, progressListener, cancellationSignal);
             throwIfCanceled(cancellationSignal);
+
+            String actualExtension = resolveRawFileExtension(downloadedAudio, serverExtension);
+            String actualQuality = info.optString("level", "");
+            String displayName = DownloadFileUtils.buildDisplayName(finalSong, actualExtension, customizationSettings);
 
             if (progressListener != null) {
                 progressListener.onFetchingCover(title);
@@ -126,7 +133,7 @@ public class RemoteAudioPreparationHelper {
                 tagData.coverData = customizationSettings.writeCover ? coverBytes : null;
                 tagData.coverMimeType = customizationSettings.writeCover ? CoverUtils.getCoverMimeType() : null;
                 if (customizationSettings.writeExtra) {
-                    tagData.quality = quality;
+                    tagData.quality = actualQuality.isEmpty() ? quality : actualQuality;
                     tagData.songId = song.id;
                     tagData.comment = "Downloaded by ML Netease Android | Netease Song ID: " + song.id;
                 }
@@ -141,7 +148,7 @@ public class RemoteAudioPreparationHelper {
                 if (taggedAudio.exists() && !taggedAudio.delete()) {
                     throw new IOException("Failed to replace temp tagged file");
                 }
-                if ("mp3".equals(extension)) {
+                if ("mp3".equals(actualExtension)) {
                     Mp3TagWriter.writeTaggedFile(downloadedAudio, taggedAudio, tagData);
                 } else {
                     FlacTagWriter.writeTaggedFile(downloadedAudio, taggedAudio, tagData);
@@ -160,8 +167,8 @@ public class RemoteAudioPreparationHelper {
             }
 
             throwIfCanceled(cancellationSignal);
-            String mimeType = "mp3".equals(extension) ? "audio/mpeg" : "audio/flac";
-            return new PreparedAudioFile(outputAudio, displayName, mimeType, extension);
+            String mimeType = "mp3".equals(actualExtension) ? "audio/mpeg" : "audio/flac";
+            return new PreparedAudioFile(outputAudio, displayName, mimeType, actualExtension);
         } finally {
             if (downloadedAudio != null && downloadedAudio.exists()) {
                 downloadedAudio.delete();
@@ -275,5 +282,96 @@ public class RemoteAudioPreparationHelper {
 
     private File createOutputFile(File directory, String prefix, String extension) throws IOException {
         return File.createTempFile(prefix, "." + extension, directory);
+    }
+
+    private String resolveServerAudioExtension(JSONObject info, String audioUrl, String requestedQuality) {
+        String serverType = normalizeExtension(info.optString("type", ""));
+        if (isSupportedAudioExtension(serverType)) {
+            return serverType;
+        }
+
+        String encodeType = normalizeExtension(info.optString("encodeType", ""));
+        if (isSupportedAudioExtension(encodeType)) {
+            return encodeType;
+        }
+
+        String urlExtension = extractExtensionFromUrl(audioUrl);
+        if (isSupportedAudioExtension(urlExtension)) {
+            return urlExtension;
+        }
+
+        return DownloadFileUtils.getAudioExtensionForQuality(requestedQuality);
+    }
+
+    private String resolveRawFileExtension(File audioFile, String fallbackExtension) throws IOException {
+        byte[] header = new byte[12];
+        int read;
+        try (FileInputStream inputStream = new FileInputStream(audioFile)) {
+            read = inputStream.read(header);
+        }
+        String detectedExtension = detectAudioExtension(header, read);
+        return detectedExtension.isEmpty() ? fallbackExtension : detectedExtension;
+    }
+
+    private String detectAudioExtension(byte[] header, int length) {
+        if (header == null || length <= 0) {
+            return "";
+        }
+        if (length >= 4 && header[0] == 'f' && header[1] == 'L' && header[2] == 'a' && header[3] == 'C') {
+            return "flac";
+        }
+        if (length >= 3 && header[0] == 'I' && header[1] == 'D' && header[2] == '3') {
+            return "mp3";
+        }
+        if (length >= 2 && (header[0] & 0xFF) == 0xFF) {
+            int second = header[1] & 0xE0;
+            if (second == 0xE0) {
+                return "mp3";
+            }
+        }
+        return "";
+    }
+
+    private String extractExtensionFromUrl(String audioUrl) {
+        if (audioUrl == null || audioUrl.trim().isEmpty()) {
+            return "";
+        }
+        try {
+            URI uri = new URI(audioUrl);
+            String path = uri.getPath();
+            if (path == null || path.isEmpty()) {
+                return "";
+            }
+            int lastSlash = path.lastIndexOf('/');
+            String fileName = lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
+            int dotIndex = fileName.lastIndexOf('.');
+            if (dotIndex < 0 || dotIndex == fileName.length() - 1) {
+                return "";
+            }
+            String extension = normalizeExtension(fileName.substring(dotIndex + 1));
+            return isSupportedAudioExtension(extension) ? extension : "";
+        } catch (URISyntaxException e) {
+            int queryIndex = audioUrl.indexOf('?');
+            String path = queryIndex >= 0 ? audioUrl.substring(0, queryIndex) : audioUrl;
+            int lastSlash = path.lastIndexOf('/');
+            String fileName = lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
+            int dotIndex = fileName.lastIndexOf('.');
+            if (dotIndex < 0 || dotIndex == fileName.length() - 1) {
+                return "";
+            }
+            String extension = normalizeExtension(fileName.substring(dotIndex + 1));
+            return isSupportedAudioExtension(extension) ? extension : "";
+        }
+    }
+
+    private String normalizeExtension(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().toLowerCase();
+    }
+
+    private boolean isSupportedAudioExtension(String extension) {
+        return "mp3".equals(extension) || "flac".equals(extension);
     }
 }

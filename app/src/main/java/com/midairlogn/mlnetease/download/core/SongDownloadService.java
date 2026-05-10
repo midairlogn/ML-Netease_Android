@@ -277,9 +277,6 @@ public class SongDownloadService extends Service {
         String title = song == null || song.name == null || song.name.trim().isEmpty()
                 ? getString(R.string.download)
                 : song.name.trim();
-        String quality = settingsManager.getQuality();
-        String extension = DownloadFileUtils.getAudioExtensionForQuality(quality);
-        String mimeType = "mp3".equals(extension) ? "audio/mpeg" : "audio/flac";
         String relativePath = DownloadFileUtils.buildRelativePath(task.request.type, task.request.title);
 
         PreparedAudioFile preparedAudioFile = remoteAudioPreparationHelper.prepareDownloadAudio(
@@ -372,7 +369,7 @@ public class SongDownloadService extends Service {
                     -1L
             );
 
-            Uri savedUri = DownloadFileUtils.createPendingAudio(this, preparedAudioFile.displayName, mimeType, relativePath);
+            Uri savedUri = DownloadFileUtils.createPendingAudio(this, preparedAudioFile.displayName, preparedAudioFile.mimeType, relativePath);
             boolean publishSuccess = false;
             try {
                 DownloadFileUtils.writeAudio(this, savedUri, preparedAudioFile.file);

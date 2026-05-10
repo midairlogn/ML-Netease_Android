@@ -472,6 +472,8 @@ public class NeteaseApi {
                     result.put("url", dataObj.optString("url", ""));
                     result.put("size", dataObj.optLong("size", 0));
                     result.put("level", dataObj.optString("level", ""));
+                    result.put("type", dataObj.optString("type", ""));
+                    result.put("encodeType", dataObj.optString("encodeType", ""));
                     if (!dataObj.isNull("gain")) {
                         result.put("gain", dataObj.optDouble("gain", 0d));
                     }
