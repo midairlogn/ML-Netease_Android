@@ -37,6 +37,7 @@ import com.midairlogn.mlnetease.local.media.LocalAudioSongFactory;
 import com.midairlogn.mlnetease.local.LocalFragment;
 import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
 import com.midairlogn.mlnetease.playback.core.MusicService;
+import com.midairlogn.mlnetease.playback.core.PlaybackActionDispatcher;
 import com.midairlogn.mlnetease.playback.ui.PlayerActivity;
 import com.midairlogn.mlnetease.playback.ui.PlaylistBottomSheetFragment;
 import com.midairlogn.mlnetease.settings.SettingsFragment;
@@ -610,7 +611,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
                 }
                 Song song = LocalAudioSongFactory.create(this, data);
                 if (song != null) {
-                    MusicPlayerManager.getInstance(this).addOrPlaySong(song);
+                    PlaybackActionDispatcher.addOrPlaySong(this, song);
                 } else {
                     Toast.makeText(this, R.string.local_audio_open_failed, Toast.LENGTH_SHORT).show();
                 }

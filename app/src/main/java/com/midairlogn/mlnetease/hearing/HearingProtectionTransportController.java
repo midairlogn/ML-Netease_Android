@@ -6,6 +6,7 @@ import android.os.Build;
 
 import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
 import com.midairlogn.mlnetease.playback.core.MusicService;
+import com.midairlogn.mlnetease.playback.core.PlaybackActionDispatcher;
 
 public final class HearingProtectionTransportController {
 
@@ -19,7 +20,7 @@ public final class HearingProtectionTransportController {
             dispatchServiceAction(appContext, MusicService.ACTION_CANCEL_REST_AND_CONTINUE);
             return;
         }
-        musicPlayerManager.togglePlayPause();
+        PlaybackActionDispatcher.togglePlayPause(appContext);
     }
 
     public static void handleResume(Context context) {
@@ -30,7 +31,7 @@ public final class HearingProtectionTransportController {
             dispatchServiceAction(appContext, MusicService.ACTION_CANCEL_REST_AND_RESUME_CURRENT);
             return;
         }
-        musicPlayerManager.resume();
+        PlaybackActionDispatcher.resume(appContext);
     }
 
     public static void handleSeekResumeCurrent(Context context) {
@@ -40,7 +41,7 @@ public final class HearingProtectionTransportController {
             dispatchServiceAction(appContext, MusicService.ACTION_CANCEL_REST_AND_RESUME_CURRENT);
             return;
         }
-        musicPlayerManager.resume();
+        PlaybackActionDispatcher.resume(appContext);
     }
 
     public static void handleNext(Context context) {
@@ -49,7 +50,7 @@ public final class HearingProtectionTransportController {
             dispatchServiceAction(appContext, MusicService.ACTION_CANCEL_REST_AND_NEXT);
             return;
         }
-        MusicPlayerManager.getInstance(appContext).playNext();
+        PlaybackActionDispatcher.playNext(appContext);
     }
 
     public static void handlePrevious(Context context) {
@@ -58,7 +59,7 @@ public final class HearingProtectionTransportController {
             dispatchServiceAction(appContext, MusicService.ACTION_CANCEL_REST_AND_PREVIOUS);
             return;
         }
-        MusicPlayerManager.getInstance(appContext).playPrevious();
+        PlaybackActionDispatcher.playPrevious(appContext);
     }
 
     private static void dispatchServiceAction(Context context, String action) {

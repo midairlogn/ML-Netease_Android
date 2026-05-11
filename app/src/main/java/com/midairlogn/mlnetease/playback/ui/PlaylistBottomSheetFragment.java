@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
+import com.midairlogn.mlnetease.playback.core.PlaybackActionDispatcher;
 import com.midairlogn.mlnetease.shared.model.Song;
 import com.midairlogn.mlnetease.shared.ui.UiLaunchGuards;
 
@@ -189,7 +190,7 @@ public class PlaylistBottomSheetFragment extends BottomSheetDialogFragment imple
             }
 
             holder.itemView.setOnClickListener(v -> {
-                musicPlayerManager.play(holder.getAdapterPosition());
+                PlaybackActionDispatcher.playIndex(requireContext(), holder.getAdapterPosition());
                 dismiss();
             });
 

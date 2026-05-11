@@ -31,7 +31,7 @@ import com.midairlogn.mlnetease.home.shortcut.ManageShortcutsDialog;
 import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.download.core.SongDownloadStarter;
 import com.midairlogn.mlnetease.network.NeteaseApi;
-import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
+import com.midairlogn.mlnetease.playback.core.PlaybackActionDispatcher;
 import com.midairlogn.mlnetease.settings.SettingsManager;
 import com.midairlogn.mlnetease.shared.adapter.SongAdapter;
 import com.midairlogn.mlnetease.shared.model.Song;
@@ -278,12 +278,12 @@ public class HomeFragment extends Fragment {
 
             List<Song> songs = adapter.getSongs();
             if (songs != null && !songs.isEmpty()) {
-                MusicPlayerManager.getInstance(getContext()).addPlaylistAndPlayFirstNew(songs);
+                playSongs(songs);
             }
         });
 
         adapter.setOnItemClickListener(song -> {
-            MusicPlayerManager.getInstance(getContext()).addOrPlaySong(song);
+            playSong(song);
         });
 
         btnDownloadAll.setOnClickListener(v -> {
@@ -555,7 +555,7 @@ public class HomeFragment extends Fragment {
             loadShortcuts();
             return;
         }
-        MusicPlayerManager.getInstance(getContext()).addPlaylistAndPlayFirstNew(songs);
+        playSongs(songs);
         loadShortcuts();
     }
 
@@ -620,7 +620,7 @@ public class HomeFragment extends Fragment {
 
         if (isShortcut) {
             getActivity().runOnUiThread(() -> {
-                MusicPlayerManager.getInstance(getContext()).addPlaylistAndPlayFirstNew(songs);
+                playSongs(songs);
             });
         } else {
             getActivity().runOnUiThread(() -> {
@@ -746,6 +746,22 @@ public class HomeFragment extends Fragment {
             return;
         }
         Toast.makeText(getContext(), R.string.share_not_available, Toast.LENGTH_SHORT).show();
+    }
+
+    private void playSong(Song song) {
+        Context context = getContext();
+        if (context == null || song == null) {
+            return;
+        }
+        PlaybackActionDispatcher.addOrPlaySong(context, song);
+    }
+
+    private void playSongs(List<Song> songs) {
+        Context context = getContext();
+        if (context == null || songs == null || songs.isEmpty()) {
+            return;
+        }
+        PlaybackActionDispatcher.addPlaylistAndPlayFirstNew(context, songs);
     }
 
     private void hideKeyboard(View view) {

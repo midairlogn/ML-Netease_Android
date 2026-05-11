@@ -9,7 +9,7 @@ import com.midairlogn.mlnetease.home.model.FavouriteSong;
 import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.home.model.HomeShortcut;
 import com.midairlogn.mlnetease.network.NeteaseApi;
-import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
+import com.midairlogn.mlnetease.playback.core.PlaybackActionDispatcher;
 import com.midairlogn.mlnetease.settings.SettingsManager;
 import com.midairlogn.mlnetease.shared.model.Song;
 
@@ -62,7 +62,7 @@ public final class ShortcutPlaybackLauncher {
             return false;
         }
 
-        MusicPlayerManager.getInstance(context).addPlaylistAndPlayFirstNew(songs);
+        PlaybackActionDispatcher.addPlaylistAndPlayFirstNew(context, songs);
         notifyStarted(callback);
         return true;
     }
@@ -87,7 +87,7 @@ public final class ShortcutPlaybackLauncher {
                     notifyError(callback);
                     return;
                 }
-                MusicPlayerManager.getInstance(context).addPlaylistAndPlayFirstNew(songs);
+                PlaybackActionDispatcher.addPlaylistAndPlayFirstNew(context, songs);
                 notifyStarted(callback);
             }
 

@@ -31,7 +31,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.midairlogn.mlnetease.local.media.LocalAudioRepository;
 import com.midairlogn.mlnetease.local.media.LocalAudioSongFactory;
 import com.midairlogn.mlnetease.R;
-import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
+import com.midairlogn.mlnetease.playback.core.PlaybackActionDispatcher;
 import com.midairlogn.mlnetease.shared.adapter.SongAdapter;
 import com.midairlogn.mlnetease.shared.model.Song;
 
@@ -99,7 +99,7 @@ public class LocalFragment extends Fragment {
         RecyclerView recyclerView = view.findViewById(R.id.recycler_local_songs);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new SongAdapter();
-        adapter.setOnItemClickListener(song -> MusicPlayerManager.getInstance(requireContext()).addOrPlaySong(song));
+        adapter.setOnItemClickListener(song -> PlaybackActionDispatcher.addOrPlaySong(requireContext(), song));
         recyclerView.setAdapter(adapter);
 
         btnScan.setOnClickListener(v -> scanLocalSongs());
@@ -145,13 +145,12 @@ public class LocalFragment extends Fragment {
             Toast.makeText(requireContext(), R.string.local_audio_open_failed, Toast.LENGTH_SHORT).show();
             return;
         }
-        MusicPlayerManager manager = MusicPlayerManager.getInstance(requireContext());
         if (replacePlaylist) {
             List<Song> songs = new ArrayList<>();
             songs.add(song);
-            manager.replacePlaylistAndPlay(songs, 0);
+            PlaybackActionDispatcher.replacePlaylistAndPlay(requireContext(), songs, 0);
         } else {
-            manager.addOrPlaySong(song);
+            PlaybackActionDispatcher.addOrPlaySong(requireContext(), song);
         }
     }
 

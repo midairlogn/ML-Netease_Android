@@ -16,7 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.home.model.FavouriteSong;
-import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
+import com.midairlogn.mlnetease.playback.core.PlaybackActionDispatcher;
 import com.midairlogn.mlnetease.settings.SettingsManager;
 import com.midairlogn.mlnetease.shared.model.Song;
 
@@ -30,7 +30,6 @@ public class FavouriteSongsBottomSheetFragment extends BottomSheetDialogFragment
     private FavouriteAdapter adapter;
     private TextView titleView;
     private SettingsManager settingsManager;
-    private MusicPlayerManager musicPlayerManager;
     private final List<FavouriteSong> favourites = new ArrayList<>();
     private Runnable onDismissListener;
 
@@ -48,7 +47,6 @@ public class FavouriteSongsBottomSheetFragment extends BottomSheetDialogFragment
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         settingsManager = new SettingsManager(requireContext());
-        musicPlayerManager = MusicPlayerManager.getInstance(requireContext());
         favourites.clear();
         favourites.addAll(settingsManager.getFavouriteSongs());
 
@@ -143,7 +141,7 @@ public class FavouriteSongsBottomSheetFragment extends BottomSheetDialogFragment
             holder.artist.setText(song.artists);
             holder.itemView.setOnClickListener(v -> {
                 Song playableSong = song.toSong();
-                musicPlayerManager.addOrPlaySong(playableSong);
+                PlaybackActionDispatcher.addOrPlaySong(requireContext(), playableSong);
                 dismiss();
             });
             holder.btnRemove.setOnClickListener(v -> {

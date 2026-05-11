@@ -39,6 +39,7 @@ import com.midairlogn.mlnetease.shared.model.Song;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -62,6 +63,16 @@ public class MusicService extends Service {
     public static final String ACTION_CANCEL_REST_AND_PREVIOUS = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_PREVIOUS";
     public static final String ACTION_CANCEL_REST_AND_RESUME_CURRENT = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_RESUME_CURRENT";
     public static final String ACTION_REFRESH_PLAYBACK_STATE = "com.midairlogn.mlnetease.action.REFRESH_PLAYBACK_STATE";
+    public static final String ACTION_PLAY_INDEX = "com.midairlogn.mlnetease.action.PLAY_INDEX";
+    public static final String ACTION_ADD_OR_PLAY_SONG = "com.midairlogn.mlnetease.action.ADD_OR_PLAY_SONG";
+    public static final String ACTION_ADD_PLAYLIST_AND_PLAY_FIRST_NEW = "com.midairlogn.mlnetease.action.ADD_PLAYLIST_AND_PLAY_FIRST_NEW";
+    public static final String ACTION_REPLACE_PLAYLIST_AND_PLAY = "com.midairlogn.mlnetease.action.REPLACE_PLAYLIST_AND_PLAY";
+    public static final String ACTION_RESUME_CURRENT = "com.midairlogn.mlnetease.action.RESUME_CURRENT";
+    public static final String ACTION_TOGGLE_PLAY_PAUSE = "com.midairlogn.mlnetease.action.TOGGLE_PLAY_PAUSE";
+    public static final String ACTION_PLAY_NEXT = "com.midairlogn.mlnetease.action.PLAY_NEXT";
+    public static final String ACTION_PLAY_PREVIOUS = "com.midairlogn.mlnetease.action.PLAY_PREVIOUS";
+    public static final String EXTRA_PLAY_INDEX = "com.midairlogn.mlnetease.extra.PLAY_INDEX";
+    public static final String EXTRA_PLAYBACK_PAYLOAD_ID = "com.midairlogn.mlnetease.extra.PLAYBACK_PAYLOAD_ID";
     private static final String ACTION_NOTIFICATION_PLAY = "com.midairlogn.mlnetease.action.NOTIFICATION_PLAY";
     private static final String ACTION_NOTIFICATION_PAUSE = "com.midairlogn.mlnetease.action.NOTIFICATION_PAUSE";
     private static final String ACTION_NOTIFICATION_NEXT = "com.midairlogn.mlnetease.action.NOTIFICATION_NEXT";
@@ -78,6 +89,7 @@ public class MusicService extends Service {
     private boolean resumeOnFocusGain = false;
     private boolean pendingAutoContinueAfterRest = false;
     private String pendingFocusGainAction = null;
+    private Intent pendingFocusGainIntent = null;
     private boolean awaitingPostRestPlaybackStart = false;
     private int postRestPlaybackRetryCount = 0;
     private int postRestAudioFocusRetryCount = 0;
@@ -201,7 +213,7 @@ public class MusicService extends Service {
                 hasAudioFocus = true;
                 if (pendingAutoContinueAfterRest) {
                     continuePlaybackAfterExpiredRest();
-                } else if (pendingFocusGainAction != null) {
+                } else if (pendingFocusGainIntent != null || pendingFocusGainAction != null) {
                     performPendingFocusGainAction();
                 } else if (pausedByFocusLoss && resumeOnFocusGain && musicPlayerManager != null && !isPlaybackActive()) {
                     musicPlayerManager.resume();
@@ -315,6 +327,8 @@ public class MusicService extends Service {
             @Override
             public void onStop() {
                 pendingFocusGainAction = null;
+                dropPendingFocusGainIntent();
+                pendingFocusGainIntent = null;
                 pausedByFocusLoss = false;
                 resumeOnFocusGain = false;
                 musicPlayerManager.pause();
@@ -412,13 +426,46 @@ public class MusicService extends Service {
         AudioFocusOutcome focusOutcome = requestAudioFocus();
         if (focusOutcome == AudioFocusOutcome.GRANTED) {
             pendingFocusGainAction = null;
+            dropPendingFocusGainIntent();
+            pendingFocusGainIntent = null;
             return true;
         }
         pendingFocusGainAction = focusOutcome == AudioFocusOutcome.DELAYED ? action : null;
+        dropPendingFocusGainIntent();
+        pendingFocusGainIntent = null;
         return false;
     }
 
+    private boolean requestAudioFocusForIntent(Intent intent) {
+        AudioFocusOutcome focusOutcome = requestAudioFocus();
+        if (focusOutcome == AudioFocusOutcome.GRANTED) {
+            pendingFocusGainAction = null;
+            dropPendingFocusGainIntent();
+            pendingFocusGainIntent = null;
+            return true;
+        }
+        pendingFocusGainAction = null;
+        dropPendingFocusGainIntent();
+        pendingFocusGainIntent = focusOutcome == AudioFocusOutcome.DELAYED ? new Intent(intent) : null;
+        if (pendingFocusGainIntent == null) {
+            PlaybackActionDispatcher.dropPayload(intent);
+        }
+        return false;
+    }
+
+    private void dropPendingFocusGainIntent() {
+        if (pendingFocusGainIntent != null) {
+            PlaybackActionDispatcher.dropPayload(pendingFocusGainIntent);
+        }
+    }
+
     private void performPendingFocusGainAction() {
+        Intent pendingIntent = pendingFocusGainIntent;
+        pendingFocusGainIntent = null;
+        if (pendingIntent != null) {
+            executeIntentWithAudioFocus(pendingIntent);
+            return;
+        }
         String pendingAction = pendingFocusGainAction;
         pendingFocusGainAction = null;
         if (pendingAction == null) {
@@ -455,6 +502,72 @@ public class MusicService extends Service {
         }
         if (ACTION_CANCEL_REST_AND_PREVIOUS.equals(action)
                 || FOCUS_ACTION_PREVIOUS.equals(action)) {
+            musicPlayerManager.playPrevious();
+            return true;
+        }
+        return false;
+    }
+
+    private boolean executeIntentWithAudioFocus(Intent intent) {
+        if (intent == null) {
+            return false;
+        }
+        String action = intent.getAction();
+        if (action == null) {
+            return false;
+        }
+        if (ACTION_TOGGLE_PLAY_PAUSE.equals(action) && isPlaybackActive()) {
+            handleExternalPauseRequest();
+            return true;
+        }
+        if (!requestAudioFocusForIntent(intent)) {
+            return false;
+        }
+        pausedByFocusLoss = false;
+        resumeOnFocusGain = false;
+        if (ACTION_PLAY_INDEX.equals(action)) {
+            musicPlayerManager.play(intent.getIntExtra(EXTRA_PLAY_INDEX, musicPlayerManager.getCurrentIndex()));
+            return true;
+        }
+        if (ACTION_ADD_OR_PLAY_SONG.equals(action)) {
+            Song song = PlaybackActionDispatcher.takeSong(intent);
+            if (song == null) {
+                return false;
+            }
+            musicPlayerManager.addOrPlaySong(song);
+            return true;
+        }
+        if (ACTION_ADD_PLAYLIST_AND_PLAY_FIRST_NEW.equals(action)) {
+            List<Song> songs = PlaybackActionDispatcher.takeSongs(intent);
+            if (songs.isEmpty()) {
+                return false;
+            }
+            musicPlayerManager.addPlaylistAndPlayFirstNew(songs);
+            return true;
+        }
+        if (ACTION_REPLACE_PLAYLIST_AND_PLAY.equals(action)) {
+            List<Song> songs = PlaybackActionDispatcher.takeSongs(intent);
+            if (songs.isEmpty()) {
+                return false;
+            }
+            musicPlayerManager.replacePlaylistAndPlay(songs, intent.getIntExtra(EXTRA_PLAY_INDEX, 0));
+            return true;
+        }
+        if (ACTION_RESUME_CURRENT.equals(action)) {
+            musicPlayerManager.markPausedForResume();
+            musicPlayerManager.resume();
+            return true;
+        }
+        if (ACTION_TOGGLE_PLAY_PAUSE.equals(action)) {
+            musicPlayerManager.markPausedForResume();
+            musicPlayerManager.resume();
+            return true;
+        }
+        if (ACTION_PLAY_NEXT.equals(action)) {
+            musicPlayerManager.playNext();
+            return true;
+        }
+        if (ACTION_PLAY_PREVIOUS.equals(action)) {
             musicPlayerManager.playPrevious();
             return true;
         }
@@ -567,6 +680,8 @@ public class MusicService extends Service {
 
     private void handleExternalPauseRequest() {
         pendingFocusGainAction = null;
+        dropPendingFocusGainIntent();
+        pendingFocusGainIntent = null;
         pausedByFocusLoss = false;
         resumeOnFocusGain = false;
         musicPlayerManager.pause();
@@ -1087,6 +1202,16 @@ public class MusicService extends Service {
                     || ACTION_CANCEL_REST_AND_PREVIOUS.equals(action)) {
                 performRestCancellationAction(action);
                 return START_STICKY;
+            } else if (ACTION_PLAY_INDEX.equals(action)
+                    || ACTION_ADD_OR_PLAY_SONG.equals(action)
+                    || ACTION_ADD_PLAYLIST_AND_PLAY_FIRST_NEW.equals(action)
+                    || ACTION_REPLACE_PLAYLIST_AND_PLAY.equals(action)
+                    || ACTION_RESUME_CURRENT.equals(action)
+                    || ACTION_TOGGLE_PLAY_PAUSE.equals(action)
+                    || ACTION_PLAY_NEXT.equals(action)
+                    || ACTION_PLAY_PREVIOUS.equals(action)) {
+                executeIntentWithAudioFocus(intent);
+                return START_STICKY;
             } else if (ACTION_NOTIFICATION_PLAY.equals(action)) {
                 handleNotificationPlay();
                 updatePlaybackState(isPlaybackActive(), true);
@@ -1122,6 +1247,8 @@ public class MusicService extends Service {
         }
         pausedByFocusLoss = false;
         resumeOnFocusGain = false;
+        dropPendingFocusGainIntent();
+        pendingFocusGainIntent = null;
         clearPostRestPlaybackWait(true);
         abandonAudioFocus();
         musicPlayerManager.removeOnSongChangedListener(songChangedListener);
