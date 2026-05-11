@@ -941,6 +941,7 @@ public class SettingsFragment extends Fragment {
     }
 
     private void applyHearingProtectionEnabledState(boolean enabled) {
+        boolean wasEnabled = settingsManager.isHearingProtectionEnabled();
         settingsManager.setHearingProtectionEnabled(enabled);
         if (layoutHearingProtectionSettings != null) {
             layoutHearingProtectionSettings.setVisibility(enabled ? View.VISIBLE : View.GONE);
@@ -948,11 +949,17 @@ public class SettingsFragment extends Fragment {
         refreshHearingProtectionSummary();
         if (enabled) {
             scheduleHearingProtectionUiRefresh();
-            showHearingProtectionBackgroundPromptIfNeeded();
+            showHearingProtectionBackgroundPromptIfEnabledByChange(wasEnabled, true);
         } else {
             stopHearingProtectionUiRefresh();
         }
         notifySettingsChanged();
+    }
+
+    private void showHearingProtectionBackgroundPromptIfEnabledByChange(boolean wasEnabled, boolean isEnabled) {
+        if (!wasEnabled && isEnabled) {
+            showHearingProtectionBackgroundPromptIfNeeded();
+        }
     }
 
     private void showHearingProtectionBackgroundPromptIfNeeded() {
@@ -1533,8 +1540,10 @@ public class SettingsFragment extends Fragment {
                 Toast.makeText(requireContext(), R.string.settings_backup_extension_required, Toast.LENGTH_SHORT).show();
                 return;
             }
+            boolean wasHearingProtectionEnabled = settingsManager.isHearingProtectionEnabled();
             byte[] data = readAllBytes(sourceUri);
             lastImportSkippedFloatingLyrics = settingsManager.importEncryptedData(data, action.password);
+            boolean isHearingProtectionEnabled = settingsManager.isHearingProtectionEnabled();
             MusicPlayerManager.getInstance(requireContext()).reloadPlaybackModeFromSettings();
             refreshSettingsUI();
             if (getActivity() instanceof MainActivity) {
@@ -1546,6 +1555,10 @@ public class SettingsFragment extends Fragment {
             if (lastImportSkippedFloatingLyrics) {
                 Toast.makeText(requireContext(), R.string.hint_grant_overlay, Toast.LENGTH_LONG).show();
             }
+            showHearingProtectionBackgroundPromptIfEnabledByChange(
+                    wasHearingProtectionEnabled,
+                    isHearingProtectionEnabled
+            );
         } catch (IllegalArgumentException e) {
             Toast.makeText(requireContext(), R.string.settings_backup_invalid_file, Toast.LENGTH_SHORT).show();
         } catch (AEADBadTagException e) {
