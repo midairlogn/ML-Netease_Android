@@ -16,6 +16,15 @@
     <!-- UI Elements -->
     <color name="divider">#38383A</color>
     <color name="overlay">#FFFFFF</color>
+    <color name="image_detail_background">#000000</color>
+    <color name="image_detail_surface">#E61C1C1E</color>
+    <color name="image_detail_surface_subtle">#66000000</color>
+    <color name="image_detail_stroke">#24FFFFFF</color>
+    <color name="image_detail_divider">#26FFFFFF</color>
+    <color name="image_detail_ripple">#1FFFFFFF</color>
+    <color name="image_detail_icon_tint">#FFFFFF</color>
+    <color name="image_detail_scrim_top">#66000000</color>
+    <color name="image_detail_scrim_bottom">#99000000</color>
 
     <!-- Lyrics -->
     <color name="lyrics_highlight">#FFFFFF</color>
