@@ -28,7 +28,7 @@ public class SongShareHelper {
                                                           RemoteAudioPreparationHelper.CancellationSignal cancellationSignal,
                                                           RemoteAudioPreparationHelper.ProgressListener progressListener) throws Exception {
         File shareDirectory = getShareDirectory();
-        ShareCacheCleaner.cleanupExpired(appContext);
+        ShareCacheCleaner.cleanupExpiredAsync(appContext);
         File sessionDirectory = new File(shareDirectory, String.valueOf(System.currentTimeMillis()));
         if (!sessionDirectory.exists()) {
             sessionDirectory.mkdirs();

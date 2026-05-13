@@ -150,7 +150,7 @@ public class ImageDetailActivity extends AppCompatActivity {
                 if (!shareDirectory.exists() && !shareDirectory.mkdirs()) {
                     throw new IllegalStateException("Failed to create share directory");
                 }
-                ShareCacheCleaner.cleanupExpired(this);
+                ShareCacheCleaner.cleanupExpiredAsync(this);
 
                 File imageFile = new File(shareDirectory, "cover_" + System.currentTimeMillis() + ".jpg");
                 try (FileOutputStream out = new FileOutputStream(imageFile)) {
