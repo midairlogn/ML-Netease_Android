@@ -92,9 +92,33 @@ public final class ShareCacheCleaner {
             return;
         }
         for (File file : files) {
-            if (file != null && file.lastModified() < cutoff) {
+            if (file != null && isExpiredShareEntry(file, cutoff)) {
                 deleteRecursively(file);
             }
+        }
+    }
+
+    private static boolean isExpiredShareEntry(File file, long cutoff) {
+        Long timestamp = extractTimestamp(file.getName());
+        if (timestamp != null) {
+            return timestamp < cutoff;
+        }
+        return file.lastModified() < cutoff;
+    }
+
+    private static Long extractTimestamp(String name) {
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+        String timestampText = name;
+        if (name.startsWith("cover_")) {
+            int dotIndex = name.indexOf('.', 6);
+            timestampText = dotIndex > 6 ? name.substring(6, dotIndex) : name.substring(6);
+        }
+        try {
+            return Long.parseLong(timestampText);
+        } catch (NumberFormatException ignored) {
+            return null;
         }
     }
 

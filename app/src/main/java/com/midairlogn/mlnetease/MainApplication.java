@@ -16,6 +16,7 @@ public class MainApplication extends Application implements Application.Activity
     private List<AppVisibilityListener> listeners = new ArrayList<>();
     private android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
     private Runnable notifyRunnable;
+    private boolean shareCacheCleanupQueued;
 
     public interface AppVisibilityListener {
         void onAppVisibilityChanged(boolean isForeground);
@@ -25,7 +26,6 @@ public class MainApplication extends Application implements Application.Activity
     public void onCreate() {
         super.onCreate();
         registerActivityLifecycleCallbacks(this);
-        ShareCacheCleaner.cleanupExpiredAsync(this);
         DownloadTaskManager taskManager = DownloadTaskManager.getInstance(this);
         if (taskManager.hasWaitingOrActiveWork()) {
             taskManager.ensureServiceRunning();
@@ -71,7 +71,13 @@ public class MainApplication extends Application implements Application.Activity
     }
 
     @Override
-    public void onActivityResumed(Activity activity) {}
+    public void onActivityResumed(Activity activity) {
+        if (shareCacheCleanupQueued) {
+            return;
+        }
+        shareCacheCleanupQueued = true;
+        handler.postDelayed(() -> ShareCacheCleaner.cleanupExpiredAsync(this), 15_000L);
+    }
 
     @Override
     public void onActivityPaused(Activity activity) {}
