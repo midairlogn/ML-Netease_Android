@@ -121,7 +121,7 @@
     <string name="download_starting">Starting background download</string>
     <string name="download_completed">Download completed</string>
     <string name="download_failed">Download failed</string>
-    <string name="download_completed_summary">%1$d/%2$d songs downloaded</string>
+    <string name="download_completed_summary">%1$d/%2$d songs downloaded, %3$d skipped</string>
     <string name="download_already_running">A download task is already running</string>
     <string name="download_paused">Paused</string>
     <string name="download_pause">Pause</string>
@@ -146,6 +146,7 @@
     <string name="download_status_cancelled">Cancelled</string>
     <string name="download_eta_format">ETA %1$s</string>
     <string name="download_task_counts">%1$d/%2$d songs</string>
+    <string name="download_task_skipped_count">%1$d skipped</string>
     <string name="download_percent_format">%1$d%%</string>
     <string name="downloads_summary_empty">No downloads yet</string>
     <string name="downloads_summary_format">Active %1$d • Waiting %2$d • Finished %3$d</string>

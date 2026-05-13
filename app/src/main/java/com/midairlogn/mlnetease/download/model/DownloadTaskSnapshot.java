@@ -12,6 +12,7 @@ public class DownloadTaskSnapshot {
     public final int totalCount;
     public final int completedCount;
     public final int successCount;
+    public final int skippedCount;
     public final int failedCount;
     public final int currentSongIndex;
     public final int progressPercent;
@@ -39,6 +40,7 @@ public class DownloadTaskSnapshot {
         totalCount = task.totalCount;
         completedCount = task.completedCount;
         successCount = task.successCount;
+        skippedCount = task.skippedCount;
         failedCount = task.failedCount;
         currentSongIndex = task.currentSongIndex;
         progressPercent = task.progressPercent;

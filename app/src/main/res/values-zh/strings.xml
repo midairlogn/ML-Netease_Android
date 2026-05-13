@@ -80,7 +80,7 @@
     <string name="download_starting">正在启动后台下载</string>
     <string name="download_completed">下载完成</string>
     <string name="download_failed">下载失败</string>
-    <string name="download_completed_summary">成功下载 %1$d/%2$d 首歌曲</string>
+    <string name="download_completed_summary">成功下载 %1$d/%2$d 首歌曲，已跳过 %3$d 首</string>
     <string name="download_already_running">已有下载任务正在执行</string>
     <string name="download_paused">已暂停</string>
     <string name="download_pause">暂停</string>
@@ -105,6 +105,7 @@
     <string name="download_status_cancelled">已取消</string>
     <string name="download_eta_format">预计剩余 %1$s</string>
     <string name="download_task_counts">%1$d/%2$d 首歌曲</string>
+    <string name="download_task_skipped_count">已跳过 %1$d 首</string>
     <string name="download_percent_format">%1$d%%</string>
     <string name="downloads_summary_empty">还没有下载任务</string>
     <string name="downloads_summary_format">进行中 %1$d • 等待中 %2$d • 已结束 %3$d</string>

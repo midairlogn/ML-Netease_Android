@@ -224,6 +224,9 @@ public class DownloadTaskAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         private static String buildDetails(View itemView, DownloadTaskSnapshot task) {
             List<String> firstLineParts = new ArrayList<>();
             firstLineParts.add(itemView.getContext().getString(R.string.download_task_counts, task.completedCount, task.totalCount));
+            if (task.skippedCount > 0) {
+                firstLineParts.add(itemView.getContext().getString(R.string.download_task_skipped_count, task.skippedCount));
+            }
             if (task.etaMillis > 0L) {
                 firstLineParts.add(itemView.getContext().getString(R.string.download_eta_format, formatDuration(task.etaMillis)));
             }

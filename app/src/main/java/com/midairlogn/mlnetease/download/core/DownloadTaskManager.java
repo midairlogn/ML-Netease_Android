@@ -52,8 +52,13 @@ public class DownloadTaskManager {
     }
 
     public DownloadTaskSnapshot enqueue(DownloadRequest request) {
-        DownloadTask task = new DownloadTask(nextTaskId(), request);
+        DownloadTask task;
         synchronized (lock) {
+            DownloadTask existingTask = findEquivalentRunnableTaskLocked(request);
+            if (existingTask != null) {
+                return existingTask.snapshot();
+            }
+            task = new DownloadTask(nextTaskId(), request);
             tasks.add(task);
         }
         persistTasks();
@@ -248,6 +253,7 @@ public class DownloadTaskManager {
             task.status = DownloadTaskStatus.WAITING;
             task.completedCount = 0;
             task.successCount = 0;
+            task.skippedCount = 0;
             task.failedCount = 0;
             task.currentSongIndex = -1;
             task.progressPercent = 0;
@@ -349,14 +355,16 @@ public class DownloadTaskManager {
         notifyListeners();
     }
 
-    public void markSongCompleted(String taskId, Song song, boolean success, @Nullable String errorMessage) {
+    public void markSongCompleted(String taskId, Song song, boolean success, boolean skipped, @Nullable String errorMessage) {
         synchronized (lock) {
             DownloadTask task = findTaskLocked(taskId);
             if (task == null || task.status.isTerminal()) {
                 return;
             }
             task.completedCount = Math.min(task.totalCount, task.completedCount + 1);
-            if (success) {
+            if (skipped) {
+                task.skippedCount++;
+            } else if (success) {
                 task.successCount++;
             } else {
                 task.failedCount++;
@@ -382,7 +390,7 @@ public class DownloadTaskManager {
             }
             task.status = DownloadTaskStatus.COMPLETED;
             task.progressPercent = 100;
-            task.statusMessage = String.format(Locale.US, "%d/%d downloaded", task.successCount, task.totalCount);
+            task.statusMessage = buildCompletionMessage(task.successCount, task.skippedCount, task.totalCount);
             task.currentSongBytesDownloaded = 0L;
             task.currentSongBytesTotal = -1L;
             task.etaMillis = 0L;
@@ -479,6 +487,57 @@ public class DownloadTaskManager {
         return null;
     }
 
+    private DownloadTask findEquivalentRunnableTaskLocked(DownloadRequest request) {
+        if (request == null) {
+            return null;
+        }
+        for (DownloadTask task : tasks) {
+            if (task == null || task.status.isTerminal()) {
+                continue;
+            }
+            if (isEquivalentRequest(task.request, request)) {
+                return task;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isEquivalentRequest(DownloadRequest left, DownloadRequest right) {
+        if (left == null || right == null) {
+            return false;
+        }
+        if (!safeKey(left.type).equals(safeKey(right.type)) || !safeKey(left.title).equals(safeKey(right.title))) {
+            return false;
+        }
+        List<Song> leftSongs = left.songs;
+        List<Song> rightSongs = right.songs;
+        int size = leftSongs == null ? 0 : leftSongs.size();
+        if (size != (rightSongs == null ? 0 : rightSongs.size())) {
+            return false;
+        }
+        for (int i = 0; i < size; i++) {
+            if (!songKey(leftSongs.get(i)).equals(songKey(rightSongs.get(i)))) {
+                return false;
+            }
+        }
+        return size > 0;
+    }
+
+    private static String songKey(Song song) {
+        if (song == null) {
+            return "";
+        }
+        String id = safeKey(song.id);
+        if (!id.isEmpty()) {
+            return id;
+        }
+        return safeKey(song.name) + "|" + safeKey(song.artists) + "|" + safeKey(song.album);
+    }
+
+    private static String safeKey(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.US);
+    }
+
     private static String nextTaskId() {
         return TASK_ID_PREFIX + ID_COUNTER.getAndIncrement();
     }
@@ -526,6 +585,13 @@ public class DownloadTaskManager {
 
     private static String safeMessage(String message, String fallback) {
         return message == null || message.trim().isEmpty() ? fallback : message.trim();
+    }
+
+    private static String buildCompletionMessage(int successCount, int skippedCount, int totalCount) {
+        if (skippedCount > 0) {
+            return String.format(Locale.US, "%d/%d downloaded, %d skipped", successCount, totalCount, skippedCount);
+        }
+        return String.format(Locale.US, "%d/%d downloaded", successCount, totalCount);
     }
 
     private static Comparator<DownloadTaskSnapshot> snapshotComparator() {

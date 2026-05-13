@@ -44,6 +44,10 @@ public class RemoteAudioPreparationHelper {
         void onWritingMetadata(String title);
     }
 
+    public interface ExistingAudioChecker {
+        boolean exists(String displayName, String relativePath);
+    }
+
     private final Context context;
     private final SettingsManager settingsManager;
     private final NeteaseApi neteaseApi;
@@ -67,11 +71,23 @@ public class RemoteAudioPreparationHelper {
 
     public PreparedAudioFile prepareDownloadAudio(Song song, File outputDirectory, CancellationSignal cancellationSignal,
                                                   ProgressListener progressListener) throws Exception {
-        return prepare(song, outputDirectory, cancellationSignal, progressListener);
+        return prepare(song, outputDirectory, cancellationSignal, progressListener, null, null);
+    }
+
+    public PreparedAudioFile prepareDownloadAudio(Song song, File outputDirectory, CancellationSignal cancellationSignal,
+                                                  ProgressListener progressListener, String relativePath,
+                                                  ExistingAudioChecker existingAudioChecker) throws Exception {
+        return prepare(song, outputDirectory, cancellationSignal, progressListener, relativePath, existingAudioChecker);
     }
 
     private PreparedAudioFile prepare(Song song, File outputDirectory, CancellationSignal cancellationSignal,
                                       ProgressListener progressListener) throws Exception {
+        return prepare(song, outputDirectory, cancellationSignal, progressListener, null, null);
+    }
+
+    private PreparedAudioFile prepare(Song song, File outputDirectory, CancellationSignal cancellationSignal,
+                                      ProgressListener progressListener, String relativePath,
+                                      ExistingAudioChecker existingAudioChecker) throws Exception {
         if (song == null) {
             throw new IllegalArgumentException("Song is required");
         }
@@ -104,6 +120,10 @@ public class RemoteAudioPreparationHelper {
         String lyric = mergeLyrics(info.optString("lyric", ""), info.optString("tlyric", ""));
         DownloadCustomizationSettings customizationSettings = settingsManager.getDownloadCustomizationSettings();
         Song finalSong = new Song(song.id, title, artist, album, pic);
+        String expectedDisplayName = DownloadFileUtils.buildDisplayName(finalSong, serverExtension, customizationSettings);
+        if (existingAudioChecker != null && existingAudioChecker.exists(expectedDisplayName, relativePath)) {
+            return skippedExistingFile(expectedDisplayName, serverExtension);
+        }
 
         File downloadedAudio = createOutputFile(outputDirectory, "raw_", serverExtension);
         File taggedAudio = null;
@@ -114,6 +134,11 @@ public class RemoteAudioPreparationHelper {
             String actualExtension = resolveRawFileExtension(downloadedAudio, serverExtension);
             String actualQuality = info.optString("level", "");
             String displayName = DownloadFileUtils.buildDisplayName(finalSong, actualExtension, customizationSettings);
+            if (!actualExtension.equals(serverExtension)
+                    && existingAudioChecker != null
+                    && existingAudioChecker.exists(displayName, relativePath)) {
+                return skippedExistingFile(displayName, actualExtension);
+            }
 
             if (progressListener != null) {
                 progressListener.onFetchingCover(title);
@@ -222,6 +247,11 @@ public class RemoteAudioPreparationHelper {
             throw new IOException(errorHolder[0]);
         }
         return new JSONObject(resultHolder[0]);
+    }
+
+    private PreparedAudioFile skippedExistingFile(String displayName, String extension) {
+        String mimeType = "mp3".equals(extension) ? "audio/mpeg" : "audio/flac";
+        return new PreparedAudioFile(null, displayName, mimeType, extension, true);
     }
 
     private void applyVolumeTagData(DownloadTagData tagData, JSONObject info) {

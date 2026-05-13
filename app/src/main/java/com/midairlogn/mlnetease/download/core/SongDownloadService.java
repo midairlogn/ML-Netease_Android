@@ -251,13 +251,13 @@ public class SongDownloadService extends Service {
             );
 
             try {
-                downloadSong(task, song, i, total);
-                taskManager.markSongCompleted(task.id, song, true, null);
+                SongDownloadResult result = downloadSong(task, song, i, total);
+                taskManager.markSongCompleted(task.id, song, true, result != null && result.skipped, null);
             } catch (PausedTaskException | CancelledTaskException e) {
                 throw e;
             } catch (Exception e) {
                 e.printStackTrace();
-                taskManager.markSongCompleted(task.id, song, false, messageOrFallback(e, getString(R.string.download_failed)));
+                taskManager.markSongCompleted(task.id, song, false, false, messageOrFallback(e, getString(R.string.download_failed)));
             }
         }
 
@@ -265,15 +265,15 @@ public class SongDownloadService extends Service {
             taskManager.markCancelled(task.id);
             throw new CancelledTaskException();
         }
-        if (task.failedCount > 0 && task.successCount == 0) {
+        if (task.failedCount > 0 && task.successCount == 0 && task.skippedCount == 0) {
             taskManager.failTask(task.id, getString(R.string.download_failed));
             return;
         }
         taskManager.completeTask(task.id);
-        showTaskFinishedToast(task.successCount, task.totalCount);
+        showTaskFinishedToast(task.successCount, task.skippedCount, task.totalCount);
     }
 
-    private void downloadSong(DownloadTask task, Song song, int index, int total) throws Exception {
+    private SongDownloadResult downloadSong(DownloadTask task, Song song, int index, int total) throws Exception {
         String title = song == null || song.name == null || song.name.trim().isEmpty()
                 ? getString(R.string.download)
                 : song.name.trim();
@@ -342,8 +342,23 @@ public class SongDownloadService extends Service {
                                 -1L
                         );
                     }
-                }
+                },
+                relativePath,
+                (displayName, path) -> DownloadFileUtils.audioExists(this, displayName, path)
         );
+
+        if (preparedAudioFile.skippedExisting) {
+            taskManager.updateTaskProgress(
+                    task.id,
+                    index,
+                    title,
+                    getString(R.string.download_song_skipped_exists),
+                    computeOverallProgress(task, index, 100),
+                    0L,
+                    -1L
+            );
+            return SongDownloadResult.skipped();
+        }
 
         try {
             if (DownloadFileUtils.audioExists(this, preparedAudioFile.displayName, relativePath)) {
@@ -356,7 +371,7 @@ public class SongDownloadService extends Service {
                         0L,
                         -1L
                 );
-                return;
+                return SongDownloadResult.skipped();
             }
 
             taskManager.updateTaskProgress(
@@ -398,6 +413,7 @@ public class SongDownloadService extends Service {
                 0L,
                 -1L
         );
+        return SongDownloadResult.saved();
     }
 
     private void throwIfPauseRequested(String taskId) throws PausedTaskException {
@@ -535,9 +551,9 @@ public class SongDownloadService extends Service {
         }
     }
 
-    private void showTaskFinishedToast(int successCount, int total) {
+    private void showTaskFinishedToast(int successCount, int skippedCount, int total) {
         mainHandler.post(() -> Toast.makeText(this,
-                getString(R.string.download_completed_summary, successCount, total),
+                getString(R.string.download_completed_summary, successCount, total, skippedCount),
                 Toast.LENGTH_LONG).show());
     }
 
@@ -568,5 +584,21 @@ public class SongDownloadService extends Service {
     }
 
     private static final class ServiceStoppingException extends Exception {
+    }
+
+    private static final class SongDownloadResult {
+        final boolean skipped;
+
+        private SongDownloadResult(boolean skipped) {
+            this.skipped = skipped;
+        }
+
+        static SongDownloadResult saved() {
+            return new SongDownloadResult(false);
+        }
+
+        static SongDownloadResult skipped() {
+            return new SongDownloadResult(true);
+        }
     }
 }

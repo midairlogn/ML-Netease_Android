@@ -22,6 +22,7 @@ public class DownloadTask {
     public int totalCount;
     public int completedCount;
     public int successCount;
+    public int skippedCount;
     public int failedCount;
     public int currentSongIndex = -1;
     public int progressPercent;
@@ -85,6 +86,7 @@ public class DownloadTask {
             object.put("totalCount", totalCount);
             object.put("completedCount", completedCount);
             object.put("successCount", successCount);
+            object.put("skippedCount", skippedCount);
             object.put("failedCount", failedCount);
             object.put("currentSongIndex", currentSongIndex);
             object.put("progressPercent", progressPercent);
@@ -174,6 +176,7 @@ public class DownloadTask {
             task.totalCount = object.optInt("totalCount", task.totalCount);
             task.completedCount = object.optInt("completedCount", 0);
             task.successCount = object.optInt("successCount", 0);
+            task.skippedCount = object.optInt("skippedCount", 0);
             task.failedCount = object.optInt("failedCount", 0);
             task.currentSongIndex = object.optInt("currentSongIndex", -1);
             task.progressPercent = object.optInt("progressPercent", 0);
