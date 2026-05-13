@@ -12,13 +12,17 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 
 import com.midairlogn.mlnetease.R;
+import com.midairlogn.mlnetease.sharing.ShareCacheCleaner;
+import com.midairlogn.mlnetease.sharing.ShareUtils;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.OutputStream;
 
 public class ImageDetailActivity extends AppCompatActivity {
-
     private ZoomImageView imageView;
     private String imageUrl;
     private byte[] imageBytes;
@@ -33,6 +37,7 @@ public class ImageDetailActivity extends AppCompatActivity {
         imageView = findViewById(R.id.fullscreen_image);
         imageView.setImageResource(R.drawable.ic_ml_app_logo_foreground);
         Button btnDownload = findViewById(R.id.btn_download);
+        Button btnShareImage = findViewById(R.id.btn_share_image);
         ImageButton btnClose = findViewById(R.id.btn_close);
 
         bindIntent(getIntent());
@@ -40,6 +45,7 @@ public class ImageDetailActivity extends AppCompatActivity {
         btnClose.setOnClickListener(v -> finish());
 
         btnDownload.setOnClickListener(v -> downloadImage());
+        btnShareImage.setOnClickListener(v -> shareImage());
     }
 
     @Override
@@ -128,6 +134,37 @@ public class ImageDetailActivity extends AppCompatActivity {
             } catch (Exception e) {
                 e.printStackTrace();
                 runOnUiThread(() -> Toast.makeText(this, getString(R.string.hint_save_failed_title) + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        }).start();
+    }
+
+    private void shareImage() {
+        if (currentBitmap == null) {
+            Toast.makeText(this, R.string.share_not_available, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                File shareDirectory = new File(getCacheDir(), ShareCacheCleaner.SHARED_IMAGE_DIRECTORY);
+                if (!shareDirectory.exists() && !shareDirectory.mkdirs()) {
+                    throw new IllegalStateException("Failed to create share directory");
+                }
+                ShareCacheCleaner.cleanupExpired(this);
+
+                File imageFile = new File(shareDirectory, "cover_" + System.currentTimeMillis() + ".jpg");
+                try (FileOutputStream out = new FileOutputStream(imageFile)) {
+                    if (!currentBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)) {
+                        throw new IllegalStateException("Failed to encode image");
+                    }
+                    out.flush();
+                }
+
+                Uri imageUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", imageFile);
+                runOnUiThread(() -> ShareUtils.shareImage(this, getString(R.string.share_cover), imageUri, "image/jpeg"));
+            } catch (Exception e) {
+                e.printStackTrace();
+                runOnUiThread(() -> Toast.makeText(this, getString(R.string.share_image_failed) + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
         }).start();
     }

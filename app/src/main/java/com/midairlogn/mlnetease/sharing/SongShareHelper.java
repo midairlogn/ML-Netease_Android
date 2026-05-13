@@ -10,12 +10,8 @@ import com.midairlogn.mlnetease.download.core.RemoteAudioPreparationHelper;
 import com.midairlogn.mlnetease.shared.model.Song;
 
 import java.io.File;
-import java.util.concurrent.TimeUnit;
 
 public class SongShareHelper {
-    private static final String SHARE_DIRECTORY = "shared_audio";
-    private static final long MAX_SHARE_FILE_AGE_MS = TimeUnit.HOURS.toMillis(6);
-
     private final Context appContext;
     private final RemoteAudioPreparationHelper remoteAudioPreparationHelper;
 
@@ -32,7 +28,7 @@ public class SongShareHelper {
                                                           RemoteAudioPreparationHelper.CancellationSignal cancellationSignal,
                                                           RemoteAudioPreparationHelper.ProgressListener progressListener) throws Exception {
         File shareDirectory = getShareDirectory();
-        cleanupExpiredShareFiles(shareDirectory);
+        ShareCacheCleaner.cleanupExpired(appContext);
         File sessionDirectory = new File(shareDirectory, String.valueOf(System.currentTimeMillis()));
         if (!sessionDirectory.exists()) {
             sessionDirectory.mkdirs();
@@ -45,42 +41,10 @@ public class SongShareHelper {
     }
 
     private File getShareDirectory() {
-        File directory = new File(appContext.getCacheDir(), SHARE_DIRECTORY);
+        File directory = new File(appContext.getCacheDir(), ShareCacheCleaner.SHARED_AUDIO_DIRECTORY);
         if (!directory.exists()) {
             directory.mkdirs();
         }
         return directory;
-    }
-
-    private void cleanupExpiredShareFiles(File directory) {
-        if (directory == null || !directory.exists()) {
-            return;
-        }
-        long cutoff = System.currentTimeMillis() - MAX_SHARE_FILE_AGE_MS;
-        File[] files = directory.listFiles();
-        if (files == null) {
-            return;
-        }
-        for (File file : files) {
-            if (file == null || file.lastModified() >= cutoff) {
-                continue;
-            }
-            deleteRecursively(file);
-        }
-    }
-
-    private void deleteRecursively(File file) {
-        if (file == null || !file.exists()) {
-            return;
-        }
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    deleteRecursively(child);
-                }
-            }
-        }
-        file.delete();
     }
 }

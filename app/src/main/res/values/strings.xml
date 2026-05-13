@@ -94,6 +94,7 @@
     <string name="share_song">Share song</string>
     <string name="share_playlist">Share playlist</string>
     <string name="share_album">Share album</string>
+    <string name="share_cover">Share cover</string>
     <string name="share_song_as">Share song as</string>
     <string name="share_link">Share link</string>
     <string name="share_audio">Share audio</string>
@@ -101,6 +102,7 @@
     <string name="share_progress_indeterminate">Please wait...</string>
     <string name="share_progress_size_format">%1$s / %2$s</string>
     <string name="share_audio_failed">Could not share audio: </string>
+    <string name="share_image_failed">Could not share image: </string>
     <string name="share_not_available">Share is not available for this item</string>
     <string name="favourite">Favourite</string>
     <string name="unfavourite">Unfavourite</string>

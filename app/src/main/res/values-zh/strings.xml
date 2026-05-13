@@ -53,6 +53,7 @@
     <string name="share_song">分享歌曲</string>
     <string name="share_playlist">分享歌单</string>
     <string name="share_album">分享专辑</string>
+    <string name="share_cover">分享封面</string>
     <string name="share_song_as">分享歌曲方式</string>
     <string name="share_link">分享链接</string>
     <string name="share_audio">分享音频</string>
@@ -60,6 +61,7 @@
     <string name="share_progress_indeterminate">请稍候...</string>
     <string name="share_progress_size_format">%1$s / %2$s</string>
     <string name="share_audio_failed">分享音频失败：</string>
+    <string name="share_image_failed">分享图片失败：</string>
     <string name="share_not_available">当前项目暂不支持分享</string>
     <string name="favourite">收藏</string>
     <string name="unfavourite">取消收藏</string>

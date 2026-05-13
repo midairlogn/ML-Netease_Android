@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.os.Bundle;
 
 import com.midairlogn.mlnetease.download.core.DownloadTaskManager;
+import com.midairlogn.mlnetease.sharing.ShareCacheCleaner;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +25,7 @@ public class MainApplication extends Application implements Application.Activity
     public void onCreate() {
         super.onCreate();
         registerActivityLifecycleCallbacks(this);
+        ShareCacheCleaner.cleanupExpiredAsync(this);
         DownloadTaskManager taskManager = DownloadTaskManager.getInstance(this);
         if (taskManager.hasWaitingOrActiveWork()) {
             taskManager.ensureServiceRunning();

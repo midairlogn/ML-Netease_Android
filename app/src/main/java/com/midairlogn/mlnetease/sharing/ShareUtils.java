@@ -45,6 +45,15 @@ public final class ShareUtils {
         context.startActivity(Intent.createChooser(intent, chooserTitle));
     }
 
+    public static void shareImage(@NonNull Context context, @NonNull String chooserTitle, @NonNull Uri uri, @NonNull String mimeType) {
+        Intent intent = new Intent(Intent.ACTION_SEND)
+                .setType(mimeType)
+                .putExtra(Intent.EXTRA_STREAM, uri);
+        intent.setClipData(ClipData.newRawUri(context.getString(R.string.share_cover), uri));
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        context.startActivity(Intent.createChooser(intent, chooserTitle));
+    }
+
     private static String sanitizeId(String id) {
         return id == null ? "" : id.trim();
     }

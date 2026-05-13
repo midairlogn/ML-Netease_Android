@@ -3,4 +3,7 @@
     <cache-path
         name="shared_audio"
         path="shared_audio/" />
+    <cache-path
+        name="shared_images"
+        path="shared_images/" />
 </paths>
