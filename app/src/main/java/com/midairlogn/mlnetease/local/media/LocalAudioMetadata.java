@@ -10,4 +10,9 @@ public class LocalAudioMetadata {
     public String lyric = "";
     public String translatedLyric = "";
     public byte[] artworkData = null;
+    public float gainDb = 0f;
+    public float peak = 0f;
+    public float closedGainDb = 0f;
+    public float closedPeak = 0f;
+    public boolean hasLoudnessNormalization = false;
 }

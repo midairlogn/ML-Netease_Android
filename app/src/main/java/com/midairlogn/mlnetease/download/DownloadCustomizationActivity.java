@@ -47,6 +47,7 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
     private CheckBox checkboxMetadataLyrics;
     private CheckBox checkboxMetadataCover;
     private CheckBox checkboxMetadataExtra;
+    private CheckBox checkboxMetadataVolume;
     private TextView textMetadataPreview;
     private boolean isBinding;
     private boolean isUpdatingTemplateText;
@@ -76,6 +77,7 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         checkboxMetadataLyrics = findViewById(R.id.checkbox_metadata_lyrics);
         checkboxMetadataCover = findViewById(R.id.checkbox_metadata_cover);
         checkboxMetadataExtra = findViewById(R.id.checkbox_metadata_extra);
+        checkboxMetadataVolume = findViewById(R.id.checkbox_metadata_volume);
         textMetadataPreview = findViewById(R.id.text_metadata_preview);
 
         bindCurrentSettings();
@@ -118,6 +120,7 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         checkboxMetadataLyrics.setChecked(settings.writeLyrics);
         checkboxMetadataCover.setChecked(settings.writeCover);
         checkboxMetadataExtra.setChecked(settings.writeExtra);
+        checkboxMetadataVolume.setChecked(settings.writeVolumeMetadata);
         updateMetadataControlsState();
         updatePreviews();
         isBinding = false;
@@ -181,6 +184,7 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         checkboxMetadataLyrics.setOnClickListener(metadataListener);
         checkboxMetadataCover.setOnClickListener(metadataListener);
         checkboxMetadataExtra.setOnClickListener(metadataListener);
+        checkboxMetadataVolume.setOnClickListener(metadataListener);
     }
 
     private void insertVariable(String variable) {
@@ -246,6 +250,7 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         settings.writeLyrics = checkboxMetadataLyrics.isChecked();
         settings.writeCover = checkboxMetadataCover.isChecked();
         settings.writeExtra = checkboxMetadataExtra.isChecked();
+        settings.writeVolumeMetadata = checkboxMetadataVolume.isChecked();
         settingsManager.setDownloadCustomizationSettings(settings);
         updatePreviews();
     }
@@ -262,6 +267,7 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         checkboxMetadataLyrics.setEnabled(enabled);
         checkboxMetadataCover.setEnabled(enabled);
         checkboxMetadataExtra.setEnabled(enabled);
+        checkboxMetadataVolume.setEnabled(enabled);
         float alpha = enabled ? 1f : 0.45f;
         checkboxMetadataTitle.setAlpha(alpha);
         checkboxMetadataArtist.setAlpha(alpha);
@@ -269,6 +275,7 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         checkboxMetadataLyrics.setAlpha(alpha);
         checkboxMetadataCover.setAlpha(alpha);
         checkboxMetadataExtra.setAlpha(alpha);
+        checkboxMetadataVolume.setAlpha(alpha);
     }
 
     private void updatePreviews() {
@@ -311,6 +318,9 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         }
         if (checkboxMetadataExtra.isChecked()) {
             items.add(getString(R.string.download_metadata_extra));
+        }
+        if (checkboxMetadataVolume.isChecked()) {
+            items.add(getString(R.string.download_metadata_volume));
         }
         if (items.isEmpty()) {
             return getString(R.string.download_metadata_preview_none);

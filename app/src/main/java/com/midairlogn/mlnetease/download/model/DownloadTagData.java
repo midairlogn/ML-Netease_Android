@@ -10,4 +10,12 @@ public class DownloadTagData {
     public byte[] coverData;
     public String coverMimeType;
     public String comment;
+    public boolean hasGain;
+    public float gainDb;
+    public boolean hasPeak;
+    public float peak;
+    public boolean hasClosedGain;
+    public float closedGainDb;
+    public boolean hasClosedPeak;
+    public float closedPeak;
 }

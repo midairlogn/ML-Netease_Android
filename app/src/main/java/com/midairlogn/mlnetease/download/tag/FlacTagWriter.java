@@ -1,6 +1,7 @@
 package com.midairlogn.mlnetease.download.tag;
 
 import com.midairlogn.mlnetease.download.model.DownloadTagData;
+import com.midairlogn.mlnetease.shared.metadata.VolumeMetadataTags;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -157,6 +158,7 @@ public final class FlacTagWriter {
         putIfNotEmpty(comments, "COMMENT", tagData.comment);
         putIfNotEmpty(comments, "QUALITY", tagData.quality);
         putIfNotEmpty(comments, "NETEASE_SONG_ID", tagData.songId);
+        putVolumeComments(comments, tagData);
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         byte[] vendor = "ML-Netease Android".getBytes(StandardCharsets.UTF_8);
@@ -192,6 +194,30 @@ public final class FlacTagWriter {
     private static void putIfNotEmpty(Map<String, String> map, String key, String value) {
         if (value != null && !value.trim().isEmpty()) {
             map.put(key, value);
+        }
+    }
+
+    private static void putVolumeComments(Map<String, String> comments, DownloadTagData tagData) {
+        if (tagData == null) {
+            return;
+        }
+        if (tagData.hasClosedGain) {
+            comments.put(VolumeMetadataTags.REPLAYGAIN_TRACK_GAIN, VolumeMetadataTags.formatGainDb(tagData.closedGainDb));
+            comments.put(VolumeMetadataTags.NETEASE_CLOSED_GAIN, VolumeMetadataTags.formatNumber(tagData.closedGainDb));
+        } else if (tagData.hasGain) {
+            comments.put(VolumeMetadataTags.REPLAYGAIN_TRACK_GAIN, VolumeMetadataTags.formatGainDb(tagData.gainDb));
+        }
+        if (tagData.hasClosedPeak && tagData.closedPeak > 0f) {
+            comments.put(VolumeMetadataTags.REPLAYGAIN_TRACK_PEAK, VolumeMetadataTags.formatNumber(tagData.closedPeak));
+            comments.put(VolumeMetadataTags.NETEASE_CLOSED_PEAK, VolumeMetadataTags.formatNumber(tagData.closedPeak));
+        } else if (tagData.hasPeak && tagData.peak > 0f) {
+            comments.put(VolumeMetadataTags.REPLAYGAIN_TRACK_PEAK, VolumeMetadataTags.formatNumber(tagData.peak));
+        }
+        if (tagData.hasGain) {
+            comments.put(VolumeMetadataTags.NETEASE_GAIN, VolumeMetadataTags.formatNumber(tagData.gainDb));
+        }
+        if (tagData.hasPeak && tagData.peak > 0f) {
+            comments.put(VolumeMetadataTags.NETEASE_PEAK, VolumeMetadataTags.formatNumber(tagData.peak));
         }
     }
 

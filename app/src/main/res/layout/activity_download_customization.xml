@@ -339,6 +339,14 @@
                 android:text="@string/download_metadata_extra"
                 android:textColor="@color/text_primary" />
 
+            <CheckBox
+                android:id="@+id/checkbox_metadata_volume"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:buttonTint="@color/brand_primary"
+                android:text="@string/download_metadata_volume"
+                android:textColor="@color/text_primary" />
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

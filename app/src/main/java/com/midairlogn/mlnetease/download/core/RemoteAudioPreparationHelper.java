@@ -137,6 +137,9 @@ public class RemoteAudioPreparationHelper {
                     tagData.songId = song.id;
                     tagData.comment = "Downloaded by ML Netease Android | Netease Song ID: " + song.id;
                 }
+                if (customizationSettings.writeVolumeMetadata) {
+                    applyVolumeTagData(tagData, info);
+                }
             }
 
             File outputAudio = downloadedAudio;
@@ -219,6 +222,20 @@ public class RemoteAudioPreparationHelper {
             throw new IOException(errorHolder[0]);
         }
         return new JSONObject(resultHolder[0]);
+    }
+
+    private void applyVolumeTagData(DownloadTagData tagData, JSONObject info) {
+        if (tagData == null || info == null) {
+            return;
+        }
+        tagData.hasGain = info.has("gain") && !info.isNull("gain");
+        tagData.gainDb = tagData.hasGain ? (float) info.optDouble("gain", 0d) : 0f;
+        tagData.hasPeak = info.has("peak") && !info.isNull("peak");
+        tagData.peak = tagData.hasPeak ? (float) info.optDouble("peak", 0d) : 0f;
+        tagData.hasClosedGain = info.has("closedGain") && !info.isNull("closedGain");
+        tagData.closedGainDb = tagData.hasClosedGain ? (float) info.optDouble("closedGain", 0d) : 0f;
+        tagData.hasClosedPeak = info.has("closedPeak") && !info.isNull("closedPeak");
+        tagData.closedPeak = tagData.hasClosedPeak ? (float) info.optDouble("closedPeak", 0d) : 0f;
     }
 
     private void fetchFileWithProgress(String title, String url, File destinationFile, ProgressListener progressListener,

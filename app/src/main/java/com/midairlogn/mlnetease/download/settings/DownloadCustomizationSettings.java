@@ -12,4 +12,5 @@ public class DownloadCustomizationSettings {
     public boolean writeLyrics = true;
     public boolean writeCover = true;
     public boolean writeExtra = true;
+    public boolean writeVolumeMetadata = true;
 }

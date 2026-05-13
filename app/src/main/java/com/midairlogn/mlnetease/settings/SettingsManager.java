@@ -69,6 +69,7 @@ public class SettingsManager {
     private static final String KEY_DOWNLOAD_METADATA_LYRICS = "download_metadata_lyrics";
     private static final String KEY_DOWNLOAD_METADATA_COVER = "download_metadata_cover";
     private static final String KEY_DOWNLOAD_METADATA_EXTRA = "download_metadata_extra";
+    private static final String KEY_DOWNLOAD_METADATA_VOLUME = "download_metadata_volume";
     private static final String BACKUP_FORMAT = "mlnetease-settings";
     private static final int BACKUP_VERSION = 1;
     private static final int BACKUP_SALT_LENGTH = 16;
@@ -653,6 +654,7 @@ public class SettingsManager {
         settings.writeLyrics = isDownloadMetadataLyricsEnabled();
         settings.writeCover = isDownloadMetadataCoverEnabled();
         settings.writeExtra = isDownloadMetadataExtraEnabled();
+        settings.writeVolumeMetadata = isDownloadMetadataVolumeEnabled();
         return settings;
     }
 
@@ -670,6 +672,7 @@ public class SettingsManager {
                 .putBoolean(KEY_DOWNLOAD_METADATA_LYRICS, settings.writeLyrics)
                 .putBoolean(KEY_DOWNLOAD_METADATA_COVER, settings.writeCover)
                 .putBoolean(KEY_DOWNLOAD_METADATA_EXTRA, settings.writeExtra)
+                .putBoolean(KEY_DOWNLOAD_METADATA_VOLUME, settings.writeVolumeMetadata)
                 .apply();
     }
 
@@ -743,6 +746,14 @@ public class SettingsManager {
 
     public void setDownloadMetadataExtraEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_EXTRA, enabled).apply();
+    }
+
+    public boolean isDownloadMetadataVolumeEnabled() {
+        return prefs.getBoolean(KEY_DOWNLOAD_METADATA_VOLUME, true);
+    }
+
+    public void setDownloadMetadataVolumeEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_VOLUME, enabled).apply();
     }
 
     private String normalizeDownloadTemplate(String template) {
@@ -837,6 +848,7 @@ public class SettingsManager {
         json.put(KEY_DOWNLOAD_METADATA_LYRICS, isDownloadMetadataLyricsEnabled());
         json.put(KEY_DOWNLOAD_METADATA_COVER, isDownloadMetadataCoverEnabled());
         json.put(KEY_DOWNLOAD_METADATA_EXTRA, isDownloadMetadataExtraEnabled());
+        json.put(KEY_DOWNLOAD_METADATA_VOLUME, isDownloadMetadataVolumeEnabled());
         return json;
     }
 
@@ -881,6 +893,7 @@ public class SettingsManager {
         downloadSettings.writeLyrics = json.optBoolean(KEY_DOWNLOAD_METADATA_LYRICS, true);
         downloadSettings.writeCover = json.optBoolean(KEY_DOWNLOAD_METADATA_COVER, true);
         downloadSettings.writeExtra = json.optBoolean(KEY_DOWNLOAD_METADATA_EXTRA, true);
+        downloadSettings.writeVolumeMetadata = json.optBoolean(KEY_DOWNLOAD_METADATA_VOLUME, true);
         setDownloadCustomizationSettings(downloadSettings);
         return requestedFloatingLyrics && !canEnableFloatingLyrics;
     }

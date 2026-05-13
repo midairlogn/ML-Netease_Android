@@ -631,14 +631,31 @@ public class MusicPlayerManager {
             song.lyric = metadata.lyric;
             song.translatedLyric = metadata.translatedLyric;
             song.embeddedPicture = metadata.artworkData;
-            song.gainDb = 0f;
-            song.peak = 0f;
-            song.closedGainDb = 0f;
-            song.closedPeak = 0f;
-            song.hasLoudnessNormalization = false;
+            song.gainDb = metadata.gainDb;
+            song.peak = metadata.peak;
+            song.closedGainDb = metadata.closedGainDb;
+            song.closedPeak = metadata.closedPeak;
+            song.hasLoudnessNormalization = metadata.hasLoudnessNormalization;
             currentLyric = metadata.lyric;
             currentTLyric = metadata.translatedLyric;
             clearLoudnessNormalization();
+            if (settingsManager.isDynamicVolumeEnabled() && metadata.hasLoudnessNormalization) {
+                NormalizationMetadata normalizationMetadata = resolveStoredNormalizationMetadata(song);
+                song.hasLoudnessNormalization = normalizationMetadata.hasGain;
+                if (normalizationMetadata.hasGain) {
+                    float effectiveGainDb = resolveEffectiveNormalizationGainDb(
+                            normalizationMetadata.gainDb,
+                            normalizationMetadata.peak,
+                            normalizationMetadata.hasPeak
+                    );
+                    if (Math.abs(effectiveGainDb) >= MIN_EFFECTIVE_GAIN_DB) {
+                        pendingLoudnessGainDb = effectiveGainDb;
+                        hasPendingLoudnessNormalization = true;
+                    }
+                }
+            } else if (!settingsManager.isDynamicVolumeEnabled()) {
+                song.hasLoudnessNormalization = false;
+            }
             notifyFullInfoAvailable(song);
             playUri(mediaUri, index, requestId, false);
         } catch (Exception e) {
@@ -1168,7 +1185,7 @@ public class MusicPlayerManager {
             setAppVolume(settingsManager.getAppVolume());
             return;
         }
-        if (currentSong == null || currentSong.isLocal()) {
+        if (currentSong == null) {
             clearLoudnessNormalization();
             return;
         }

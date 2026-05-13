@@ -9,13 +9,22 @@ import android.provider.OpenableColumns;
 
 import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.playback.lyrics.LyricsUtils;
+import com.midairlogn.mlnetease.shared.metadata.VolumeMetadataTags;
 import com.mpatric.mp3agic.ID3v2;
+import com.mpatric.mp3agic.ID3v2Frame;
+import com.mpatric.mp3agic.ID3v2FrameSet;
 import com.mpatric.mp3agic.Mp3File;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public final class LocalAudioMetadataReader {
     private static final int METADATA_KEY_LYRIC = resolveLyricMetadataKey();
@@ -54,9 +63,7 @@ public final class LocalAudioMetadataReader {
         if (metadata.title.isEmpty()) {
             metadata.title = stripExtension(displayName);
         }
-        if (metadata.lyric.isEmpty()) {
-            applyLyrics(metadata, readLyricsFromTaggedFile(context, uri, metadata.mimeType, displayName));
-        }
+        readTaggedMetadata(context, uri, metadata.mimeType, displayName, metadata);
         if (metadata.artist.isEmpty()) {
             metadata.artist = context.getString(R.string.unknown_artist);
         }
@@ -123,19 +130,20 @@ public final class LocalAudioMetadataReader {
         }
     }
 
-    private static String readLyricsFromTaggedFile(Context context, Uri uri, String mimeType, String displayName) {
+    private static void readTaggedMetadata(Context context, Uri uri, String mimeType, String displayName, LocalAudioMetadata metadata) {
         File tempFile = null;
         try {
             tempFile = copyUriToTempFile(context, uri, displayName);
             if (tempFile == null) {
-                return "";
+                return;
             }
             String extension = resolveExtension(mimeType, displayName);
             if ("mp3".equals(extension)) {
-                return readMp3Lyrics(tempFile);
+                readMp3TaggedMetadata(tempFile, metadata);
+                return;
             }
             if ("flac".equals(extension)) {
-                return readFlacLyrics(tempFile);
+                readFlacTaggedMetadata(tempFile, metadata);
             }
         } catch (Exception ignored) {
         } finally {
@@ -143,7 +151,6 @@ public final class LocalAudioMetadataReader {
                 tempFile.delete();
             }
         }
-        return "";
     }
 
     private static void applyLyrics(LocalAudioMetadata metadata, String rawLyrics) {
@@ -213,28 +220,33 @@ public final class LocalAudioMetadataReader {
         return "";
     }
 
-    private static String readMp3Lyrics(File file) {
+    private static void readMp3TaggedMetadata(File file, LocalAudioMetadata metadata) {
         try {
             Mp3File mp3File = new Mp3File(file.getAbsolutePath());
             if (!mp3File.hasId3v2Tag()) {
-                return "";
+                return;
             }
             ID3v2 id3v2Tag = mp3File.getId3v2Tag();
-            return safe(id3v2Tag == null ? "" : id3v2Tag.getLyrics());
+            if (id3v2Tag == null) {
+                return;
+            }
+            if (metadata.lyric.isEmpty()) {
+                applyLyrics(metadata, safe(id3v2Tag.getLyrics()));
+            }
+            applyVolumeComments(metadata, readMp3UserTextFrames(id3v2Tag));
         } catch (Exception ignored) {
-            return "";
         }
     }
 
-    private static String readFlacLyrics(File file) {
+    private static void readFlacTaggedMetadata(File file, LocalAudioMetadata metadata) {
         try (RandomAccessFile raf = new RandomAccessFile(file, "r")) {
             if (raf.length() < 4) {
-                return "";
+                return;
             }
             byte[] signature = new byte[4];
             raf.readFully(signature);
             if (signature[0] != 'f' || signature[1] != 'L' || signature[2] != 'a' || signature[3] != 'C') {
-                return "";
+                return;
             }
 
             boolean lastBlock = false;
@@ -244,30 +256,114 @@ public final class LocalAudioMetadataReader {
                 int type = header & 0x7F;
                 int length = (raf.readUnsignedByte() << 16) | (raf.readUnsignedByte() << 8) | raf.readUnsignedByte();
                 if (length < 0 || raf.getFilePointer() + length > raf.length()) {
-                    return "";
+                    return;
                 }
                 if (type == 4) {
                     byte[] block = new byte[length];
                     raf.readFully(block);
-                    return parseVorbisLyrics(block);
+                    Map<String, String> comments = parseVorbisComments(block);
+                    if (metadata.lyric.isEmpty()) {
+                        applyLyrics(metadata, firstComment(comments, "LYRICS", "UNSYNCEDLYRICS"));
+                    }
+                    applyVolumeComments(metadata, comments);
+                    return;
                 }
                 raf.seek(raf.getFilePointer() + length);
             }
         } catch (Exception ignored) {
         }
-        return "";
     }
 
-    private static String parseVorbisLyrics(byte[] block) {
-        if (block == null || block.length < 8) {
+    private static Map<String, String> readMp3UserTextFrames(ID3v2 tag) {
+        Map<String, String> comments = new HashMap<>();
+        try {
+            ID3v2FrameSet frameSet = tag.getFrameSets().get("TXXX");
+            if (frameSet == null) {
+                return comments;
+            }
+            List<ID3v2Frame> frames = frameSet.getFrames();
+            if (frames == null) {
+                return comments;
+            }
+            for (ID3v2Frame frame : frames) {
+                parseMp3UserTextFrame(frame == null ? null : frame.getData(), comments);
+            }
+        } catch (Exception ignored) {
+        }
+        return comments;
+    }
+
+    private static void parseMp3UserTextFrame(byte[] data, Map<String, String> comments) {
+        if (data == null || data.length < 3 || comments == null) {
+            return;
+        }
+        int encoding = data[0] & 0xFF;
+        int separatorIndex = findTextSeparator(data, 1, encoding);
+        if (separatorIndex <= 1 || separatorIndex >= data.length - 1) {
+            return;
+        }
+        String description = decodeId3Text(data, 1, separatorIndex - 1, encoding);
+        int valueOffset = separatorIndex + (usesTwoByteSeparator(encoding) ? 2 : 1);
+        String value = decodeId3Text(data, valueOffset, data.length - valueOffset, encoding);
+        if (!description.isEmpty() && !value.isEmpty()) {
+            comments.put(description.toUpperCase(Locale.US), value);
+        }
+    }
+
+    private static int findTextSeparator(byte[] data, int offset, int encoding) {
+        if (usesTwoByteSeparator(encoding)) {
+            for (int i = offset; i < data.length - 1; i += 2) {
+                if (data[i] == 0 && data[i + 1] == 0) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+        for (int i = offset; i < data.length; i++) {
+            if (data[i] == 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static boolean usesTwoByteSeparator(int encoding) {
+        return encoding == 1 || encoding == 2;
+    }
+
+    private static String decodeId3Text(byte[] data, int offset, int length, int encoding) {
+        if (data == null || offset < 0 || length <= 0 || offset + length > data.length) {
             return "";
+        }
+        Charset charset;
+        switch (encoding) {
+            case 1:
+                charset = StandardCharsets.UTF_16;
+                break;
+            case 2:
+                charset = StandardCharsets.UTF_16BE;
+                break;
+            case 3:
+                charset = StandardCharsets.UTF_8;
+                break;
+            default:
+                charset = StandardCharsets.ISO_8859_1;
+                break;
+        }
+        return safe(new String(data, offset, length, charset));
+    }
+
+    private static Map<String, String> parseVorbisComments(byte[] block) {
+        Map<String, String> comments = new HashMap<>();
+        if (block == null || block.length < 8) {
+            return comments;
         }
         try {
             int offset = 0;
             int vendorLength = readLeInt(block, offset);
             offset += 4 + vendorLength;
             if (offset + 4 > block.length) {
-                return "";
+                return comments;
             }
             int commentCount = readLeInt(block, offset);
             offset += 4;
@@ -275,7 +371,7 @@ public final class LocalAudioMetadataReader {
                 int length = readLeInt(block, offset);
                 offset += 4;
                 if (length < 0 || offset + length > block.length) {
-                    return "";
+                    return comments;
                 }
                 String comment = new String(block, offset, length, java.nio.charset.StandardCharsets.UTF_8);
                 offset += length;
@@ -284,13 +380,60 @@ public final class LocalAudioMetadataReader {
                     continue;
                 }
                 String key = comment.substring(0, separatorIndex).trim();
-                if ("LYRICS".equalsIgnoreCase(key) || "UNSYNCEDLYRICS".equalsIgnoreCase(key)) {
-                    return safe(comment.substring(separatorIndex + 1));
+                String value = safe(comment.substring(separatorIndex + 1));
+                if (!key.isEmpty() && !value.isEmpty()) {
+                    comments.put(key.toUpperCase(Locale.US), value);
                 }
             }
         } catch (Exception ignored) {
         }
+        return comments;
+    }
+
+    private static String firstComment(Map<String, String> comments, String... keys) {
+        if (comments == null || keys == null) {
+            return "";
+        }
+        for (String key : keys) {
+            String value = comments.get(key == null ? "" : key.toUpperCase(Locale.US));
+            if (value != null && !value.trim().isEmpty()) {
+                return value;
+            }
+        }
         return "";
+    }
+
+    private static void applyVolumeComments(LocalAudioMetadata metadata, Map<String, String> comments) {
+        if (metadata == null || comments == null || comments.isEmpty()) {
+            return;
+        }
+        boolean hasNeteaseGain = comments.containsKey(VolumeMetadataTags.NETEASE_GAIN);
+        boolean hasNeteasePeak = comments.containsKey(VolumeMetadataTags.NETEASE_PEAK);
+        boolean hasClosedGain = comments.containsKey(VolumeMetadataTags.NETEASE_CLOSED_GAIN);
+        boolean hasClosedPeak = comments.containsKey(VolumeMetadataTags.NETEASE_CLOSED_PEAK);
+
+        if (hasNeteaseGain) {
+            metadata.gainDb = VolumeMetadataTags.parseFloat(comments.get(VolumeMetadataTags.NETEASE_GAIN), 0f);
+        }
+        if (hasNeteasePeak) {
+            metadata.peak = Math.max(0f, VolumeMetadataTags.parseFloat(comments.get(VolumeMetadataTags.NETEASE_PEAK), 0f));
+        }
+        if (hasClosedGain) {
+            metadata.closedGainDb = VolumeMetadataTags.parseFloat(comments.get(VolumeMetadataTags.NETEASE_CLOSED_GAIN), 0f);
+        }
+        if (hasClosedPeak) {
+            metadata.closedPeak = Math.max(0f, VolumeMetadataTags.parseFloat(comments.get(VolumeMetadataTags.NETEASE_CLOSED_PEAK), 0f));
+        }
+
+        if (!hasNeteaseGain && comments.containsKey(VolumeMetadataTags.REPLAYGAIN_TRACK_GAIN)) {
+            metadata.gainDb = VolumeMetadataTags.parseFloat(comments.get(VolumeMetadataTags.REPLAYGAIN_TRACK_GAIN), 0f);
+            hasNeteaseGain = true;
+        }
+        if (!hasNeteasePeak && comments.containsKey(VolumeMetadataTags.REPLAYGAIN_TRACK_PEAK)) {
+            metadata.peak = Math.max(0f, VolumeMetadataTags.parseFloat(comments.get(VolumeMetadataTags.REPLAYGAIN_TRACK_PEAK), 0f));
+            hasNeteasePeak = metadata.peak > 0f;
+        }
+        metadata.hasLoudnessNormalization = hasClosedGain || hasNeteaseGain;
     }
 
     private static int readLeInt(byte[] bytes, int offset) {
