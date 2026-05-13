@@ -971,6 +971,7 @@ public class SettingsFragment extends Fragment {
         Context context = requireContext();
         CheckBox dontShowAgain = new CheckBox(context);
         dontShowAgain.setText(R.string.dont_show_again);
+        dontShowAgain.setChecked(true);
         dontShowAgain.setTextColor(getResources().getColor(R.color.text_primary, null));
         dontShowAgain.setPadding(0, dpToPx(8), 0, 0);
 
