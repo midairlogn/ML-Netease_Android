@@ -101,9 +101,10 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
             android:baselineAligned="false"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:weightSum="2">
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_add_to_shortcut"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -111,14 +112,24 @@
                 android:minHeight="48dp"
                 android:minWidth="0dp"
                 android:layout_marginEnd="8dp"
-                android:paddingHorizontal="16dp"
-                android:text="@string/add_to_shortcut"
+                android:paddingHorizontal="12dp"
+                android:gravity="center"
+                android:text="@string/add_shortcut"
                 android:textAllCaps="false"
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:ellipsize="end"
                 android:textColor="@color/text_on_brand"
-                android:backgroundTint="@color/brand_primary"
+                app:backgroundTint="@color/brand_primary"
+                app:cornerRadius="8dp"
+                app:icon="@drawable/ic_folder"
+                app:iconGravity="textStart"
+                app:iconPadding="4dp"
+                app:iconSize="16dp"
+                app:iconTint="@color/text_on_brand"
                 android:visibility="gone"/>
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_share_collection"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -126,11 +137,21 @@
                 android:minHeight="48dp"
                 android:minWidth="0dp"
                 android:layout_marginStart="8dp"
-                android:paddingHorizontal="16dp"
+                android:paddingHorizontal="12dp"
+                android:gravity="center"
                 android:text="@string/share"
                 android:textAllCaps="false"
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:ellipsize="end"
                 android:textColor="@color/text_on_brand"
-                android:backgroundTint="@color/brand_primary"
+                app:backgroundTint="@color/brand_primary"
+                app:cornerRadius="8dp"
+                app:icon="@drawable/ic_share"
+                app:iconGravity="textStart"
+                app:iconPadding="4dp"
+                app:iconSize="16dp"
+                app:iconTint="@color/text_on_brand"
                 android:visibility="gone"/>
         </LinearLayout>
 
@@ -138,36 +159,57 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:baselineAligned="false">
+            android:baselineAligned="false"
+            android:weightSum="2">
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_play_all"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:minWidth="0dp"
                 android:minHeight="48dp"
+                android:minWidth="0dp"
                 android:layout_marginEnd="8dp"
-                android:paddingHorizontal="16dp"
+                android:paddingHorizontal="12dp"
+                android:gravity="center"
                 android:text="@string/play_all"
                 android:textAllCaps="false"
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:ellipsize="end"
                 android:textColor="@color/text_on_brand"
-                android:backgroundTint="@color/brand_primary"
+                app:backgroundTint="@color/brand_primary"
+                app:cornerRadius="8dp"
+                app:icon="@android:drawable/ic_media_play"
+                app:iconGravity="textStart"
+                app:iconPadding="4dp"
+                app:iconSize="16dp"
+                app:iconTint="@color/text_on_brand"
                 android:visibility="gone"/>
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_download_all"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:minWidth="0dp"
                 android:minHeight="48dp"
+                android:minWidth="0dp"
                 android:layout_marginStart="8dp"
-                android:paddingHorizontal="16dp"
+                android:paddingHorizontal="12dp"
+                android:gravity="center"
                 android:text="@string/download_all"
                 android:textAllCaps="false"
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:ellipsize="end"
                 android:textColor="@color/text_on_brand"
-                android:backgroundTint="@color/brand_primary"
+                app:backgroundTint="@color/brand_primary"
+                app:cornerRadius="8dp"
+                app:icon="@drawable/ic_download_padded"
+                app:iconGravity="textStart"
+                app:iconPadding="4dp"
+                app:iconSize="16dp"
+                app:iconTint="@color/text_on_brand"
                 android:visibility="gone"/>
         </LinearLayout>
     </LinearLayout>
