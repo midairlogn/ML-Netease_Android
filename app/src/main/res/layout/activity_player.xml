@@ -5,16 +5,16 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/background_primary"
-    android:paddingTop="24dp"
-    android:paddingBottom="24dp">
+    android:paddingTop="16dp"
+    android:paddingBottom="16dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingHorizontal="24dp"
-        android:layout_marginBottom="16dp">
+        android:paddingHorizontal="20dp"
+        android:layout_marginBottom="12dp">
 
         <ImageButton
             android:id="@+id/btn_back"
@@ -74,15 +74,15 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginBottom="24dp"/>
+        android:layout_marginBottom="16dp"/>
 
     <!-- Song Info (Left aligned like Apple Music) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingHorizontal="24dp"
-        android:layout_marginBottom="16dp">
+        android:paddingHorizontal="20dp"
+        android:layout_marginBottom="12dp">
 
         <TextView
             android:id="@+id/player_song_title"
@@ -90,7 +90,7 @@
             android:layout_height="wrap_content"
             android:text="@string/song_title"
             android:textColor="@color/text_primary"
-            android:textSize="22sp"
+            android:textSize="20sp"
             android:textStyle="bold"
             android:ellipsize="end"
             android:maxLines="1"/>
@@ -102,7 +102,7 @@
             android:text="@string/artist_name"
             android:textColor="@color/text_primary"
             android:alpha="0.6"
-            android:textSize="18sp"
+            android:textSize="15sp"
             android:ellipsize="end"
             android:maxLines="1"/>
     </LinearLayout>
@@ -112,21 +112,21 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingHorizontal="24dp">
+        android:paddingHorizontal="20dp">
 
         <SeekBar
             android:id="@+id/seek_bar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:contentDescription="@string/playback_progress"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
             android:thumbTint="@color/text_primary"
             android:progressTint="@color/text_primary"
             android:progressBackgroundTint="@color/text_secondary"
-            android:minHeight="32dp"
-            android:paddingVertical="4dp"
-            android:thumbOffset="8dp"/>
+            android:minHeight="28dp"
+            android:paddingVertical="2dp"
+            android:thumbOffset="6dp"/>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -140,7 +140,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/zero_timestamp"
                 android:textColor="@color/text_secondary"
-                android:textSize="12sp"/>
+                android:textSize="11sp"/>
 
             <View
                 android:layout_width="0dp"
@@ -153,7 +153,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/zero_timestamp_negative"
                 android:textColor="@color/text_secondary"
-                android:textSize="12sp"/>
+                android:textSize="11sp"/>
         </LinearLayout>
     </LinearLayout>
 
@@ -163,20 +163,21 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center"
-        android:paddingHorizontal="24dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginBottom="16dp">
+        android:paddingHorizontal="20dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="12dp">
 
         <ImageButton
             android:id="@+id/btn_mode"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/playback_mode"
             android:src="@android:drawable/ic_menu_rotate"
             android:scaleType="fitCenter"
+            android:padding="4dp"
             app:tint="@color/text_primary"
-            android:layout_marginEnd="12dp"/>
+            android:layout_marginEnd="10dp"/>
 
         <ImageButton
             android:id="@+id/btn_prev"
@@ -190,15 +191,15 @@
 
         <ImageButton
             android:id="@+id/btn_play_pause"
-            android:layout_width="72dp"
-            android:layout_height="72dp"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/play"
             android:src="@android:drawable/ic_media_play"
             android:scaleType="fitCenter"
             app:tint="@color/text_primary"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"/>
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"/>
 
         <ImageButton
             android:id="@+id/btn_next"
@@ -212,14 +213,15 @@
 
         <ImageButton
             android:id="@+id/btn_playlist"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/open_playlist"
             android:src="@android:drawable/ic_menu_agenda"
             android:scaleType="fitCenter"
+            android:padding="4dp"
             app:tint="@color/text_primary"
-            android:layout_marginStart="12dp"/>
+            android:layout_marginStart="10dp"/>
 
     </LinearLayout>
 

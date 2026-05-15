@@ -49,6 +49,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
     private SettingsManager settingsManager;
     private android.content.SharedPreferences.OnSharedPreferenceChangeListener preferenceChangeListener;
     private boolean hasTimestampedLyrics = false;
+    private final View.OnLayoutChangeListener paddingLayoutListener = (v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> updateRecyclerPadding();
 
     @Nullable
     @Override
@@ -76,18 +77,8 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
             seekToLyricTime(line.time, true);
         });
         recyclerView.setAdapter(adapter);
-
-        // Dynamically set vertical padding to half of the screen height
-        // This ensures first and last lyrics can scroll to center
-        recyclerView.post(() -> {
-            int halfHeight = recyclerView.getHeight() / 2;
-            recyclerView.setPadding(
-                recyclerView.getPaddingLeft(),
-                halfHeight,
-                recyclerView.getPaddingRight(),
-                halfHeight
-            );
-        });
+        recyclerView.addOnLayoutChangeListener(paddingLayoutListener);
+        updateRecyclerPadding();
 
         setupTimelineInteraction();
 
@@ -180,6 +171,23 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
         handler.removeCallbacks(hideOverlayRunnable);
     }
 
+    private void updateRecyclerPadding() {
+        if (recyclerView == null) {
+            return;
+        }
+        int height = recyclerView.getHeight();
+        if (height <= 0) {
+            return;
+        }
+        int padding = height / 2;
+        recyclerView.setPadding(
+                recyclerView.getPaddingLeft(),
+                padding,
+                recyclerView.getPaddingRight(),
+                padding
+        );
+    }
+
     private void updateTimelineTime() {
         if (lyricLines.isEmpty()) return;
 
@@ -245,6 +253,9 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
         super.onDestroyView();
         stopUpdateTask();
         handler.removeCallbacks(hideOverlayRunnable);
+        if (recyclerView != null) {
+            recyclerView.removeOnLayoutChangeListener(paddingLayoutListener);
+        }
         MusicPlayerManager.getInstance(getContext()).removeOnSongChangedListener(this);
         MusicPlayerManager.getInstance(getContext()).removeOnFullInfoAvailableListener(this);
         MusicPlayerManager.getInstance(getContext()).removeOnPlaybackStateChangedListener(this);
