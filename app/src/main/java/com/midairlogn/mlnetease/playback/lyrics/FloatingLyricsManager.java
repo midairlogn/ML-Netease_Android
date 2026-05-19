@@ -74,6 +74,31 @@ public class FloatingLyricsManager {
         @Override
         public void onPlaybackStateChanged(boolean isPlaying) {
             updatePlayButtonState(isPlaying);
+            // Power optimization: only run the 50ms lyric polling loop while playing.
+            // When paused, stop the loop and freeze the overlay on the current line.
+            if (floatingView != null) {
+                if (isPlaying) {
+                    startLyricUpdates();
+                } else {
+                    stopLyricUpdates();
+                    // One-shot refresh so the displayed line matches the paused position,
+                    // and reset any in-progress text scroll so the frozen text is stable.
+                    updateCurrentLyricLine();
+                    if (tvLyricsCurrent != null) tvLyricsCurrent.setScrollX(0);
+                    if (tvLyricsCurrentTranslation != null) tvLyricsCurrentTranslation.setScrollX(0);
+                }
+            }
+        }
+    };
+
+    private final MusicPlayerManager.OnSeekListener seekListener = new MusicPlayerManager.OnSeekListener() {
+        @Override
+        public void onSeek(int msec) {
+            // While paused the update loop is stopped; nudge the overlay so it
+            // reflects the new position immediately after a seek.
+            if (floatingView != null && !musicPlayerManager.isPlaying()) {
+                updateCurrentLyricLine();
+            }
         }
     };
 
@@ -86,6 +111,7 @@ public class FloatingLyricsManager {
 
         // Register listener
         musicPlayerManager.addOnPlaybackStateChangedListener(playbackStateListener);
+        musicPlayerManager.addOnSeekListener(seekListener);
     }
 
     public void setAppVisible(boolean visible) {
@@ -548,9 +574,20 @@ public class FloatingLyricsManager {
 
     private void startLyricUpdates() {
         if (lyricUpdateTask != null) return;
+        // Power optimization: do not run the 50ms polling loop while paused.
+        // Still paint the current line once so the overlay reflects the latest state.
+        if (!musicPlayerManager.isPlaying()) {
+            updateCurrentLyricLine();
+            return;
+        }
         lyricUpdateTask = new Runnable() {
             @Override
             public void run() {
+                // Defensive: if playback was paused between scheduled ticks, stop here.
+                if (!musicPlayerManager.isPlaying()) {
+                    lyricUpdateTask = null;
+                    return;
+                }
                 updateCurrentLyricLine();
                 handler.postDelayed(this, 50); // Update frequently for smooth scrolling
             }
@@ -778,5 +815,6 @@ public class FloatingLyricsManager {
     public void release() {
         hide();
         musicPlayerManager.removeOnPlaybackStateChangedListener(playbackStateListener);
+        musicPlayerManager.removeOnSeekListener(seekListener);
     }
 }

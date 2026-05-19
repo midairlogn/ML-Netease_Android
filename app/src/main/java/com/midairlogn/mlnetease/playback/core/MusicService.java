@@ -1265,6 +1265,14 @@ public class MusicService extends Service {
             floatingLyricsManager.release();
         }
         mediaSession.release();
+        // Note: MusicPlayerManager is intentionally NOT released here.
+        // It is a singleton whose reference is cached by long-lived UI
+        // components (MainActivity, PlayerActivity, LyricsFragment, etc.),
+        // and the system can destroy/restart MusicService while those
+        // components are still alive. Calling release() would tear down
+        // the shared MediaPlayer and null the singleton handle, leaving
+        // those cached references pointing at a dead instance and
+        // fragmenting state across a new singleton built on demand.
         super.onDestroy();
     }
 }
