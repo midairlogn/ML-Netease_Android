@@ -100,6 +100,10 @@ public class HearingProtectionController implements
         musicPlayerManager.addOnSongCompletionListener(this);
         musicPlayerManager.addOnPlaybackActionListener(this);
         accumulatedDose = settingsManager.getHearingProtectionAccumulatedDoseMs();
+        if (!settingsManager.isHearingProtectionEnabled()) {
+            resetTrackingState(true);
+            return;
+        }
         restoreRestStateIfNeeded();
         if (shouldCompleteRestNow()) {
             requestRestCompletion();
@@ -133,15 +137,7 @@ public class HearingProtectionController implements
     public void onSettingsChanged() {
         if (!settingsManager.isHearingProtectionEnabled()) {
             boolean wasRestActive = restActive;
-            cancelRest(false);
-            accumulatedDose = 0d;
-            persistAccumulatedDose();
-            clearActiveSession();
-            clearPauseSession();
-            playbackSessionStartElapsedMs = -1L;
-            pauseStartedElapsedMs = -1L;
-            lastPlaybackIntensityMultiplier = 1.0d;
-            restPendingAfterCurrentSong = false;
+            resetTrackingState(true);
             if (wasRestActive) {
                 continueAfterRestViaService(true);
             }
@@ -306,6 +302,10 @@ public class HearingProtectionController implements
 
     @Override
     public void onPlaybackStateChanged(boolean isPlaying) {
+        if (!settingsManager.isHearingProtectionEnabled()) {
+            resetTrackingState(true);
+            return;
+        }
         long now = SystemClock.elapsedRealtime();
         if (isPlaying) {
             if (restActive) {
@@ -346,6 +346,10 @@ public class HearingProtectionController implements
 
     @Override
     public void onPlaybackAction(boolean userInitiated, String action) {
+        if (!settingsManager.isHearingProtectionEnabled()) {
+            resetTrackingState(true);
+            return;
+        }
         if (!userInitiated) {
             return;
         }
@@ -525,6 +529,10 @@ public class HearingProtectionController implements
     }
 
     private void foldCurrentPlaybackIntoDose() {
+        if (!settingsManager.isHearingProtectionEnabled()) {
+            resetTrackingState(true);
+            return;
+        }
         if (playbackSessionStartElapsedMs < 0L) {
             return;
         }
@@ -539,6 +547,26 @@ public class HearingProtectionController implements
             restPendingAfterCurrentSong = true;
             Log.d(TAG, "foldCurrentPlaybackIntoDose: threshold reached, rest pending after current song");
         }
+    }
+
+    private void resetTrackingState(boolean clearDose) {
+        handler.removeCallbacks(restFinishedRunnable);
+        if (restActive) {
+            cancelRest(false);
+        } else {
+            cancelRestFinishAlarm();
+            settingsManager.clearHearingProtectionRestState();
+        }
+        if (clearDose) {
+            accumulatedDose = 0d;
+            persistAccumulatedDose();
+        }
+        clearActiveSession();
+        clearPauseSession();
+        playbackSessionStartElapsedMs = -1L;
+        pauseStartedElapsedMs = -1L;
+        lastPlaybackIntensityMultiplier = 1.0d;
+        restPendingAfterCurrentSong = false;
     }
 
     private void applyPauseRecoveryIfNeeded(long nowElapsedRealtimeMs) {
