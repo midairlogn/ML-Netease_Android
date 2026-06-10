@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class DownloadTaskManager {
     private static final String TASK_ID_PREFIX = "download-task-";
+    private static final long ETA_UPDATE_INTERVAL_MS = 1500L;
 
     public interface Listener {
         void onDownloadTasksChanged(List<DownloadTaskSnapshot> tasks);
@@ -199,6 +200,8 @@ public class DownloadTaskManager {
             task.currentSongBytesTotal = -1L;
             task.statusMessage = safeMessage(message, "Paused");
             task.etaMillis = -1L;
+            task.lastEtaUpdatedAt = 0L;
+            task.lastEtaSongIndex = -1;
             task.updatedAt = System.currentTimeMillis();
         }
         persistTasks();
@@ -235,6 +238,8 @@ public class DownloadTaskManager {
                 task.currentSongBytesDownloaded = 0L;
                 task.currentSongBytesTotal = -1L;
                 task.etaMillis = -1L;
+                task.lastEtaUpdatedAt = 0L;
+                task.lastEtaSongIndex = -1;
             } else {
                 task.statusMessage = "Cancelling";
             }
@@ -264,6 +269,8 @@ public class DownloadTaskManager {
             task.pausedAt = 0L;
             task.totalPausedDuration = 0L;
             task.etaMillis = -1L;
+            task.lastEtaUpdatedAt = 0L;
+            task.lastEtaSongIndex = -1;
             task.currentSongTitle = "";
             task.statusMessage = "Queued";
             task.lastError = "";
@@ -289,6 +296,8 @@ public class DownloadTaskManager {
                 task.currentSongBytesDownloaded = 0L;
                 task.currentSongBytesTotal = -1L;
                 task.etaMillis = -1L;
+                task.lastEtaUpdatedAt = 0L;
+                task.lastEtaSongIndex = -1;
                 if (task.statusMessage == null || task.statusMessage.trim().isEmpty()
                         || "Cancelling".equals(task.statusMessage)
                         || "Pausing after current step".equals(task.statusMessage)) {
@@ -348,8 +357,9 @@ public class DownloadTaskManager {
             task.progressPercent = clamp(progressPercent);
             task.currentSongBytesDownloaded = Math.max(0L, bytesDownloaded);
             task.currentSongBytesTotal = bytesTotal;
-            task.etaMillis = estimateEtaLocked(task);
-            task.updatedAt = System.currentTimeMillis();
+            long now = System.currentTimeMillis();
+            updateEtaIfNeededLocked(task, now);
+            task.updatedAt = now;
         }
         persistTasks();
         notifyListeners();
@@ -376,7 +386,10 @@ public class DownloadTaskManager {
             task.currentSongBytesDownloaded = 0L;
             task.currentSongBytesTotal = -1L;
             task.etaMillis = estimateEtaLocked(task);
-            task.updatedAt = System.currentTimeMillis();
+            long now = System.currentTimeMillis();
+            task.lastEtaUpdatedAt = now;
+            task.lastEtaSongIndex = task.currentSongIndex;
+            task.updatedAt = now;
         }
         persistTasks();
         notifyListeners();
@@ -394,9 +407,12 @@ public class DownloadTaskManager {
             task.currentSongBytesDownloaded = 0L;
             task.currentSongBytesTotal = -1L;
             task.etaMillis = 0L;
+            long now = System.currentTimeMillis();
+            task.lastEtaUpdatedAt = now;
+            task.lastEtaSongIndex = task.currentSongIndex;
             task.cancelRequested = false;
             task.pauseRequested = false;
-            task.updatedAt = System.currentTimeMillis();
+            task.updatedAt = now;
         }
         persistTasks();
         notifyListeners();
@@ -414,6 +430,8 @@ public class DownloadTaskManager {
             task.currentSongBytesDownloaded = 0L;
             task.currentSongBytesTotal = -1L;
             task.etaMillis = -1L;
+            task.lastEtaUpdatedAt = 0L;
+            task.lastEtaSongIndex = -1;
             task.cancelRequested = false;
             task.pauseRequested = false;
             task.updatedAt = System.currentTimeMillis();
@@ -433,6 +451,8 @@ public class DownloadTaskManager {
             task.currentSongBytesDownloaded = 0L;
             task.currentSongBytesTotal = -1L;
             task.etaMillis = -1L;
+            task.lastEtaUpdatedAt = 0L;
+            task.lastEtaSongIndex = -1;
             task.cancelRequested = false;
             task.pauseRequested = false;
             task.updatedAt = System.currentTimeMillis();
@@ -633,5 +653,18 @@ public class DownloadTaskManager {
         }
         long projectedTotal = (long) (elapsed / songWeight);
         return Math.max(0L, projectedTotal - elapsed);
+    }
+
+    private static void updateEtaIfNeededLocked(DownloadTask task, long now) {
+        long estimatedEta = estimateEtaLocked(task);
+        boolean songChanged = task.currentSongIndex != task.lastEtaSongIndex;
+        boolean etaAvailabilityChanged = (task.etaMillis <= 0L) != (estimatedEta <= 0L);
+        boolean intervalElapsed = task.lastEtaUpdatedAt <= 0L || now - task.lastEtaUpdatedAt >= ETA_UPDATE_INTERVAL_MS;
+        if (!songChanged && !etaAvailabilityChanged && !intervalElapsed) {
+            return;
+        }
+        task.etaMillis = estimatedEta;
+        task.lastEtaUpdatedAt = now;
+        task.lastEtaSongIndex = task.currentSongIndex;
     }
 }

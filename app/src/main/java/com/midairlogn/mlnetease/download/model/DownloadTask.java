@@ -34,6 +34,8 @@ public class DownloadTask {
     public long pausedAt;
     public long totalPausedDuration;
     public long etaMillis = -1L;
+    public long lastEtaUpdatedAt;
+    public int lastEtaSongIndex = -1;
     public String currentSongTitle = "";
     public String statusMessage = "";
     public String lastError = "";
