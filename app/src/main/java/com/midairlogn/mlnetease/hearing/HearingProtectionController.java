@@ -165,6 +165,17 @@ public class HearingProtectionController implements
             }
         }
 
+        refreshPlaybackIntensityFromSettings();
+    }
+
+    public void onPlaybackIntensityChanged() {
+        if (!settingsManager.isHearingProtectionEnabled()) {
+            return;
+        }
+        refreshPlaybackIntensityFromSettings();
+    }
+
+    private void refreshPlaybackIntensityFromSettings() {
         if (!restActive && musicPlayerManager.isPlaying()) {
             if (playbackSessionStartElapsedMs < 0L) {
                 playbackSessionStartElapsedMs = SystemClock.elapsedRealtime();

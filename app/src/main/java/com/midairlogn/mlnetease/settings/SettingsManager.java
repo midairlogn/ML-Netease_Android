@@ -103,7 +103,11 @@ public class SettingsManager {
     }
 
     public void setMusicU(String musicU) {
-        prefs.edit().putString(KEY_MUSIC_U, musicU).apply();
+        String value = musicU == null ? "" : musicU;
+        if (value.equals(getMusicU())) {
+            return;
+        }
+        prefs.edit().putString(KEY_MUSIC_U, value).apply();
     }
 
     public String getMusicU() {
@@ -111,7 +115,11 @@ public class SettingsManager {
     }
 
     public void setQuality(String quality) {
-        prefs.edit().putString(KEY_QUALITY, quality).apply();
+        String value = quality == null ? DEFAULT_QUALITY : quality;
+        if (value.equals(getQuality())) {
+            return;
+        }
+        prefs.edit().putString(KEY_QUALITY, value).apply();
     }
 
     public String getQuality() {
@@ -119,6 +127,9 @@ public class SettingsManager {
     }
 
     public void setSearchLimit(int limit) {
+        if (limit == getSearchLimit()) {
+            return;
+        }
         prefs.edit().putInt(KEY_SEARCH_LIMIT, limit).apply();
     }
 
@@ -127,6 +138,9 @@ public class SettingsManager {
     }
 
     public void setFloatingLyricsEnabled(boolean enabled) {
+        if (enabled == isFloatingLyricsEnabled()) {
+            return;
+        }
         prefs.edit().putBoolean(KEY_FLOATING_LYRICS_ENABLED, enabled).apply();
     }
 
@@ -135,6 +149,9 @@ public class SettingsManager {
     }
 
     public void setLyricColor(int color) {
+        if (color == getLyricColor()) {
+            return;
+        }
         prefs.edit().putInt(KEY_LYRIC_COLOR, color).apply();
     }
 
@@ -144,6 +161,9 @@ public class SettingsManager {
     }
 
     public void setLyricSize(float size) {
+        if (Float.compare(size, getLyricSize()) == 0) {
+            return;
+        }
         prefs.edit().putFloat(KEY_LYRIC_SIZE, size).apply();
     }
 
@@ -152,6 +172,9 @@ public class SettingsManager {
     }
 
     public void setPlayMode(int mode) {
+        if (mode == getPlayMode()) {
+            return;
+        }
         prefs.edit().putInt(KEY_PLAY_MODE, mode).apply();
     }
 
@@ -160,6 +183,9 @@ public class SettingsManager {
     }
 
     public void setTranslationIntegrationEnabled(boolean enabled) {
+        if (enabled == isTranslationIntegrationEnabled()) {
+            return;
+        }
         prefs.edit().putBoolean(KEY_TRANSLATION_INTEGRATION_ENABLED, enabled).apply();
     }
 
@@ -169,6 +195,9 @@ public class SettingsManager {
 
     public void setAppVolume(int volumePercent) {
         int clamped = Math.max(0, Math.min(volumePercent, 100));
+        if (clamped == getAppVolume()) {
+            return;
+        }
         prefs.edit().putInt(KEY_APP_VOLUME, clamped).apply();
     }
 
@@ -177,6 +206,9 @@ public class SettingsManager {
     }
 
     public void setDynamicVolumeEnabled(boolean enabled) {
+        if (enabled == isDynamicVolumeEnabled()) {
+            return;
+        }
         prefs.edit().putBoolean(KEY_DYNAMIC_VOLUME_ENABLED, enabled).apply();
     }
 
@@ -434,7 +466,11 @@ public class SettingsManager {
     }
 
     public void setAppLanguage(String language) {
-        prefs.edit().putString(KEY_APP_LANGUAGE, language).apply();
+        String value = language == null ? "system" : language;
+        if (value.equals(getAppLanguage())) {
+            return;
+        }
+        prefs.edit().putString(KEY_APP_LANGUAGE, value).apply();
     }
 
     public String getAppLanguage() {
@@ -442,6 +478,9 @@ public class SettingsManager {
     }
 
     public void setHearingProtectionEnabled(boolean enabled) {
+        if (enabled == isHearingProtectionEnabled()) {
+            return;
+        }
         prefs.edit().putBoolean(KEY_HEARING_PROTECTION_ENABLED, enabled).apply();
     }
 
@@ -450,7 +489,11 @@ public class SettingsManager {
     }
 
     public void setHearingProtectionListenMinutes(int minutes) {
-        prefs.edit().putInt(KEY_HEARING_PROTECTION_LISTEN_MINUTES, clampHearingProtectionListenMinutes(minutes)).apply();
+        int clamped = clampHearingProtectionListenMinutes(minutes);
+        if (clamped == getHearingProtectionListenMinutes()) {
+            return;
+        }
+        prefs.edit().putInt(KEY_HEARING_PROTECTION_LISTEN_MINUTES, clamped).apply();
     }
 
     public int getHearingProtectionListenMinutes() {
@@ -460,7 +503,11 @@ public class SettingsManager {
     }
 
     public void setHearingProtectionRestMinutes(int minutes) {
-        prefs.edit().putInt(KEY_HEARING_PROTECTION_REST_MINUTES, clampHearingProtectionRestMinutes(minutes)).apply();
+        int clamped = clampHearingProtectionRestMinutes(minutes);
+        if (clamped == getHearingProtectionRestMinutes()) {
+            return;
+        }
+        prefs.edit().putInt(KEY_HEARING_PROTECTION_REST_MINUTES, clamped).apply();
     }
 
     public int getHearingProtectionRestMinutes() {
@@ -627,6 +674,9 @@ public class SettingsManager {
     }
 
     public void setHearingProtectionBackgroundPromptDismissed(boolean dismissed) {
+        if (dismissed == isHearingProtectionBackgroundPromptDismissed()) {
+            return;
+        }
         prefs.edit().putBoolean(KEY_HEARING_PROTECTION_BACKGROUND_PROMPT_DISMISSED, dismissed).apply();
     }
 
@@ -710,9 +760,23 @@ public class SettingsManager {
         if (settings == null) {
             settings = new DownloadCustomizationSettings();
         }
+        String fileNameTemplate = normalizeDownloadTemplate(settings.fileNameTemplate);
+        String separator = normalizeDownloadSeparator(settings.separator);
+        if (fileNameTemplate.equals(getDownloadFileNameTemplate())
+                && separator.equals(getDownloadFileNameSeparator())
+                && settings.metadataEnabled == isDownloadMetadataEnabled()
+                && settings.writeTitle == isDownloadMetadataTitleEnabled()
+                && settings.writeArtist == isDownloadMetadataArtistEnabled()
+                && settings.writeAlbum == isDownloadMetadataAlbumEnabled()
+                && settings.writeLyrics == isDownloadMetadataLyricsEnabled()
+                && settings.writeCover == isDownloadMetadataCoverEnabled()
+                && settings.writeExtra == isDownloadMetadataExtraEnabled()
+                && settings.writeVolumeMetadata == isDownloadMetadataVolumeEnabled()) {
+            return;
+        }
         prefs.edit()
-                .putString(KEY_DOWNLOAD_FILENAME_TEMPLATE, normalizeDownloadTemplate(settings.fileNameTemplate))
-                .putString(KEY_DOWNLOAD_FILENAME_SEPARATOR, normalizeDownloadSeparator(settings.separator))
+                .putString(KEY_DOWNLOAD_FILENAME_TEMPLATE, fileNameTemplate)
+                .putString(KEY_DOWNLOAD_FILENAME_SEPARATOR, separator)
                 .putBoolean(KEY_DOWNLOAD_METADATA_ENABLED, settings.metadataEnabled)
                 .putBoolean(KEY_DOWNLOAD_METADATA_TITLE, settings.writeTitle)
                 .putBoolean(KEY_DOWNLOAD_METADATA_ARTIST, settings.writeArtist)
@@ -729,7 +793,11 @@ public class SettingsManager {
     }
 
     public void setDownloadFileNameTemplate(String template) {
-        prefs.edit().putString(KEY_DOWNLOAD_FILENAME_TEMPLATE, normalizeDownloadTemplate(template)).apply();
+        String value = normalizeDownloadTemplate(template);
+        if (value.equals(getDownloadFileNameTemplate())) {
+            return;
+        }
+        prefs.edit().putString(KEY_DOWNLOAD_FILENAME_TEMPLATE, value).apply();
     }
 
     public String getDownloadFileNameSeparator() {
@@ -737,7 +805,11 @@ public class SettingsManager {
     }
 
     public void setDownloadFileNameSeparator(String separator) {
-        prefs.edit().putString(KEY_DOWNLOAD_FILENAME_SEPARATOR, normalizeDownloadSeparator(separator)).apply();
+        String value = normalizeDownloadSeparator(separator);
+        if (value.equals(getDownloadFileNameSeparator())) {
+            return;
+        }
+        prefs.edit().putString(KEY_DOWNLOAD_FILENAME_SEPARATOR, value).apply();
     }
 
     public boolean isDownloadMetadataEnabled() {
@@ -745,6 +817,9 @@ public class SettingsManager {
     }
 
     public void setDownloadMetadataEnabled(boolean enabled) {
+        if (enabled == isDownloadMetadataEnabled()) {
+            return;
+        }
         prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_ENABLED, enabled).apply();
     }
 
@@ -753,6 +828,9 @@ public class SettingsManager {
     }
 
     public void setDownloadMetadataTitleEnabled(boolean enabled) {
+        if (enabled == isDownloadMetadataTitleEnabled()) {
+            return;
+        }
         prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_TITLE, enabled).apply();
     }
 
@@ -761,6 +839,9 @@ public class SettingsManager {
     }
 
     public void setDownloadMetadataArtistEnabled(boolean enabled) {
+        if (enabled == isDownloadMetadataArtistEnabled()) {
+            return;
+        }
         prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_ARTIST, enabled).apply();
     }
 
@@ -769,6 +850,9 @@ public class SettingsManager {
     }
 
     public void setDownloadMetadataAlbumEnabled(boolean enabled) {
+        if (enabled == isDownloadMetadataAlbumEnabled()) {
+            return;
+        }
         prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_ALBUM, enabled).apply();
     }
 
@@ -777,6 +861,9 @@ public class SettingsManager {
     }
 
     public void setDownloadMetadataLyricsEnabled(boolean enabled) {
+        if (enabled == isDownloadMetadataLyricsEnabled()) {
+            return;
+        }
         prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_LYRICS, enabled).apply();
     }
 
@@ -785,6 +872,9 @@ public class SettingsManager {
     }
 
     public void setDownloadMetadataCoverEnabled(boolean enabled) {
+        if (enabled == isDownloadMetadataCoverEnabled()) {
+            return;
+        }
         prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_COVER, enabled).apply();
     }
 
@@ -793,6 +883,9 @@ public class SettingsManager {
     }
 
     public void setDownloadMetadataExtraEnabled(boolean enabled) {
+        if (enabled == isDownloadMetadataExtraEnabled()) {
+            return;
+        }
         prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_EXTRA, enabled).apply();
     }
 
@@ -801,6 +894,9 @@ public class SettingsManager {
     }
 
     public void setDownloadMetadataVolumeEnabled(boolean enabled) {
+        if (enabled == isDownloadMetadataVolumeEnabled()) {
+            return;
+        }
         prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_VOLUME, enabled).apply();
     }
 

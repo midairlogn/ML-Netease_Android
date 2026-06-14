@@ -282,7 +282,6 @@ public class SettingsFragment extends Fragment {
                 }
                 if (!settingsManager.getAppLanguage().equals(selectedLanguageCode)) {
                     settingsManager.setAppLanguage(selectedLanguageCode);
-                    notifySettingsChanged();
                     // Trigger app locale change
                     if (getActivity() instanceof MainActivity) {
                         ((MainActivity) getActivity()).setAppLocale(selectedLanguageCode);
@@ -300,7 +299,7 @@ public class SettingsFragment extends Fragment {
         switchTranslationIntegration.setChecked(settingsManager.isTranslationIntegrationEnabled());
         switchTranslationIntegration.setOnCheckedChangeListener((buttonView, isChecked) -> {
             settingsManager.setTranslationIntegrationEnabled(isChecked);
-            notifySettingsChanged();
+            notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_TRANSLATION_INTEGRATION);
         });
 
         int initialVolume = settingsManager.getAppVolume();
@@ -342,7 +341,7 @@ public class SettingsFragment extends Fragment {
         switchDynamicVolume.setChecked(settingsManager.isDynamicVolumeEnabled());
         switchDynamicVolume.setOnCheckedChangeListener((buttonView, isChecked) -> {
             settingsManager.setDynamicVolumeEnabled(isChecked);
-            notifySettingsChanged();
+            notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_DYNAMIC_VOLUME);
         });
 
         boolean hearingProtectionEnabled = settingsManager.isHearingProtectionEnabled();
@@ -398,7 +397,7 @@ public class SettingsFragment extends Fragment {
             }
             settingsManager.setFloatingLyricsEnabled(isChecked);
             layoutFloatingSettings.setVisibility(isChecked ? View.VISIBLE : View.GONE);
-            notifySettingsChanged();
+            notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_FLOATING_LYRICS);
         });
 
         // Color buttons
@@ -406,31 +405,31 @@ public class SettingsFragment extends Fragment {
             tempColor = getResources().getColor(R.color.lyrics_color_red, null);
             updateColorSelection();
             settingsManager.setLyricColor(tempColor);
-            notifySettingsChanged();
+            notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_LYRIC_APPEARANCE);
         });
         btnColorBlue.setOnClickListener(v -> {
             tempColor = getResources().getColor(R.color.lyrics_color_blue, null);
             updateColorSelection();
             settingsManager.setLyricColor(tempColor);
-            notifySettingsChanged();
+            notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_LYRIC_APPEARANCE);
         });
         btnColorGreen.setOnClickListener(v -> {
             tempColor = getResources().getColor(R.color.lyrics_color_green, null);
             updateColorSelection();
             settingsManager.setLyricColor(tempColor);
-            notifySettingsChanged();
+            notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_LYRIC_APPEARANCE);
         });
         btnColorYellow.setOnClickListener(v -> {
             tempColor = getResources().getColor(R.color.lyrics_color_yellow, null);
             updateColorSelection();
             settingsManager.setLyricColor(tempColor);
-            notifySettingsChanged();
+            notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_LYRIC_APPEARANCE);
         });
         btnColorPurple.setOnClickListener(v -> {
             tempColor = getResources().getColor(R.color.lyrics_color_purple, null);
             updateColorSelection();
             settingsManager.setLyricColor(tempColor);
-            notifySettingsChanged();
+            notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_LYRIC_APPEARANCE);
         });
 
         // Size buttons
@@ -440,7 +439,7 @@ public class SettingsFragment extends Fragment {
             if (textLyricPreviewCurrent != null) textLyricPreviewCurrent.setTextSize(tempSize);
             if (textLyricPreviewNext != null) textLyricPreviewNext.setTextSize(Math.max(10f, tempSize - 2f));
             settingsManager.setLyricSize(tempSize);
-            notifySettingsChanged();
+            notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_LYRIC_APPEARANCE);
         });
         btnSizeMinus.setOnClickListener(v -> {
             tempSize = Math.max(10f, tempSize - 2);
@@ -448,7 +447,7 @@ public class SettingsFragment extends Fragment {
             if (textLyricPreviewCurrent != null) textLyricPreviewCurrent.setTextSize(tempSize);
             if (textLyricPreviewNext != null) textLyricPreviewNext.setTextSize(Math.max(10f, tempSize - 2f));
             settingsManager.setLyricSize(tempSize);
-            notifySettingsChanged();
+            notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_LYRIC_APPEARANCE);
         });
 
         refreshDownloadCustomizeSummary();
@@ -572,7 +571,6 @@ public class SettingsFragment extends Fragment {
         }
         musicUSaveRunnable = () -> {
             settingsManager.setMusicU(musicU);
-            notifySettingsChanged();
         };
         debounceHandler.postDelayed(musicUSaveRunnable, 300); // 300ms debounce
     }
@@ -582,9 +580,7 @@ public class SettingsFragment extends Fragment {
             debounceHandler.removeCallbacks(searchLimitSaveRunnable);
         }
         searchLimitSaveRunnable = () -> {
-            if (saveSearchLimitDraft(limitStr)) {
-                notifySettingsChanged();
-            }
+            saveSearchLimitDraft(limitStr);
         };
         debounceHandler.postDelayed(searchLimitSaveRunnable, 300); // 300ms debounce
     }
@@ -608,16 +604,13 @@ public class SettingsFragment extends Fragment {
                 debounceHandler.removeCallbacks(searchLimitSaveRunnable);
                 searchLimitSaveRunnable = null;
             }
-            if (validateAndSaveSearchLimit(editText.getText().toString().trim(), true)) {
-                notifySettingsChanged();
-            }
+            validateAndSaveSearchLimit(editText.getText().toString().trim(), true);
         } else if (editText == inputMusicU) {
             if (musicUSaveRunnable != null) {
                 debounceHandler.removeCallbacks(musicUSaveRunnable);
                 musicUSaveRunnable = null;
             }
             settingsManager.setMusicU(editText.getText().toString().trim());
-            notifySettingsChanged();
         }
         hideKeyboard(editText);
         editText.clearFocus();
@@ -669,10 +662,11 @@ public class SettingsFragment extends Fragment {
         }
     }
 
-    private void notifySettingsChanged() {
-        if (getActivity() == null) return;
+    private void notifyRuntimeSettingsChanged(int updateMask) {
+        if (getActivity() == null || updateMask == 0) return;
         Intent intent = new Intent(requireContext(), MusicService.class);
-        intent.setAction("ACTION_UPDATE_SETTINGS");
+        intent.setAction(MusicService.ACTION_UPDATE_SETTINGS);
+        intent.putExtra(MusicService.EXTRA_SETTINGS_UPDATE_MASK, updateMask);
         requireContext().startService(intent);
     }
 
@@ -740,9 +734,7 @@ public class SettingsFragment extends Fragment {
             debounceHandler.removeCallbacks(searchLimitSaveRunnable);
             searchLimitSaveRunnable = null;
             if (inputSearchLimit != null) {
-                if (validateAndSaveSearchLimit(inputSearchLimit.getText().toString().trim(), true)) {
-                    notifySettingsChanged();
-                }
+                validateAndSaveSearchLimit(inputSearchLimit.getText().toString().trim(), true);
             }
         }
     }
@@ -778,7 +770,7 @@ public class SettingsFragment extends Fragment {
                 switchDynamicVolume.setChecked(dynamicVolumeEnabled);
                 switchDynamicVolume.setOnCheckedChangeListener((buttonView, isChecked) -> {
                     settingsManager.setDynamicVolumeEnabled(isChecked);
-                    notifySettingsChanged();
+                    notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_DYNAMIC_VOLUME);
                 });
             }
             updateLanguageSpinnerSelection();
@@ -824,7 +816,7 @@ public class SettingsFragment extends Fragment {
                     }
                     settingsManager.setFloatingLyricsEnabled(isChecked);
                     layoutFloatingSettings.setVisibility(isChecked ? View.VISIBLE : View.GONE);
-                    notifySettingsChanged();
+                    notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_FLOATING_LYRICS);
                 });
             }
 
@@ -833,7 +825,7 @@ public class SettingsFragment extends Fragment {
                 switchTranslationIntegration.setChecked(isTranslationEnabled);
                 switchTranslationIntegration.setOnCheckedChangeListener((buttonView, isChecked) -> {
                     settingsManager.setTranslationIntegrationEnabled(isChecked);
-                    notifySettingsChanged();
+                    notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_TRANSLATION_INTEGRATION);
                 });
             }
 
@@ -953,7 +945,7 @@ public class SettingsFragment extends Fragment {
         } else {
             stopHearingProtectionUiRefresh();
         }
-        notifySettingsChanged();
+        notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_HEARING_PROTECTION);
     }
 
     private void showHearingProtectionBackgroundPromptIfEnabledByChange(boolean wasEnabled, boolean isEnabled) {
@@ -1021,7 +1013,7 @@ public class SettingsFragment extends Fragment {
                     if (selectedMinutes != settingsManager.getHearingProtectionListenMinutes()) {
                         settingsManager.setHearingProtectionListenMinutes(selectedMinutes);
                         refreshHearingProtectionSummary();
-                        notifySettingsChanged();
+                        notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_HEARING_PROTECTION);
                     }
                 }
         );
@@ -1038,7 +1030,7 @@ public class SettingsFragment extends Fragment {
                     if (selectedMinutes != settingsManager.getHearingProtectionRestMinutes()) {
                         settingsManager.setHearingProtectionRestMinutes(selectedMinutes);
                         refreshHearingProtectionSummary();
-                        notifySettingsChanged();
+                        notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_HEARING_PROTECTION);
                     }
                 }
         );
@@ -1234,7 +1226,6 @@ public class SettingsFragment extends Fragment {
                     if (!selectedQuality.equals(settingsManager.getQuality())) {
                         settingsManager.setQuality(selectedQuality);
                         updateAudioQualitySummary(selectedQuality);
-                        notifySettingsChanged();
                     }
                 })
                 .create();
@@ -1551,7 +1542,7 @@ public class SettingsFragment extends Fragment {
                 ((MainActivity) getActivity()).setAppLocale(settingsManager.getAppLanguage());
                 ((MainActivity) getActivity()).reloadHomeShortcuts();
             }
-            notifySettingsChanged();
+            notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_ALL_RUNTIME);
             Toast.makeText(requireContext(), R.string.settings_import_success, Toast.LENGTH_SHORT).show();
             if (lastImportSkippedFloatingLyrics) {
                 Toast.makeText(requireContext(), R.string.hint_grant_overlay, Toast.LENGTH_LONG).show();

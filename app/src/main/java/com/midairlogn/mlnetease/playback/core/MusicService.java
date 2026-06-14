@@ -58,6 +58,19 @@ public class MusicService extends Service {
     private static final String FOCUS_ACTION_PREVIOUS = "focus:previous";
     public static final String ACTION_UPDATE_SETTINGS = "ACTION_UPDATE_SETTINGS";
     public static final String ACTION_UPDATE_APP_VOLUME = "com.midairlogn.mlnetease.action.UPDATE_APP_VOLUME";
+    public static final String EXTRA_SETTINGS_UPDATE_MASK = "com.midairlogn.mlnetease.extra.SETTINGS_UPDATE_MASK";
+    public static final int SETTINGS_UPDATE_FLOATING_LYRICS = 1;
+    public static final int SETTINGS_UPDATE_LYRIC_APPEARANCE = 1 << 1;
+    public static final int SETTINGS_UPDATE_TRANSLATION_INTEGRATION = 1 << 2;
+    public static final int SETTINGS_UPDATE_DYNAMIC_VOLUME = 1 << 3;
+    public static final int SETTINGS_UPDATE_HEARING_PROTECTION = 1 << 4;
+    public static final int SETTINGS_UPDATE_APP_VOLUME = 1 << 5;
+    public static final int SETTINGS_UPDATE_ALL_RUNTIME = SETTINGS_UPDATE_FLOATING_LYRICS
+            | SETTINGS_UPDATE_LYRIC_APPEARANCE
+            | SETTINGS_UPDATE_TRANSLATION_INTEGRATION
+            | SETTINGS_UPDATE_DYNAMIC_VOLUME
+            | SETTINGS_UPDATE_HEARING_PROTECTION
+            | SETTINGS_UPDATE_APP_VOLUME;
     public static final String ACTION_CANCEL_REST_AND_CONTINUE = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_CONTINUE";
     public static final String ACTION_CANCEL_REST_AND_NEXT = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_NEXT";
     public static final String ACTION_CANCEL_REST_AND_PREVIOUS = "com.midairlogn.mlnetease.action.CANCEL_REST_AND_PREVIOUS";
@@ -1127,6 +1140,37 @@ public class MusicService extends Service {
         }
     }
 
+    private void applyRuntimeSettingsUpdate(int updateMask) {
+        if (updateMask == 0) {
+            return;
+        }
+        boolean appVolumeChanged = (updateMask & SETTINGS_UPDATE_APP_VOLUME) != 0;
+        if ((updateMask & SETTINGS_UPDATE_APP_VOLUME) != 0) {
+            SettingsManager sm = new SettingsManager(this);
+            musicPlayerManager.setAppVolume(sm.getAppVolume());
+        }
+        if ((updateMask & SETTINGS_UPDATE_DYNAMIC_VOLUME) != 0) {
+            musicPlayerManager.onDynamicVolumeSettingChanged();
+        }
+        if (hearingProtectionController != null) {
+            if ((updateMask & SETTINGS_UPDATE_HEARING_PROTECTION) != 0) {
+                hearingProtectionController.onSettingsChanged();
+            } else if (appVolumeChanged) {
+                hearingProtectionController.onPlaybackIntensityChanged();
+            }
+        }
+
+        boolean floatingLyricsSettingsChanged = (updateMask & (SETTINGS_UPDATE_FLOATING_LYRICS
+                | SETTINGS_UPDATE_LYRIC_APPEARANCE
+                | SETTINGS_UPDATE_TRANSLATION_INTEGRATION)) != 0;
+        if (floatingLyricsSettingsChanged && floatingLyricsManager != null) {
+            floatingLyricsManager.onSettingChanged();
+        }
+        if ((updateMask & SETTINGS_UPDATE_FLOATING_LYRICS) != 0) {
+            updatePlaybackState(isPlaybackActive());
+        }
+    }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (handleMediaButtonIntent(intent)) {
@@ -1152,24 +1196,9 @@ public class MusicService extends Service {
                 }
                 updatePlaybackState(isPlaybackActive());
             } else if (ACTION_UPDATE_SETTINGS.equals(action)) {
-                SettingsManager sm = new SettingsManager(this);
-                musicPlayerManager.setAppVolume(sm.getAppVolume());
-                musicPlayerManager.onDynamicVolumeSettingChanged();
-                if (hearingProtectionController != null) {
-                    hearingProtectionController.onSettingsChanged();
-                }
-                if (floatingLyricsManager != null) {
-                    floatingLyricsManager.onSettingChanged();
-                }
-                // Only update notification if the floating window toggle changed.
-                // updatePlaybackState handles this check automatically via lastNotifiedFloatingState.
-                updatePlaybackState(isPlaybackActive());
+                applyRuntimeSettingsUpdate(intent.getIntExtra(EXTRA_SETTINGS_UPDATE_MASK, SETTINGS_UPDATE_ALL_RUNTIME));
             } else if (ACTION_UPDATE_APP_VOLUME.equals(action)) {
-                SettingsManager sm = new SettingsManager(this);
-                musicPlayerManager.setAppVolume(sm.getAppVolume());
-                if (hearingProtectionController != null) {
-                    hearingProtectionController.onSettingsChanged();
-                }
+                applyRuntimeSettingsUpdate(SETTINGS_UPDATE_APP_VOLUME);
             } else if (ACTION_REFRESH_PLAYBACK_STATE.equals(action)) {
                 // A plain playback-state refresh is used by both expired-rest and manual-cancel
                 // flows. Only continue playback here when we already know an expired-rest retry

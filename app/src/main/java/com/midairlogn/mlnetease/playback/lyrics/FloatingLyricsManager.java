@@ -192,7 +192,8 @@ public class FloatingLyricsManager {
             hide();
             // Notify service to update notification icon
             Intent intent = new Intent(context, MusicService.class);
-            intent.setAction("ACTION_UPDATE_SETTINGS");
+            intent.setAction(MusicService.ACTION_UPDATE_SETTINGS);
+            intent.putExtra(MusicService.EXTRA_SETTINGS_UPDATE_MASK, MusicService.SETTINGS_UPDATE_FLOATING_LYRICS);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent);
             } else {
@@ -206,7 +207,8 @@ public class FloatingLyricsManager {
             updateTranslationButtonState();
             onSettingChanged();
             Intent intent = new Intent(context, MusicService.class);
-            intent.setAction("ACTION_UPDATE_SETTINGS");
+            intent.setAction(MusicService.ACTION_UPDATE_SETTINGS);
+            intent.putExtra(MusicService.EXTRA_SETTINGS_UPDATE_MASK, MusicService.SETTINGS_UPDATE_TRANSLATION_INTEGRATION);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent);
             } else {
