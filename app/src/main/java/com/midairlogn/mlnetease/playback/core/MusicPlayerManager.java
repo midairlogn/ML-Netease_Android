@@ -56,6 +56,8 @@ public class MusicPlayerManager {
     private static final float MIN_EFFECTIVE_GAIN_DB = 0.1f;
     private static final long APP_VOLUME_RAMP_DURATION_MS = 180L;
     private static final long APP_VOLUME_RAMP_STEP_MS = 16L;
+    private static final long LOUDNESS_RAMP_DURATION_MS = 220L;
+    private static final long LOUDNESS_RAMP_STEP_MS = 16L;
     private int resumePosition = 0;
     private boolean isCompletionListenerEnabled = false;
     private final AtomicLong playRequestIdGenerator = new AtomicLong(0);
@@ -65,6 +67,8 @@ public class MusicPlayerManager {
     private int loudnessEnhancerAudioSessionId = -1;
     private float pendingLoudnessGainDb = 0f;
     private boolean hasPendingLoudnessNormalization = false;
+    private float currentLoudnessGainDb = 0f;
+    private Runnable loudnessRampRunnable;
     private float currentAppVolumeScalar = 1f;
     private Runnable appVolumeRampRunnable;
     private static final class NormalizationMetadata {
@@ -1146,21 +1150,84 @@ public class MusicPlayerManager {
 
     public void applyLoudnessNormalization(float gainDb) {
         if (!Float.isFinite(gainDb)) {
-            clearLoudnessNormalization();
-            return;
-        }
-        int audioSessionId;
-        try {
-            audioSessionId = mediaPlayer.getAudioSessionId();
-        } catch (IllegalStateException e) {
-            return;
-        }
-        if (audioSessionId <= 0) {
+            clearLoudnessNormalization(playbackActive);
             return;
         }
 
         pendingLoudnessGainDb = gainDb;
         hasPendingLoudnessNormalization = true;
+
+        if (playbackActive) {
+            startLoudnessRamp(gainDb, false);
+            return;
+        }
+
+        cancelLoudnessRamp();
+        applyLoudnessGainDb(gainDb);
+    }
+
+    private void startLoudnessRamp(float targetGainDb, boolean releaseAtEnd) {
+        cancelLoudnessRamp();
+        final float startGainDb = currentLoudnessGainDb;
+        if (Math.abs(targetGainDb - startGainDb) < 0.01f) {
+            if (releaseAtEnd) {
+                releaseLoudnessEnhancer();
+            } else {
+                applyLoudnessGainDb(targetGainDb);
+            }
+            return;
+        }
+
+        final long startTimeMs = android.os.SystemClock.uptimeMillis();
+        loudnessRampRunnable = new Runnable() {
+            @Override
+            public void run() {
+                long elapsedMs = android.os.SystemClock.uptimeMillis() - startTimeMs;
+                float fraction = Math.min(1f, elapsedMs / (float) LOUDNESS_RAMP_DURATION_MS);
+                float nextGainDb = startGainDb + ((targetGainDb - startGainDb) * fraction);
+                if (!applyLoudnessGainDb(nextGainDb)) {
+                    if (loudnessRampRunnable == this) {
+                        loudnessRampRunnable = null;
+                    }
+                    return;
+                }
+                if (fraction < 1f && loudnessRampRunnable == this) {
+                    mainHandler.postDelayed(this, LOUDNESS_RAMP_STEP_MS);
+                } else if (loudnessRampRunnable == this) {
+                    loudnessRampRunnable = null;
+                    if (releaseAtEnd) {
+                        releaseLoudnessEnhancer();
+                    } else {
+                        applyLoudnessGainDb(targetGainDb);
+                    }
+                }
+            }
+        };
+        mainHandler.post(loudnessRampRunnable);
+    }
+
+    private void cancelLoudnessRamp() {
+        if (loudnessRampRunnable != null) {
+            mainHandler.removeCallbacks(loudnessRampRunnable);
+            loudnessRampRunnable = null;
+        }
+    }
+
+    private boolean applyLoudnessGainDb(float gainDb) {
+        if (!Float.isFinite(gainDb)) {
+            releaseLoudnessEnhancer();
+            return false;
+        }
+
+        int audioSessionId;
+        try {
+            audioSessionId = mediaPlayer.getAudioSessionId();
+        } catch (IllegalStateException e) {
+            return false;
+        }
+        if (audioSessionId <= 0) {
+            return false;
+        }
 
         int gainmB = Math.round(gainDb * MILLIBELS_PER_DECIBEL);
         try {
@@ -1173,26 +1240,29 @@ public class MusicPlayerManager {
             }
             loudnessEnhancer.setTargetGain(gainmB);
             loudnessEnhancer.setEnabled(true);
+            currentLoudnessGainDb = gainDb;
+            return true;
         } catch (RuntimeException e) {
             releaseLoudnessEnhancer();
+            return false;
         }
     }
 
     public void onDynamicVolumeSettingChanged() {
         Song currentSong = getCurrentSong();
         if (!settingsManager.isDynamicVolumeEnabled()) {
-            clearLoudnessNormalization();
+            clearLoudnessNormalization(playbackActive);
             setAppVolume(settingsManager.getAppVolume());
             return;
         }
         if (currentSong == null) {
-            clearLoudnessNormalization();
+            clearLoudnessNormalization(playbackActive);
             return;
         }
         NormalizationMetadata normalizationMetadata = resolveStoredNormalizationMetadata(currentSong);
         currentSong.hasLoudnessNormalization = normalizationMetadata.hasGain;
-        clearLoudnessNormalization();
         if (!normalizationMetadata.hasGain) {
+            clearLoudnessNormalization(playbackActive);
             return;
         }
         float effectiveGainDb = resolveEffectiveNormalizationGainDb(
@@ -1201,6 +1271,7 @@ public class MusicPlayerManager {
                 normalizationMetadata.hasPeak
         );
         if (Math.abs(effectiveGainDb) < MIN_EFFECTIVE_GAIN_DB) {
+            clearLoudnessNormalization(playbackActive);
             return;
         }
         pendingLoudnessGainDb = effectiveGainDb;
@@ -1209,8 +1280,17 @@ public class MusicPlayerManager {
     }
 
     private void clearLoudnessNormalization() {
+        clearLoudnessNormalization(false);
+    }
+
+    private void clearLoudnessNormalization(boolean smooth) {
         pendingLoudnessGainDb = 0f;
         hasPendingLoudnessNormalization = false;
+        if (smooth && loudnessEnhancer != null && Math.abs(currentLoudnessGainDb) >= MIN_EFFECTIVE_GAIN_DB) {
+            startLoudnessRamp(0f, true);
+            return;
+        }
+        cancelLoudnessRamp();
         releaseLoudnessEnhancer();
     }
 
@@ -1269,7 +1349,9 @@ public class MusicPlayerManager {
     }
 
     private void releaseLoudnessEnhancer() {
+        cancelLoudnessRamp();
         if (loudnessEnhancer == null) {
+            currentLoudnessGainDb = 0f;
             return;
         }
         try {
@@ -1282,6 +1364,7 @@ public class MusicPlayerManager {
         }
         loudnessEnhancer = null;
         loudnessEnhancerAudioSessionId = -1;
+        currentLoudnessGainDb = 0f;
     }
 
     public void release() {
