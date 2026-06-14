@@ -851,7 +851,6 @@ public class SettingsManager {
         json.put(KEY_HEARING_PROTECTION_ENABLED, isHearingProtectionEnabled());
         json.put(KEY_HEARING_PROTECTION_LISTEN_MINUTES, getHearingProtectionListenMinutes());
         json.put(KEY_HEARING_PROTECTION_REST_MINUTES, getHearingProtectionRestMinutes());
-        json.put(KEY_HEARING_PROTECTION_ACCUMULATED_DOSE_MS, getHearingProtectionAccumulatedDoseMs());
         json.put(KEY_HOME_SHORTCUTS, serializeHomeShortcuts());
         json.put(KEY_FAVOURITE_SONGS, serializeFavouriteSongs());
         json.put(KEY_APP_LANGUAGE, getAppLanguage());
@@ -894,7 +893,6 @@ public class SettingsManager {
                 KEY_HEARING_PROTECTION_REST_MINUTES,
                 DEFAULT_HEARING_PROTECTION_REST_MINUTES
         ));
-        setHearingProtectionAccumulatedDoseMs(json.optLong(KEY_HEARING_PROTECTION_ACCUMULATED_DOSE_MS, 0L));
         importHomeShortcuts(json.optJSONArray(KEY_HOME_SHORTCUTS));
         importFavouriteSongs(json.optJSONArray(KEY_FAVOURITE_SONGS));
         setAppLanguage(normalizeLanguage(json.optString(KEY_APP_LANGUAGE, "system")));
