@@ -65,6 +65,7 @@ public class HearingProtectionController implements
     private static final long SOCIAL_PAUSE_MAX_MS = 5 * 60_000L;
     private static final long RESTORATIVE_PAUSE_MAX_MS = 20 * 60_000L;
     private static final long ACTIVE_SESSION_PERSIST_INTERVAL_MS = 30_000L;
+    private static final long ELAPSED_REALTIME_BOOT_MATCH_TOLERANCE_MS = TimeUnit.MINUTES.toMillis(2);
     private static final double SOCIAL_RECOVERY_RATIO = 0.5d;
     private static final double MAX_DOSE_RESET_RATIO = 0.05d;
     private static final double BASE_EXPONENTIAL_RECOVERY_PER_MIN = 0.32d;
@@ -794,14 +795,27 @@ public class HearingProtectionController implements
     }
 
     private static long resolveElapsedRealtimeForWallClock(long wallClockMs, long elapsedRealtimeMs) {
-        if (elapsedRealtimeMs > 0L && elapsedRealtimeMs <= SystemClock.elapsedRealtime()) {
+        if (isElapsedRealtimeFromCurrentBoot(wallClockMs, elapsedRealtimeMs)) {
             return elapsedRealtimeMs;
         }
         if (wallClockMs > 0L) {
             long elapsedSinceWallClockMs = Math.max(0L, System.currentTimeMillis() - wallClockMs);
             return Math.max(0L, SystemClock.elapsedRealtime() - elapsedSinceWallClockMs);
         }
+        if (elapsedRealtimeMs > 0L && elapsedRealtimeMs <= SystemClock.elapsedRealtime()) {
+            return elapsedRealtimeMs;
+        }
         return SystemClock.elapsedRealtime();
+    }
+
+    private static boolean isElapsedRealtimeFromCurrentBoot(long wallClockMs, long elapsedRealtimeMs) {
+        if (wallClockMs <= 0L || elapsedRealtimeMs <= 0L || elapsedRealtimeMs > SystemClock.elapsedRealtime()) {
+            return false;
+        }
+        long persistedBootWallClockMs = wallClockMs - elapsedRealtimeMs;
+        long currentBootWallClockMs = System.currentTimeMillis() - SystemClock.elapsedRealtime();
+        return Math.abs(persistedBootWallClockMs - currentBootWallClockMs)
+                <= ELAPSED_REALTIME_BOOT_MATCH_TOLERANCE_MS;
     }
 
     private double resolvePersistedOrCurrentIntensity(float persistedIntensity) {
