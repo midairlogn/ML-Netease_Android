@@ -49,12 +49,18 @@ public class SettingsManager {
     private static final String KEY_HEARING_PROTECTION_REST_ACTIVE = "hearing_protection_rest_active";
     private static final String KEY_HEARING_PROTECTION_REST_END_ELAPSED_MS = "hearing_protection_rest_end_elapsed_ms";
     private static final String KEY_HEARING_PROTECTION_REST_END_ELAPSED_REALTIME_MS = "hearing_protection_rest_end_elapsed_realtime_ms";
+    private static final String KEY_HEARING_PROTECTION_REST_END_BOOT_COUNT = "hearing_protection_rest_end_boot_count";
     private static final String KEY_HEARING_PROTECTION_ACCUMULATED_DOSE_MS = "hearing_protection_accumulated_dose_ms";
     private static final String KEY_HEARING_PROTECTION_ACTIVE_START_WALL_CLOCK_MS = "hearing_protection_active_start_wall_clock_ms";
     private static final String KEY_HEARING_PROTECTION_ACTIVE_START_ELAPSED_REALTIME_MS = "hearing_protection_active_start_elapsed_realtime_ms";
+    private static final String KEY_HEARING_PROTECTION_ACTIVE_START_BOOT_COUNT = "hearing_protection_active_start_boot_count";
+    private static final String KEY_HEARING_PROTECTION_ACTIVE_LAST_WALL_CLOCK_MS = "hearing_protection_active_last_wall_clock_ms";
+    private static final String KEY_HEARING_PROTECTION_ACTIVE_LAST_ELAPSED_REALTIME_MS = "hearing_protection_active_last_elapsed_realtime_ms";
+    private static final String KEY_HEARING_PROTECTION_ACTIVE_LAST_BOOT_COUNT = "hearing_protection_active_last_boot_count";
     private static final String KEY_HEARING_PROTECTION_ACTIVE_INTENSITY = "hearing_protection_active_intensity";
     private static final String KEY_HEARING_PROTECTION_PAUSE_START_WALL_CLOCK_MS = "hearing_protection_pause_start_wall_clock_ms";
     private static final String KEY_HEARING_PROTECTION_PAUSE_START_ELAPSED_REALTIME_MS = "hearing_protection_pause_start_elapsed_realtime_ms";
+    private static final String KEY_HEARING_PROTECTION_PAUSE_START_BOOT_COUNT = "hearing_protection_pause_start_boot_count";
     private static final String KEY_HEARING_PROTECTION_PAUSE_BASE_DOSE_MS = "hearing_protection_pause_base_dose_ms";
     private static final String KEY_HEARING_PROTECTION_PAUSE_INTENSITY = "hearing_protection_pause_intensity";
     private static final String KEY_HEARING_PROTECTION_BACKGROUND_PROMPT_DISMISSED = "hearing_protection_background_prompt_dismissed";
@@ -464,12 +470,14 @@ public class SettingsManager {
     }
 
     public void setHearingProtectionRestState(boolean active,
-                                              long restEndWallClockMs,
-                                              long restEndElapsedRealtimeMs) {
+                                               long restEndWallClockMs,
+                                               long restEndElapsedRealtimeMs,
+                                               int restEndBootCount) {
         prefs.edit()
                 .putBoolean(KEY_HEARING_PROTECTION_REST_ACTIVE, active)
                 .putLong(KEY_HEARING_PROTECTION_REST_END_ELAPSED_MS, Math.max(0L, restEndWallClockMs))
                 .putLong(KEY_HEARING_PROTECTION_REST_END_ELAPSED_REALTIME_MS, Math.max(0L, restEndElapsedRealtimeMs))
+                .putInt(KEY_HEARING_PROTECTION_REST_END_BOOT_COUNT, restEndBootCount)
                 .apply();
     }
 
@@ -485,11 +493,16 @@ public class SettingsManager {
         return Math.max(0L, prefs.getLong(KEY_HEARING_PROTECTION_REST_END_ELAPSED_REALTIME_MS, 0L));
     }
 
+    public int getHearingProtectionRestEndBootCount() {
+        return prefs.getInt(KEY_HEARING_PROTECTION_REST_END_BOOT_COUNT, -1);
+    }
+
     public void clearHearingProtectionRestState() {
         prefs.edit()
                 .remove(KEY_HEARING_PROTECTION_REST_ACTIVE)
                 .remove(KEY_HEARING_PROTECTION_REST_END_ELAPSED_MS)
                 .remove(KEY_HEARING_PROTECTION_REST_END_ELAPSED_REALTIME_MS)
+                .remove(KEY_HEARING_PROTECTION_REST_END_BOOT_COUNT)
                 .apply();
     }
 
@@ -509,10 +522,18 @@ public class SettingsManager {
 
     public void setHearingProtectionActiveSession(long startWallClockMs,
                                                   long startElapsedRealtimeMs,
+                                                  int startBootCount,
+                                                  long lastWallClockMs,
+                                                  long lastElapsedRealtimeMs,
+                                                  int lastBootCount,
                                                   float intensityMultiplier) {
         prefs.edit()
                 .putLong(KEY_HEARING_PROTECTION_ACTIVE_START_WALL_CLOCK_MS, Math.max(0L, startWallClockMs))
                 .putLong(KEY_HEARING_PROTECTION_ACTIVE_START_ELAPSED_REALTIME_MS, Math.max(0L, startElapsedRealtimeMs))
+                .putInt(KEY_HEARING_PROTECTION_ACTIVE_START_BOOT_COUNT, startBootCount)
+                .putLong(KEY_HEARING_PROTECTION_ACTIVE_LAST_WALL_CLOCK_MS, Math.max(0L, lastWallClockMs))
+                .putLong(KEY_HEARING_PROTECTION_ACTIVE_LAST_ELAPSED_REALTIME_MS, Math.max(0L, lastElapsedRealtimeMs))
+                .putInt(KEY_HEARING_PROTECTION_ACTIVE_LAST_BOOT_COUNT, lastBootCount)
                 .putFloat(KEY_HEARING_PROTECTION_ACTIVE_INTENSITY, Math.max(0f, intensityMultiplier))
                 .apply();
     }
@@ -525,6 +546,22 @@ public class SettingsManager {
         return Math.max(0L, prefs.getLong(KEY_HEARING_PROTECTION_ACTIVE_START_ELAPSED_REALTIME_MS, 0L));
     }
 
+    public int getHearingProtectionActiveSessionStartBootCount() {
+        return prefs.getInt(KEY_HEARING_PROTECTION_ACTIVE_START_BOOT_COUNT, -1);
+    }
+
+    public long getHearingProtectionActiveSessionLastWallClockMs() {
+        return Math.max(0L, prefs.getLong(KEY_HEARING_PROTECTION_ACTIVE_LAST_WALL_CLOCK_MS, 0L));
+    }
+
+    public long getHearingProtectionActiveSessionLastElapsedRealtimeMs() {
+        return Math.max(0L, prefs.getLong(KEY_HEARING_PROTECTION_ACTIVE_LAST_ELAPSED_REALTIME_MS, 0L));
+    }
+
+    public int getHearingProtectionActiveSessionLastBootCount() {
+        return prefs.getInt(KEY_HEARING_PROTECTION_ACTIVE_LAST_BOOT_COUNT, -1);
+    }
+
     public float getHearingProtectionActiveSessionIntensity() {
         return Math.max(0f, prefs.getFloat(KEY_HEARING_PROTECTION_ACTIVE_INTENSITY, 0f));
     }
@@ -533,17 +570,23 @@ public class SettingsManager {
         prefs.edit()
                 .remove(KEY_HEARING_PROTECTION_ACTIVE_START_WALL_CLOCK_MS)
                 .remove(KEY_HEARING_PROTECTION_ACTIVE_START_ELAPSED_REALTIME_MS)
+                .remove(KEY_HEARING_PROTECTION_ACTIVE_START_BOOT_COUNT)
+                .remove(KEY_HEARING_PROTECTION_ACTIVE_LAST_WALL_CLOCK_MS)
+                .remove(KEY_HEARING_PROTECTION_ACTIVE_LAST_ELAPSED_REALTIME_MS)
+                .remove(KEY_HEARING_PROTECTION_ACTIVE_LAST_BOOT_COUNT)
                 .remove(KEY_HEARING_PROTECTION_ACTIVE_INTENSITY)
                 .apply();
     }
 
     public void setHearingProtectionPauseSession(long pauseStartWallClockMs,
-                                                 long pauseStartElapsedRealtimeMs,
-                                                 long baseDoseMs,
-                                                 float intensityMultiplier) {
+                                                  long pauseStartElapsedRealtimeMs,
+                                                  int pauseStartBootCount,
+                                                  long baseDoseMs,
+                                                  float intensityMultiplier) {
         prefs.edit()
                 .putLong(KEY_HEARING_PROTECTION_PAUSE_START_WALL_CLOCK_MS, Math.max(0L, pauseStartWallClockMs))
                 .putLong(KEY_HEARING_PROTECTION_PAUSE_START_ELAPSED_REALTIME_MS, Math.max(0L, pauseStartElapsedRealtimeMs))
+                .putInt(KEY_HEARING_PROTECTION_PAUSE_START_BOOT_COUNT, pauseStartBootCount)
                 .putLong(KEY_HEARING_PROTECTION_PAUSE_BASE_DOSE_MS, Math.max(0L, baseDoseMs))
                 .putFloat(KEY_HEARING_PROTECTION_PAUSE_INTENSITY, Math.max(0f, intensityMultiplier))
                 .apply();
@@ -555,6 +598,10 @@ public class SettingsManager {
 
     public long getHearingProtectionPauseStartElapsedRealtimeMs() {
         return Math.max(0L, prefs.getLong(KEY_HEARING_PROTECTION_PAUSE_START_ELAPSED_REALTIME_MS, 0L));
+    }
+
+    public int getHearingProtectionPauseStartBootCount() {
+        return prefs.getInt(KEY_HEARING_PROTECTION_PAUSE_START_BOOT_COUNT, -1);
     }
 
     public long getHearingProtectionPauseBaseDoseMs() {
@@ -569,6 +616,7 @@ public class SettingsManager {
         prefs.edit()
                 .remove(KEY_HEARING_PROTECTION_PAUSE_START_WALL_CLOCK_MS)
                 .remove(KEY_HEARING_PROTECTION_PAUSE_START_ELAPSED_REALTIME_MS)
+                .remove(KEY_HEARING_PROTECTION_PAUSE_START_BOOT_COUNT)
                 .remove(KEY_HEARING_PROTECTION_PAUSE_BASE_DOSE_MS)
                 .remove(KEY_HEARING_PROTECTION_PAUSE_INTENSITY)
                 .apply();
@@ -835,7 +883,6 @@ public class SettingsManager {
         json.put(KEY_HEARING_PROTECTION_ENABLED, isHearingProtectionEnabled());
         json.put(KEY_HEARING_PROTECTION_LISTEN_MINUTES, getHearingProtectionListenMinutes());
         json.put(KEY_HEARING_PROTECTION_REST_MINUTES, getHearingProtectionRestMinutes());
-        json.put(KEY_HEARING_PROTECTION_ACCUMULATED_DOSE_MS, getHearingProtectionAccumulatedDoseMs());
         json.put(KEY_HOME_SHORTCUTS, serializeHomeShortcuts());
         json.put(KEY_FAVOURITE_SONGS, serializeFavouriteSongs());
         json.put(KEY_APP_LANGUAGE, getAppLanguage());
@@ -878,7 +925,6 @@ public class SettingsManager {
                 KEY_HEARING_PROTECTION_REST_MINUTES,
                 DEFAULT_HEARING_PROTECTION_REST_MINUTES
         ));
-        setHearingProtectionAccumulatedDoseMs(json.optLong(KEY_HEARING_PROTECTION_ACCUMULATED_DOSE_MS, 0L));
         importHomeShortcuts(json.optJSONArray(KEY_HOME_SHORTCUTS));
         importFavouriteSongs(json.optJSONArray(KEY_FAVOURITE_SONGS));
         setAppLanguage(normalizeLanguage(json.optString(KEY_APP_LANGUAGE, "system")));

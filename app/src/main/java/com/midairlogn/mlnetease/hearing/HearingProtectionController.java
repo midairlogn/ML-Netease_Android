@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.provider.Settings;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -64,6 +65,9 @@ public class HearingProtectionController implements
     private static final long SHORT_PAUSE_GRACE_MS = 30_000L;
     private static final long SOCIAL_PAUSE_MAX_MS = 5 * 60_000L;
     private static final long RESTORATIVE_PAUSE_MAX_MS = 20 * 60_000L;
+    private static final long ACTIVE_SESSION_PERSIST_INTERVAL_MS = 30_000L;
+    private static final long ELAPSED_REALTIME_BOOT_MATCH_TOLERANCE_MS = TimeUnit.MINUTES.toMillis(2);
+    private static final int UNKNOWN_BOOT_COUNT = -1;
     private static final double SOCIAL_RECOVERY_RATIO = 0.5d;
     private static final double MAX_DOSE_RESET_RATIO = 0.05d;
     private static final double BASE_EXPONENTIAL_RECOVERY_PER_MIN = 0.32d;
@@ -87,6 +91,7 @@ public class HearingProtectionController implements
     private long restEndElapsedRealtimeMs;
 
     private final Runnable restFinishedRunnable = this::requestRestCompletion;
+    private final Runnable activeSessionPersistenceRunnable = this::persistActiveSessionCheckpointIfNeeded;
 
     public HearingProtectionController(Context context, MusicPlayerManager musicPlayerManager) {
         this.appContext = context.getApplicationContext();
@@ -109,6 +114,7 @@ public class HearingProtectionController implements
             requestRestCompletion();
             return;
         }
+        restoreStoppedActiveSessionAsPauseIfNeeded();
         restorePauseSessionIfNeeded();
         if (!restActive && musicPlayerManager.isPlaying()) {
             restoreActiveSessionIfNeeded();
@@ -124,11 +130,16 @@ public class HearingProtectionController implements
 
     public void stop() {
         handler.removeCallbacks(restFinishedRunnable);
+        handler.removeCallbacks(activeSessionPersistenceRunnable);
         musicPlayerManager.removeOnPlaybackStateChangedListener(this);
         musicPlayerManager.removeOnSongCompletionListener(this);
         musicPlayerManager.removeOnPlaybackActionListener(this);
         if (!restActive) {
-            foldCurrentPlaybackIntoDose();
+            if (musicPlayerManager.isPlaying()) {
+                persistActiveSessionForServiceStop();
+            } else {
+                recordPauseForServiceStopIfNeeded();
+            }
         }
         playbackSessionStartElapsedMs = -1L;
         pauseStartedElapsedMs = restActive ? -1L : pauseStartedElapsedMs;
@@ -218,18 +229,21 @@ public class HearingProtectionController implements
         Context appContext = context.getApplicationContext();
         SettingsManager settingsManager = new SettingsManager(appContext);
         MusicPlayerManager musicPlayerManager = MusicPlayerManager.getInstance(appContext);
+        int currentBootCount = getCurrentBootCount(appContext);
 
         long persistedDoseMs = settingsManager.getHearingProtectionAccumulatedDoseMs();
         boolean restActive = settingsManager.isHearingProtectionRestActive();
         long restRemainingMs = 0L;
         if (restActive) {
             long restEndElapsedRealtimeMs = settingsManager.getHearingProtectionRestEndElapsedRealtimeMs();
-            if (restEndElapsedRealtimeMs > 0L) {
-                restRemainingMs = Math.max(0L, restEndElapsedRealtimeMs - SystemClock.elapsedRealtime());
-            } else {
-                long restEndWallClockMs = settingsManager.getHearingProtectionRestEndWallClockMs();
-                restRemainingMs = Math.max(0L, restEndWallClockMs - System.currentTimeMillis());
-            }
+            long restEndWallClockMs = settingsManager.getHearingProtectionRestEndWallClockMs();
+            restRemainingMs = resolveRemainingUntilTimestamp(
+                    restEndWallClockMs,
+                    restEndElapsedRealtimeMs,
+                    settingsManager.getHearingProtectionRestEndBootCount(),
+                    SystemClock.elapsedRealtime(),
+                    currentBootCount
+            );
         }
 
         boolean activelyAccumulating = settingsManager.isHearingProtectionEnabled()
@@ -242,13 +256,15 @@ public class HearingProtectionController implements
         long displayDoseMs = persistedDoseMs;
         if (activelyAccumulating) {
             long activeStartElapsedRealtimeMs = settingsManager.getHearingProtectionActiveSessionStartElapsedRealtimeMs();
-            if (activeStartElapsedRealtimeMs > 0L) {
-                activeSessionElapsedMs = Math.max(0L, SystemClock.elapsedRealtime() - activeStartElapsedRealtimeMs);
-            } else {
-                long activeStartWallClockMs = settingsManager.getHearingProtectionActiveSessionStartWallClockMs();
-                if (activeStartWallClockMs > 0L) {
-                    activeSessionElapsedMs = Math.max(0L, System.currentTimeMillis() - activeStartWallClockMs);
-                }
+            long activeStartWallClockMs = settingsManager.getHearingProtectionActiveSessionStartWallClockMs();
+            if (activeStartElapsedRealtimeMs > 0L || activeStartWallClockMs > 0L) {
+                activeSessionElapsedMs = resolveDurationSinceTimestamp(
+                        activeStartWallClockMs,
+                        activeStartElapsedRealtimeMs,
+                        settingsManager.getHearingProtectionActiveSessionStartBootCount(),
+                        SystemClock.elapsedRealtime(),
+                        currentBootCount
+                );
             }
             activeIntensityMultiplier = settingsManager.getHearingProtectionActiveSessionIntensity();
             if (activeIntensityMultiplier <= 0d) {
@@ -257,19 +273,19 @@ public class HearingProtectionController implements
             displayDoseMs = Math.max(0L, persistedDoseMs + Math.round(activeSessionElapsedMs * activeIntensityMultiplier));
         } else if (!restActive && settingsManager.isHearingProtectionEnabled()) {
             long pauseStartElapsedRealtimeMs = settingsManager.getHearingProtectionPauseStartElapsedRealtimeMs();
+            long pauseStartWallClockMs = settingsManager.getHearingProtectionPauseStartWallClockMs();
             long pauseElapsedMsCandidate = 0L;
             boolean hasPauseSession = false;
-            if (pauseStartElapsedRealtimeMs > 0L) {
+            if (pauseStartElapsedRealtimeMs > 0L || pauseStartWallClockMs > 0L) {
                 pauseRecoveryActive = true;
                 hasPauseSession = true;
-                pauseElapsedMsCandidate = Math.max(0L, SystemClock.elapsedRealtime() - pauseStartElapsedRealtimeMs);
-            } else {
-                long pauseStartWallClockMs = settingsManager.getHearingProtectionPauseStartWallClockMs();
-                if (pauseStartWallClockMs > 0L) {
-                    pauseRecoveryActive = true;
-                    hasPauseSession = true;
-                    pauseElapsedMsCandidate = Math.max(0L, System.currentTimeMillis() - pauseStartWallClockMs);
-                }
+                pauseElapsedMsCandidate = resolveDurationSinceTimestamp(
+                        pauseStartWallClockMs,
+                        pauseStartElapsedRealtimeMs,
+                        settingsManager.getHearingProtectionPauseStartBootCount(),
+                        SystemClock.elapsedRealtime(),
+                        currentBootCount
+                );
             }
             if (hasPauseSession) {
                 pauseElapsedMs = pauseElapsedMsCandidate;
@@ -284,6 +300,45 @@ public class HearingProtectionController implements
                         pauseElapsedMs,
                         pauseIntensityMultiplier
                 );
+            } else {
+                long activeStartElapsedRealtimeMs = settingsManager.getHearingProtectionActiveSessionStartElapsedRealtimeMs();
+                long activeStartWallClockMs = settingsManager.getHearingProtectionActiveSessionStartWallClockMs();
+                int activeStartBootCount = settingsManager.getHearingProtectionActiveSessionStartBootCount();
+                long activeEndElapsedRealtimeMs = settingsManager.getHearingProtectionActiveSessionLastElapsedRealtimeMs();
+                long activeEndWallClockMs = settingsManager.getHearingProtectionActiveSessionLastWallClockMs();
+                int activeEndBootCount = settingsManager.getHearingProtectionActiveSessionLastBootCount();
+                boolean hasStoppedActiveSession = (activeStartElapsedRealtimeMs > 0L || activeStartWallClockMs > 0L)
+                        && (activeEndElapsedRealtimeMs > 0L || activeEndWallClockMs > 0L);
+                if (hasStoppedActiveSession) {
+                    double activeIntensity = settingsManager.getHearingProtectionActiveSessionIntensity();
+                    if (activeIntensity <= 0d) {
+                        activeIntensity = getPlaybackIntensityMultiplier(settingsManager.getAppVolume());
+                    }
+                    long activeDurationMs = resolveDurationBetween(
+                            activeStartWallClockMs,
+                            activeStartElapsedRealtimeMs,
+                            activeStartBootCount,
+                            activeEndWallClockMs,
+                            activeEndElapsedRealtimeMs,
+                            activeEndBootCount
+                    );
+                    long recoveredBaseDoseMs = Math.max(0L,
+                            persistedDoseMs + Math.round(activeDurationMs * activeIntensity));
+                    pauseElapsedMs = resolveDurationSinceTimestamp(
+                            activeEndWallClockMs,
+                            activeEndElapsedRealtimeMs,
+                            activeEndBootCount,
+                            SystemClock.elapsedRealtime(),
+                            currentBootCount
+                    );
+                    pauseRecoveryActive = true;
+                    displayDoseMs = computeRecoveredDoseMs(
+                            settingsManager,
+                            recoveredBaseDoseMs,
+                            pauseElapsedMs,
+                            activeIntensity
+                    );
+                }
             }
         }
 
@@ -402,9 +457,16 @@ public class HearingProtectionController implements
             settingsManager.clearHearingProtectionRestState();
             return;
         }
-        long remainingMs = savedRestEndElapsedRealtime > 0L
-                ? savedRestEndElapsedRealtime - SystemClock.elapsedRealtime()
-                : savedRestEnd - System.currentTimeMillis();
+        long nowElapsedRealtimeMs = SystemClock.elapsedRealtime();
+        int currentBootCount = getCurrentBootCount(appContext);
+        int savedRestEndBootCount = settingsManager.getHearingProtectionRestEndBootCount();
+        long remainingMs = resolveRemainingUntilTimestamp(
+                savedRestEnd,
+                savedRestEndElapsedRealtime,
+                savedRestEndBootCount,
+                nowElapsedRealtimeMs,
+                currentBootCount
+        );
         if (remainingMs > TimeUnit.HOURS.toMillis(4)) {
             Log.w(TAG, "restoreRestStateIfNeeded: clearing implausible rest duration, remainingMs=" + remainingMs);
             settingsManager.clearHearingProtectionRestState();
@@ -412,15 +474,89 @@ public class HearingProtectionController implements
         }
         restActive = true;
         restEndWallClockMs = savedRestEnd > 0L ? savedRestEnd : System.currentTimeMillis() + Math.max(0L, remainingMs);
-        restEndElapsedRealtimeMs = savedRestEndElapsedRealtime > 0L
+        restEndElapsedRealtimeMs = isElapsedRealtimeFromCurrentBoot(
+                restEndWallClockMs,
+                savedRestEndElapsedRealtime,
+                savedRestEndBootCount,
+                nowElapsedRealtimeMs,
+                currentBootCount
+        )
                 ? savedRestEndElapsedRealtime
-                : SystemClock.elapsedRealtime() + Math.max(0L, remainingMs);
+                : nowElapsedRealtimeMs + Math.max(0L, remainingMs);
         Log.d(TAG, "restoreRestStateIfNeeded: restored rest, remainingMs=" + Math.max(0L, remainingMs));
         if (remainingMs <= 0L) {
             return;
         }
         scheduleRestFinished(remainingMs);
         scheduleRestFinishAlarm(restEndWallClockMs);
+    }
+
+    private void restoreStoppedActiveSessionAsPauseIfNeeded() {
+        if (restActive || musicPlayerManager.isPlaying() || hasPersistedPauseSession()) {
+            return;
+        }
+
+        long activeStartElapsedRealtimeMs = settingsManager.getHearingProtectionActiveSessionStartElapsedRealtimeMs();
+        long activeStartWallClockMs = settingsManager.getHearingProtectionActiveSessionStartWallClockMs();
+        int activeStartBootCount = settingsManager.getHearingProtectionActiveSessionStartBootCount();
+        if (activeStartElapsedRealtimeMs <= 0L && activeStartWallClockMs <= 0L) {
+            return;
+        }
+
+        long activeEndElapsedRealtimeMs = settingsManager.getHearingProtectionActiveSessionLastElapsedRealtimeMs();
+        long activeEndWallClockMs = settingsManager.getHearingProtectionActiveSessionLastWallClockMs();
+        int activeEndBootCount = settingsManager.getHearingProtectionActiveSessionLastBootCount();
+        if (activeEndElapsedRealtimeMs <= 0L && activeEndWallClockMs <= 0L) {
+            clearActiveSession();
+            return;
+        }
+
+        long activeDurationMs = resolveDurationBetween(
+                activeStartWallClockMs,
+                activeStartElapsedRealtimeMs,
+                activeStartBootCount,
+                activeEndWallClockMs,
+                activeEndElapsedRealtimeMs,
+                activeEndBootCount
+        );
+        double intensityMultiplier = resolvePersistedOrCurrentIntensity(
+                settingsManager.getHearingProtectionActiveSessionIntensity()
+        );
+        accumulatedDose += activeDurationMs * intensityMultiplier;
+        persistAccumulatedDose();
+        clearActiveSession();
+
+        long nowElapsedRealtimeMs = SystemClock.elapsedRealtime();
+        int currentBootCount = getCurrentBootCount(appContext);
+        long pauseStartWallClockMs = resolveWallClockForTimestamp(
+                activeEndWallClockMs,
+                activeEndElapsedRealtimeMs,
+                activeEndBootCount,
+                nowElapsedRealtimeMs,
+                currentBootCount
+        );
+        pauseStartedElapsedMs = resolveElapsedRealtimeForWallClock(
+                pauseStartWallClockMs,
+                activeEndElapsedRealtimeMs,
+                activeEndBootCount,
+                nowElapsedRealtimeMs,
+                currentBootCount
+        );
+        lastPlaybackIntensityMultiplier = intensityMultiplier;
+        if (accumulatedDose > 0d) {
+            int pauseStartBootCount = isElapsedRealtimeFromCurrentBoot(
+                    pauseStartWallClockMs,
+                    activeEndElapsedRealtimeMs,
+                    activeEndBootCount,
+                    nowElapsedRealtimeMs,
+                    currentBootCount
+            ) ? currentBootCount : UNKNOWN_BOOT_COUNT;
+            persistPauseSession(
+                    pauseStartWallClockMs,
+                    pauseStartBootCount == UNKNOWN_BOOT_COUNT ? 0L : activeEndElapsedRealtimeMs,
+                    pauseStartBootCount
+            );
+        }
     }
 
     private void restorePauseSessionIfNeeded() {
@@ -430,19 +566,19 @@ public class HearingProtectionController implements
             clearPauseSession();
             return;
         }
-        if (musicPlayerManager.isPlaying()) {
-            clearPauseSession();
-            return;
-        }
-        if (pauseStartElapsedRealtimeMs > 0L) {
-            pauseStartedElapsedMs = pauseStartElapsedRealtimeMs;
-        } else {
-            long pauseElapsedMs = Math.max(0L, System.currentTimeMillis() - pauseStartWallClockMs);
-            pauseStartedElapsedMs = Math.max(0L, SystemClock.elapsedRealtime() - pauseElapsedMs);
-        }
+        pauseStartedElapsedMs = resolveElapsedRealtimeForWallClock(
+                pauseStartWallClockMs,
+                pauseStartElapsedRealtimeMs,
+                settingsManager.getHearingProtectionPauseStartBootCount(),
+                SystemClock.elapsedRealtime(),
+                getCurrentBootCount(appContext)
+        );
         lastPlaybackIntensityMultiplier = resolvePersistedOrCurrentIntensity(
                 settingsManager.getHearingProtectionPauseIntensity()
         );
+        if (musicPlayerManager.isPlaying()) {
+            applyPauseRecoveryIfNeeded(SystemClock.elapsedRealtime());
+        }
     }
 
     private void restoreActiveSessionIfNeeded() {
@@ -452,12 +588,27 @@ public class HearingProtectionController implements
             clearActiveSession();
             return;
         }
-        if (activeStartElapsedRealtimeMs > 0L) {
+        long nowElapsedRealtimeMs = SystemClock.elapsedRealtime();
+        int currentBootCount = getCurrentBootCount(appContext);
+        int activeStartBootCount = settingsManager.getHearingProtectionActiveSessionStartBootCount();
+        if (isElapsedRealtimeFromCurrentBoot(
+                activeStartWallClockMs,
+                activeStartElapsedRealtimeMs,
+                activeStartBootCount,
+                nowElapsedRealtimeMs,
+                currentBootCount
+        )) {
             playbackSessionStartElapsedMs = activeStartElapsedRealtimeMs;
             return;
         }
-        long activeElapsedMs = Math.max(0L, System.currentTimeMillis() - activeStartWallClockMs);
-        playbackSessionStartElapsedMs = Math.max(0L, SystemClock.elapsedRealtime() - activeElapsedMs);
+        long activeElapsedMs = resolveDurationSinceTimestamp(
+                activeStartWallClockMs,
+                activeStartElapsedRealtimeMs,
+                activeStartBootCount,
+                nowElapsedRealtimeMs,
+                currentBootCount
+        );
+        playbackSessionStartElapsedMs = Math.max(0L, nowElapsedRealtimeMs - activeElapsedMs);
     }
 
     private void startRest() {
@@ -469,7 +620,12 @@ public class HearingProtectionController implements
         long restDurationMs = getRestDurationMs();
         restEndWallClockMs = System.currentTimeMillis() + restDurationMs;
         restEndElapsedRealtimeMs = SystemClock.elapsedRealtime() + restDurationMs;
-        settingsManager.setHearingProtectionRestState(true, restEndWallClockMs, restEndElapsedRealtimeMs);
+        settingsManager.setHearingProtectionRestState(
+                true,
+                restEndWallClockMs,
+                restEndElapsedRealtimeMs,
+                getCurrentBootCount(appContext)
+        );
         Log.i(TAG, "startRest: rest started, durationMs=" + restDurationMs
                 + ", doseMs=" + Math.round(accumulatedDose));
         musicPlayerManager.pause();
@@ -549,6 +705,24 @@ public class HearingProtectionController implements
         }
     }
 
+    private void recordPauseForServiceStopIfNeeded() {
+        // A stopped playback service with no active playback means music has stopped from
+        // the user's point of view. Persist it as a pause so load can recover offline.
+        if (playbackSessionStartElapsedMs >= 0L) {
+            foldCurrentPlaybackIntoDose();
+        }
+        if (pauseStartedElapsedMs >= 0L) {
+            if (!hasPersistedPauseSession()) {
+                persistPauseSession();
+            }
+            return;
+        }
+        if (accumulatedDose > 0d) {
+            pauseStartedElapsedMs = SystemClock.elapsedRealtime();
+            persistPauseSession();
+        }
+    }
+
     private void resetTrackingState(boolean clearDose) {
         handler.removeCallbacks(restFinishedRunnable);
         if (restActive) {
@@ -570,10 +744,22 @@ public class HearingProtectionController implements
     }
 
     private void applyPauseRecoveryIfNeeded(long nowElapsedRealtimeMs) {
-        if (pauseStartedElapsedMs < 0L) {
+        boolean hasPersistedPauseSession = hasPersistedPauseSession();
+        if (pauseStartedElapsedMs < 0L && !hasPersistedPauseSession) {
             return;
         }
-        long pauseMs = Math.max(0L, nowElapsedRealtimeMs - pauseStartedElapsedMs);
+        long pauseMs;
+        if (hasPersistedPauseSession) {
+            pauseMs = resolveDurationSinceTimestamp(
+                    settingsManager.getHearingProtectionPauseStartWallClockMs(),
+                    settingsManager.getHearingProtectionPauseStartElapsedRealtimeMs(),
+                    settingsManager.getHearingProtectionPauseStartBootCount(),
+                    nowElapsedRealtimeMs,
+                    getCurrentBootCount(appContext)
+            );
+        } else {
+            pauseMs = Math.max(0L, nowElapsedRealtimeMs - pauseStartedElapsedMs);
+        }
         pauseStartedElapsedMs = -1L;
         accumulatedDose = computeRecoveredDoseMs(
                 settingsManager,
@@ -602,27 +788,85 @@ public class HearingProtectionController implements
     }
 
     private void persistActiveSession() {
+        persistActiveSession(true);
+    }
+
+    private void persistActiveSessionForServiceStop() {
+        if (playbackSessionStartElapsedMs < 0L) {
+            restoreActiveSessionIfNeeded();
+        }
+        if (playbackSessionStartElapsedMs < 0L) {
+            playbackSessionStartElapsedMs = SystemClock.elapsedRealtime();
+        }
+        persistActiveSession(false);
+    }
+
+    private void persistActiveSession(boolean scheduleNext) {
         if (playbackSessionStartElapsedMs < 0L) {
             clearActiveSession();
             return;
         }
-        long activeElapsedMs = Math.max(0L, SystemClock.elapsedRealtime() - playbackSessionStartElapsedMs);
-        long startWallClockMs = System.currentTimeMillis() - activeElapsedMs;
+        long nowElapsedRealtimeMs = SystemClock.elapsedRealtime();
+        long nowWallClockMs = System.currentTimeMillis();
+        long activeElapsedMs = Math.max(0L, nowElapsedRealtimeMs - playbackSessionStartElapsedMs);
+        long startWallClockMs = nowWallClockMs - activeElapsedMs;
+        int currentBootCount = getCurrentBootCount(appContext);
         settingsManager.setHearingProtectionActiveSession(
                 startWallClockMs,
                 playbackSessionStartElapsedMs,
+                currentBootCount,
+                nowWallClockMs,
+                nowElapsedRealtimeMs,
+                currentBootCount,
                 (float) lastPlaybackIntensityMultiplier
         );
+        if (scheduleNext) {
+            scheduleActiveSessionPersistence();
+        }
+    }
+
+    private void persistActiveSessionCheckpointIfNeeded() {
+        if (!settingsManager.isHearingProtectionEnabled()
+                || restActive
+                || playbackSessionStartElapsedMs < 0L
+                || !musicPlayerManager.isPlaying()) {
+            return;
+        }
+        persistActiveSession();
+    }
+
+    private void scheduleActiveSessionPersistence() {
+        handler.removeCallbacks(activeSessionPersistenceRunnable);
+        if (settingsManager.isHearingProtectionEnabled()
+                && !restActive
+                && playbackSessionStartElapsedMs >= 0L
+                && musicPlayerManager.isPlaying()) {
+            handler.postDelayed(activeSessionPersistenceRunnable, ACTIVE_SESSION_PERSIST_INTERVAL_MS);
+        }
     }
 
     private void clearActiveSession() {
+        handler.removeCallbacks(activeSessionPersistenceRunnable);
         settingsManager.clearHearingProtectionActiveSession();
     }
 
     private void persistPauseSession() {
+        if (pauseStartedElapsedMs < 0L) {
+            clearPauseSession();
+            return;
+        }
+        long pauseElapsedMs = Math.max(0L, SystemClock.elapsedRealtime() - pauseStartedElapsedMs);
+        long pauseStartWallClockMs = System.currentTimeMillis() - pauseElapsedMs;
+        persistPauseSession(pauseStartWallClockMs, pauseStartedElapsedMs, getCurrentBootCount(appContext));
+    }
+
+    private void persistPauseSession(long pauseStartWallClockMs,
+                                     long pauseStartElapsedRealtimeMs,
+                                     int pauseStartBootCount) {
         settingsManager.setHearingProtectionPauseSession(
-                System.currentTimeMillis(),
-                pauseStartedElapsedMs,
+                pauseStartWallClockMs,
+                pauseStartElapsedRealtimeMs,
+                pauseStartBootCount,
                 Math.round(accumulatedDose),
                 (float) lastPlaybackIntensityMultiplier
         );
@@ -630,6 +874,174 @@ public class HearingProtectionController implements
 
     private void clearPauseSession() {
         settingsManager.clearHearingProtectionPauseSession();
+    }
+
+    private boolean hasPersistedPauseSession() {
+        return settingsManager.getHearingProtectionPauseStartElapsedRealtimeMs() > 0L
+                || settingsManager.getHearingProtectionPauseStartWallClockMs() > 0L;
+    }
+
+    private static long resolveRemainingUntilTimestamp(long wallClockMs,
+                                                       long elapsedRealtimeMs,
+                                                       int timestampBootCount,
+                                                       long nowElapsedRealtimeMs,
+                                                       int currentBootCount) {
+        if (isElapsedRealtimeFromCurrentBoot(
+                wallClockMs,
+                elapsedRealtimeMs,
+                timestampBootCount,
+                nowElapsedRealtimeMs,
+                currentBootCount
+        )) {
+            return Math.max(0L, elapsedRealtimeMs - nowElapsedRealtimeMs);
+        }
+        if (wallClockMs > 0L) {
+            return Math.max(0L, wallClockMs - System.currentTimeMillis());
+        }
+        return 0L;
+    }
+
+    private static long resolveDurationBetween(long startWallClockMs,
+                                               long startElapsedRealtimeMs,
+                                               int startBootCount,
+                                               long endWallClockMs,
+                                               long endElapsedRealtimeMs,
+                                               int endBootCount) {
+        if (startElapsedRealtimeMs > 0L
+                && endElapsedRealtimeMs > 0L
+                && endElapsedRealtimeMs >= startElapsedRealtimeMs
+                && areElapsedRealtimeValuesFromSameBoot(
+                        startWallClockMs,
+                        startElapsedRealtimeMs,
+                        startBootCount,
+                        endWallClockMs,
+                        endElapsedRealtimeMs,
+                        endBootCount
+                )) {
+            return endElapsedRealtimeMs - startElapsedRealtimeMs;
+        }
+        if (startWallClockMs > 0L && endWallClockMs > 0L && endWallClockMs >= startWallClockMs) {
+            return endWallClockMs - startWallClockMs;
+        }
+        return 0L;
+    }
+
+    private static long resolveDurationSinceTimestamp(long wallClockMs,
+                                                      long elapsedRealtimeMs,
+                                                      int timestampBootCount,
+                                                      long nowElapsedRealtimeMs,
+                                                      int currentBootCount) {
+        if (isElapsedRealtimeFromCurrentBoot(
+                wallClockMs,
+                elapsedRealtimeMs,
+                timestampBootCount,
+                nowElapsedRealtimeMs,
+                currentBootCount
+        )) {
+            return Math.max(0L, nowElapsedRealtimeMs - elapsedRealtimeMs);
+        }
+        if (wallClockMs > 0L) {
+            return Math.max(0L, System.currentTimeMillis() - wallClockMs);
+        }
+        if (timestampBootCount == UNKNOWN_BOOT_COUNT
+                && elapsedRealtimeMs > 0L
+                && elapsedRealtimeMs <= nowElapsedRealtimeMs) {
+            return Math.max(0L, nowElapsedRealtimeMs - elapsedRealtimeMs);
+        }
+        return 0L;
+    }
+
+    private static long resolveWallClockForTimestamp(long wallClockMs,
+                                                     long elapsedRealtimeMs,
+                                                     int timestampBootCount,
+                                                     long nowElapsedRealtimeMs,
+                                                     int currentBootCount) {
+        if (wallClockMs > 0L) {
+            return wallClockMs;
+        }
+        if (isElapsedRealtimeFromCurrentBoot(
+                wallClockMs,
+                elapsedRealtimeMs,
+                timestampBootCount,
+                nowElapsedRealtimeMs,
+                currentBootCount
+        )) {
+            long elapsedSinceTimestampMs = Math.max(0L, nowElapsedRealtimeMs - elapsedRealtimeMs);
+            return System.currentTimeMillis() - elapsedSinceTimestampMs;
+        }
+        return System.currentTimeMillis();
+    }
+
+    private static long resolveElapsedRealtimeForWallClock(long wallClockMs,
+                                                           long elapsedRealtimeMs,
+                                                           int timestampBootCount,
+                                                           long nowElapsedRealtimeMs,
+                                                           int currentBootCount) {
+        if (isElapsedRealtimeFromCurrentBoot(
+                wallClockMs,
+                elapsedRealtimeMs,
+                timestampBootCount,
+                nowElapsedRealtimeMs,
+                currentBootCount
+        )) {
+            return elapsedRealtimeMs;
+        }
+        if (wallClockMs > 0L) {
+            long elapsedSinceWallClockMs = Math.max(0L, System.currentTimeMillis() - wallClockMs);
+            return Math.max(0L, nowElapsedRealtimeMs - elapsedSinceWallClockMs);
+        }
+        if (timestampBootCount == UNKNOWN_BOOT_COUNT
+                && elapsedRealtimeMs > 0L
+                && elapsedRealtimeMs <= nowElapsedRealtimeMs) {
+            return elapsedRealtimeMs;
+        }
+        return nowElapsedRealtimeMs;
+    }
+
+    private static boolean areElapsedRealtimeValuesFromSameBoot(long startWallClockMs,
+                                                                long startElapsedRealtimeMs,
+                                                                int startBootCount,
+                                                                long endWallClockMs,
+                                                                long endElapsedRealtimeMs,
+                                                                int endBootCount) {
+        if (startBootCount != UNKNOWN_BOOT_COUNT && endBootCount != UNKNOWN_BOOT_COUNT) {
+            return startBootCount == endBootCount;
+        }
+        if (startWallClockMs > 0L && endWallClockMs > 0L) {
+            long startBootWallClockMs = startWallClockMs - startElapsedRealtimeMs;
+            long endBootWallClockMs = endWallClockMs - endElapsedRealtimeMs;
+            return Math.abs(startBootWallClockMs - endBootWallClockMs)
+                    <= ELAPSED_REALTIME_BOOT_MATCH_TOLERANCE_MS;
+        }
+        return true;
+    }
+
+    private static boolean isElapsedRealtimeFromCurrentBoot(long wallClockMs,
+                                                            long elapsedRealtimeMs,
+                                                            int timestampBootCount,
+                                                            long nowElapsedRealtimeMs,
+                                                            int currentBootCount) {
+        if (elapsedRealtimeMs <= 0L || elapsedRealtimeMs > nowElapsedRealtimeMs) {
+            return false;
+        }
+        if (timestampBootCount != UNKNOWN_BOOT_COUNT && currentBootCount != UNKNOWN_BOOT_COUNT) {
+            return timestampBootCount == currentBootCount;
+        }
+        if (wallClockMs <= 0L) {
+            return timestampBootCount == UNKNOWN_BOOT_COUNT;
+        }
+        long persistedBootWallClockMs = wallClockMs - elapsedRealtimeMs;
+        long currentBootWallClockMs = System.currentTimeMillis() - nowElapsedRealtimeMs;
+        return Math.abs(persistedBootWallClockMs - currentBootWallClockMs)
+                <= ELAPSED_REALTIME_BOOT_MATCH_TOLERANCE_MS;
+    }
+
+    private static int getCurrentBootCount(Context context) {
+        return Settings.Global.getInt(
+                context.getContentResolver(),
+                Settings.Global.BOOT_COUNT,
+                UNKNOWN_BOOT_COUNT
+        );
     }
 
     private double resolvePersistedOrCurrentIntensity(float persistedIntensity) {
