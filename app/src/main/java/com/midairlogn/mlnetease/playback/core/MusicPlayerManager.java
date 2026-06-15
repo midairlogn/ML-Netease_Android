@@ -661,7 +661,7 @@ public class MusicPlayerManager {
                 song.hasLoudnessNormalization = false;
             }
             notifyFullInfoAvailable(song);
-            playUri(mediaUri, index, requestId, false);
+            playUri(mediaUri, index, requestId);
         } catch (Exception e) {
             handlePlaybackFailure(index, requestId, "Local metadata/read failure: " + e.getMessage());
         }
@@ -678,14 +678,14 @@ public class MusicPlayerManager {
         java.util.Map<String, String> headers = new java.util.HashMap<>();
         headers.put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/91.0.4472.164 NeteaseMusicDesktop/2.10.2.200154");
         headers.put("Referer", "https://music.163.com/");
-        playUri(Uri.parse(url), expectedIndex, requestId, true, headers);
+        playUri(Uri.parse(url), expectedIndex, requestId, headers);
     }
 
-    private void playUri(Uri uri, int expectedIndex, long requestId, boolean remote) {
-        playUri(uri, expectedIndex, requestId, remote, null);
+    private void playUri(Uri uri, int expectedIndex, long requestId) {
+        playUri(uri, expectedIndex, requestId, null);
     }
 
-    private void playUri(Uri uri, int expectedIndex, long requestId, boolean remote, Map<String, String> headers) {
+    private void playUri(Uri uri, int expectedIndex, long requestId, Map<String, String> headers) {
         if (uri == null) {
             handlePlaybackFailure(expectedIndex, requestId, "Invalid media uri");
             return;
@@ -694,8 +694,22 @@ public class MusicPlayerManager {
             playbackActive = false;
             mediaPlayer.reset();
             setAppVolume(settingsManager.getAppVolume());
-            if (remote && headers != null && !headers.isEmpty()) {
-                mediaPlayer.setDataSource(context, uri, headers);
+
+            String scheme = uri.getScheme();
+            boolean isNetwork = scheme != null && (scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"));
+
+            if (isNetwork) {
+                if (headers != null && !headers.isEmpty()) {
+                    try {
+                        mediaPlayer.setDataSource(context, uri, headers);
+                    } catch (Exception e) {
+                        android.util.Log.w("MusicPlayerManager", "setDataSource with headers failed, falling back to string path: " + e.getMessage());
+                        mediaPlayer.reset();
+                        mediaPlayer.setDataSource(uri.toString());
+                    }
+                } else {
+                    mediaPlayer.setDataSource(uri.toString());
+                }
             } else {
                 mediaPlayer.setDataSource(context, uri);
             }
@@ -727,7 +741,21 @@ public class MusicPlayerManager {
 
             mediaPlayer.setOnErrorListener((mp, what, extra) -> {
                 playbackActive = false;
-                handlePlaybackFailure(expectedIndex, requestId, "MediaPlayer Error what=" + what + " extra=" + extra);
+                String errorType;
+                switch (what) {
+                    case MediaPlayer.MEDIA_ERROR_UNKNOWN: errorType = "MEDIA_ERROR_UNKNOWN"; break;
+                    case MediaPlayer.MEDIA_ERROR_SERVER_DIED: errorType = "MEDIA_ERROR_SERVER_DIED"; break;
+                    default: errorType = "Unknown what (" + what + ")"; break;
+                }
+                String extraType;
+                switch (extra) {
+                    case MediaPlayer.MEDIA_ERROR_IO: extraType = "MEDIA_ERROR_IO"; break;
+                    case MediaPlayer.MEDIA_ERROR_MALFORMED: extraType = "MEDIA_ERROR_MALFORMED"; break;
+                    case MediaPlayer.MEDIA_ERROR_UNSUPPORTED: extraType = "MEDIA_ERROR_UNSUPPORTED"; break;
+                    case MediaPlayer.MEDIA_ERROR_TIMED_OUT: extraType = "MEDIA_ERROR_TIMED_OUT"; break;
+                    default: extraType = "Unknown extra (" + extra + ")"; break;
+                }
+                handlePlaybackFailure(expectedIndex, requestId, "MediaPlayer Error: " + errorType + ", extra: " + extraType);
                 return true;
             });
 
@@ -738,7 +766,7 @@ public class MusicPlayerManager {
                 isSwitchingSong = false;
             }
             e.printStackTrace();
-            android.util.Log.e("MusicPlayerManager", remote ? "playUrl exception" : "playUri exception", e);
+            android.util.Log.e("MusicPlayerManager", "playUri exception", e);
             handlePlaybackFailure(expectedIndex, requestId, e.getMessage() == null ? "playback exception" : e.getMessage());
         }
     }
