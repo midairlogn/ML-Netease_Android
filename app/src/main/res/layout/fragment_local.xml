@@ -112,13 +112,14 @@
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <androidx.recyclerview.widget.RecyclerView
+        <com.midairlogn.mlnetease.shared.ui.HuaweiSafeRecyclerView
             android:id="@+id/recycler_local_songs"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_marginTop="8dp"
             android:clipToPadding="false"
-            android:paddingBottom="24dp" />
+            android:paddingBottom="24dp"
+            android:overScrollMode="never" />
 
         <LinearLayout
             android:id="@+id/layout_local_empty"
