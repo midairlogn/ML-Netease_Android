@@ -32,10 +32,10 @@ import java.util.Locale;
 
 public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener, MusicPlayerManager.OnFullInfoAvailableListener {
 
-    private static final long LYRIC_SYNC_INTERVAL_MS = 300L;
-    private static final float LYRIC_SCROLL_MILLISECONDS_PER_INCH = 110f;
-    private static final int LYRIC_SCROLL_MIN_DURATION_MS = 280;
-    private static final int LYRIC_SCROLL_MAX_DURATION_MS = 700;
+    private static final long LYRIC_SYNC_INTERVAL_MS = 100L;
+    private static final float LYRIC_SCROLL_MILLISECONDS_PER_INCH = 150f;
+    private static final int LYRIC_SCROLL_MIN_DURATION_MS = 350;
+    private static final int LYRIC_SCROLL_MAX_DURATION_MS = 800;
 
     private RecyclerView recyclerView;
     private LyricsAdapter adapter;

@@ -25,16 +25,16 @@ import java.util.List;
 public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewHolder> {
 
     private static final Object PAYLOAD_ACTIVE_STATE = new Object();
-    private static final long STYLE_ANIMATION_DURATION_MS = 260L;
+    private static final long STYLE_ANIMATION_DURATION_MS = 400L;
     private static final float ACTIVE_TEXT_SIZE_SP = 20f;
-    private static final float INACTIVE_TEXT_SIZE_SP = 15f;
+    private static final float INACTIVE_TEXT_SIZE_SP = 17f;
     private static final float ACTIVE_TRANSLATION_SIZE_SP = 14f;
     private static final float INACTIVE_TRANSLATION_SIZE_SP = 13f;
     private static final float ACTIVE_TEXT_ALPHA = 1.0f;
-    private static final float INACTIVE_TEXT_ALPHA = 0.6f;
-    private static final float ACTIVE_TRANSLATION_ALPHA = 0.85f;
-    private static final float INACTIVE_TRANSLATION_ALPHA = 0.5f;
-    private static final PathInterpolator STYLE_INTERPOLATOR = new PathInterpolator(0.2f, 0f, 0f, 1f);
+    private static final float INACTIVE_TEXT_ALPHA = 0.55f;
+    private static final float ACTIVE_TRANSLATION_ALPHA = 0.8f;
+    private static final float INACTIVE_TRANSLATION_ALPHA = 0.4f;
+    private static final PathInterpolator STYLE_INTERPOLATOR = new PathInterpolator(0.33f, 0f, 0.1f, 1f);
     private static final ArgbEvaluator ARGB_EVALUATOR = new ArgbEvaluator();
 
     public interface OnLyricClickListener {
@@ -66,6 +66,7 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewH
         if (index == activeIndex) return;
         int oldIndex = activeIndex;
         activeIndex = index;
+
         if (oldIndex >= 0 && oldIndex < lyrics.size()) notifyItemChanged(oldIndex, PAYLOAD_ACTIVE_STATE);
         if (activeIndex >= 0 && activeIndex < lyrics.size()) notifyItemChanged(activeIndex, PAYLOAD_ACTIVE_STATE);
     }
@@ -115,7 +116,6 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewH
 
     private void applyActiveState(@NonNull LyricViewHolder holder, boolean active, boolean animate) {
         int textColor = ContextCompat.getColor(holder.itemView.getContext(), active ? R.color.text_primary : R.color.text_secondary);
-        int translationColor = textColor;
         float textAlpha = active ? ACTIVE_TEXT_ALPHA : INACTIVE_TEXT_ALPHA;
         float translationAlpha = active ? ACTIVE_TRANSLATION_ALPHA : INACTIVE_TRANSLATION_ALPHA;
         float textSizePx = spToPx(holder.itemView.getResources(), active ? ACTIVE_TEXT_SIZE_SP : INACTIVE_TEXT_SIZE_SP);
@@ -127,18 +127,34 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewH
             holder.text.setTextColor(textColor);
             holder.text.setAlpha(textAlpha);
             holder.text.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSizePx);
-            holder.translation.setTextColor(translationColor);
+            holder.text.setScaleX(1f);
+            holder.text.setScaleY(1f);
+            holder.translation.setTextColor(textColor);
             holder.translation.setAlpha(translationAlpha);
             holder.translation.setTextSize(TypedValue.COMPLEX_UNIT_PX, translationSizePx);
+            holder.translation.setScaleX(1f);
+            holder.translation.setScaleY(1f);
             return;
         }
 
         int startTextColor = holder.text.getCurrentTextColor();
-        int startTranslationColor = holder.translation.getCurrentTextColor();
         float startTextAlpha = holder.text.getAlpha();
         float startTranslationAlpha = holder.translation.getAlpha();
         float startTextSizePx = holder.text.getTextSize();
         float startTranslationSizePx = holder.translation.getTextSize();
+
+        // Target layout properties applied immediately to trigger correct measurement
+        holder.text.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSizePx);
+        holder.translation.setTextSize(TypedValue.COMPLEX_UNIT_PX, translationSizePx);
+
+        // Visual scaling to bridge the gap
+        float initialTextScale = startTextSizePx / textSizePx;
+        float initialTranslationScale = startTranslationSizePx / translationSizePx;
+
+        holder.text.setScaleX(initialTextScale);
+        holder.text.setScaleY(initialTextScale);
+        holder.translation.setScaleX(initialTranslationScale);
+        holder.translation.setScaleY(initialTranslationScale);
 
         ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
         holder.styleAnimator = animator;
@@ -146,21 +162,17 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewH
         animator.setInterpolator(STYLE_INTERPOLATOR);
         animator.addUpdateListener(animation -> {
             float progress = (float) animation.getAnimatedValue();
-            holder.text.setTextColor((int) ARGB_EVALUATOR.evaluate(progress, startTextColor, textColor));
+            
+            int currentColor = (int) ARGB_EVALUATOR.evaluate(progress, startTextColor, textColor);
+            holder.text.setTextColor(currentColor);
             holder.text.setAlpha(lerp(startTextAlpha, textAlpha, progress));
-            holder.text.setTextSize(TypedValue.COMPLEX_UNIT_PX, lerp(startTextSizePx, textSizePx, progress));
-
-            holder.translation.setTextColor((int) ARGB_EVALUATOR.evaluate(progress, startTranslationColor, translationColor));
+            holder.translation.setTextColor(currentColor);
             holder.translation.setAlpha(lerp(startTranslationAlpha, translationAlpha, progress));
-            holder.translation.setTextSize(TypedValue.COMPLEX_UNIT_PX, lerp(startTranslationSizePx, translationSizePx, progress));
-        });
-        animator.addListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                if (holder.styleAnimator == animation) {
-                    holder.styleAnimator = null;
-                }
-            }
+
+            holder.text.setScaleX(lerp(initialTextScale, 1f, progress));
+            holder.text.setScaleY(lerp(initialTextScale, 1f, progress));
+            holder.translation.setScaleX(lerp(initialTranslationScale, 1f, progress));
+            holder.translation.setScaleY(lerp(initialTranslationScale, 1f, progress));
         });
         animator.start();
     }
