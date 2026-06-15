@@ -27,7 +27,6 @@ import java.util.Locale;
 import java.util.Map;
 
 public final class LocalAudioMetadataReader {
-    private static final int METADATA_KEY_LYRIC = resolveLyricMetadataKey();
 
     private LocalAudioMetadataReader() {}
 
@@ -48,7 +47,6 @@ public final class LocalAudioMetadataReader {
             metadata.album = safe(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM));
             metadata.durationMs = parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
 
-            applyLyrics(metadata, extractLyrics(retriever));
             metadata.artworkData = retriever.getEmbeddedPicture();
             metadata.isPlayable = isReadableAudio(metadata);
         } catch (RuntimeException ignored) {
@@ -116,17 +114,6 @@ public final class LocalAudioMetadataReader {
             return value == null ? 0L : Math.max(0L, Long.parseLong(value));
         } catch (NumberFormatException e) {
             return 0L;
-        }
-    }
-
-    private static String extractLyrics(MediaMetadataRetriever retriever) {
-        if (retriever == null || METADATA_KEY_LYRIC < 0) {
-            return "";
-        }
-        try {
-            return retriever.extractMetadata(METADATA_KEY_LYRIC);
-        } catch (RuntimeException ignored) {
-            return "";
         }
     }
 
@@ -441,15 +428,6 @@ public final class LocalAudioMetadataReader {
                 | ((bytes[offset + 1] & 0xFF) << 8)
                 | ((bytes[offset + 2] & 0xFF) << 16)
                 | ((bytes[offset + 3] & 0xFF) << 24);
-    }
-
-    private static int resolveLyricMetadataKey() {
-        try {
-            java.lang.reflect.Field field = MediaMetadataRetriever.class.getField("METADATA_KEY_LYRIC");
-            return field.getInt(null);
-        } catch (Exception ignored) {
-            return -1;
-        }
     }
 
     private static String safe(String value) {
