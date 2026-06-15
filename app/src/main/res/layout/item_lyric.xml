@@ -7,8 +7,8 @@
     android:focusable="true"
     android:orientation="vertical"
     android:gravity="center_horizontal"
-    android:paddingVertical="8dp"
-    android:paddingHorizontal="12dp">
+    android:paddingVertical="12dp"
+    android:paddingHorizontal="16dp">
 
     <TextView
         android:id="@+id/text_lyric_line"
@@ -19,20 +19,20 @@
         android:textColor="@color/text_secondary"
         android:gravity="center"
         android:textAlignment="center"
-        android:lineSpacingExtra="2dp"
+        android:lineSpacingExtra="3dp"
         android:fontFamily="sans-serif-medium" />
 
     <TextView
         android:id="@+id/text_lyric_translation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
+        android:layout_marginTop="4dp"
         android:textSize="12sp"
         android:textColor="@color/text_secondary"
         android:alpha="0.75"
         android:gravity="center"
         android:textAlignment="center"
-        android:lineSpacingExtra="1dp"
+        android:lineSpacingExtra="2dp"
         android:visibility="gone"
         android:fontFamily="sans-serif" />
 
