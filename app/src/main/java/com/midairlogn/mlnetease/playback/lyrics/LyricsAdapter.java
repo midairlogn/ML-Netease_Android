@@ -75,7 +75,15 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewH
     @Override
     public LyricViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_lyric, parent, false);
-        return new LyricViewHolder(view);
+        LyricViewHolder holder = new LyricViewHolder(view);
+        holder.itemView.setOnClickListener(v -> {
+            int adapterPosition = holder.getBindingAdapterPosition();
+            if (adapterPosition == RecyclerView.NO_POSITION || onLyricClickListener == null) {
+                return;
+            }
+            onLyricClickListener.onLyricClick(lyrics.get(adapterPosition), adapterPosition);
+        });
+        return holder;
     }
 
     @Override
@@ -96,13 +104,6 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewH
     private void bindLyric(@NonNull LyricViewHolder holder, int position) {
         LyricLine line = lyrics.get(position);
         holder.text.setText(line.text);
-        holder.itemView.setOnClickListener(v -> {
-            int adapterPosition = holder.getBindingAdapterPosition();
-            if (adapterPosition == RecyclerView.NO_POSITION || onLyricClickListener == null) {
-                return;
-            }
-            onLyricClickListener.onLyricClick(lyrics.get(adapterPosition), adapterPosition);
-        });
 
         boolean hasTranslation = !TextUtils.isEmpty(line.translation);
         if (showTranslation && hasTranslation) {
@@ -173,6 +174,21 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewH
             holder.text.setScaleY(lerp(initialTextScale, 1f, progress));
             holder.translation.setScaleX(lerp(initialTranslationScale, 1f, progress));
             holder.translation.setScaleY(lerp(initialTranslationScale, 1f, progress));
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (holder.styleAnimator == animation) {
+                    holder.styleAnimator = null;
+                }
+            }
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                if (holder.styleAnimator == animation) {
+                    holder.styleAnimator = null;
+                }
+            }
         });
         animator.start();
     }

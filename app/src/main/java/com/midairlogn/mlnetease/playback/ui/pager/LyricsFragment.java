@@ -268,7 +268,9 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
         handler.removeCallbacks(hideOverlayRunnable);
         if (recyclerView != null) {
             recyclerView.removeOnLayoutChangeListener(paddingLayoutListener);
+            recyclerView.setAdapter(null);
         }
+        adapter = null;
         MusicPlayerManager.getInstance(getContext()).removeOnSongChangedListener(this);
         MusicPlayerManager.getInstance(getContext()).removeOnFullInfoAvailableListener(this);
         MusicPlayerManager.getInstance(getContext()).removeOnPlaybackStateChangedListener(this);
@@ -370,7 +372,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
         MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
         if (manager == null) return;
 
-        if (!LyricsUtils.hasTimestampedLyrics(manager.getCurrentLyric())) {
+        if (!hasTimestampedLyrics) {
             if (currentLineIndex != 0) {
                 currentLineIndex = 0;
                 adapter.setActiveIndex(currentLineIndex);

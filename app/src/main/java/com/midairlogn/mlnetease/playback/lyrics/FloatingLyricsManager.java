@@ -62,6 +62,8 @@ public class FloatingLyricsManager {
     private boolean isAppVisible = false;
     private List<LyricLine> currentLyrics;
     private int currentLyricIndex = -1;
+    private float currentTextWidth = -1f;
+    private float currentTranslationWidth = -1f;
     private int screenWidth, screenHeight;
     private int portraitWidth; // Fixed width based on portrait mode
 
@@ -671,6 +673,7 @@ public class FloatingLyricsManager {
                     tvLyricsCurrent.setText(text);
                     tvLyricsCurrent.setTextColor(highlightColor);
                     tvLyricsCurrent.setScrollX(0);
+                    currentTextWidth = tvLyricsCurrent.getPaint().measureText(text);
                 }
 
                 if (tvLyricsCurrentTranslation != null) {
@@ -678,11 +681,15 @@ public class FloatingLyricsManager {
                         tvLyricsCurrentTranslation.setText(currentLine.translation);
                         tvLyricsCurrentTranslation.setTextColor(highlightColor);
                         tvLyricsCurrentTranslation.setVisibility(View.VISIBLE);
+                        currentTranslationWidth = tvLyricsCurrentTranslation.getPaint().measureText(currentLine.translation);
                     } else {
                         tvLyricsCurrentTranslation.setText("");
                         tvLyricsCurrentTranslation.setVisibility(View.GONE);
+                        currentTranslationWidth = 0;
                     }
                     tvLyricsCurrentTranslation.setScrollX(0);
+                } else {
+                    currentTranslationWidth = 0;
                 }
 
                 if (tvLyricsNext != null) {
@@ -720,19 +727,18 @@ public class FloatingLyricsManager {
             long duration = endTime - startTime;
 
             if (tvLyricsCurrent != null) {
-                tvLyricsCurrent.setScrollX(calculateScrollX(tvLyricsCurrent, posInMs, startTime, duration));
+                tvLyricsCurrent.setScrollX(calculateScrollX(tvLyricsCurrent, currentTextWidth, posInMs, startTime, duration));
             }
             if (tvLyricsCurrentTranslation != null && tvLyricsCurrentTranslation.getVisibility() == View.VISIBLE) {
-                tvLyricsCurrentTranslation.setScrollX(calculateScrollX(tvLyricsCurrentTranslation, posInMs, startTime, duration));
+                tvLyricsCurrentTranslation.setScrollX(calculateScrollX(tvLyricsCurrentTranslation, currentTranslationWidth, posInMs, startTime, duration));
             }
         }
     }
 
-    private int calculateScrollX(TextView textView, long pos, long startTime, long duration) {
+    private int calculateScrollX(TextView textView, float textWidth, long pos, long startTime, long duration) {
         if (duration <= 0) return 0;
 
-        // Measure text width first to calculate max scroll
-        float textWidth = textView.getPaint().measureText(textView.getText().toString());
+        // Use pre-measured text width to avoid frequent allocations in the loop
         int viewWidth = textView.getWidth();
         int contentWidth = 0;
         float maxScroll = 0;
