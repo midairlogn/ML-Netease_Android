@@ -1,7 +1,5 @@
 package com.midairlogn.mlnetease.playback.lyrics;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.content.res.Resources;
@@ -138,9 +136,9 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewH
             return;
         }
 
-        int startTextColor = holder.text.getCurrentTextColor();
-        float startTextAlpha = holder.text.getAlpha();
-        float startTranslationAlpha = holder.translation.getAlpha();
+        holder.startTextColor = holder.text.getCurrentTextColor();
+        holder.startTextAlpha = holder.text.getAlpha();
+        holder.startTranslationAlpha = holder.translation.getAlpha();
         float startTextSizePx = holder.text.getTextSize();
         float startTranslationSizePx = holder.translation.getTextSize();
 
@@ -149,48 +147,19 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewH
         holder.translation.setTextSize(TypedValue.COMPLEX_UNIT_PX, translationSizePx);
 
         // Visual scaling to bridge the gap
-        float initialTextScale = startTextSizePx / textSizePx;
-        float initialTranslationScale = startTranslationSizePx / translationSizePx;
+        holder.startTextScale = startTextSizePx / textSizePx;
+        holder.startTranslationScale = startTranslationSizePx / translationSizePx;
 
-        holder.text.setScaleX(initialTextScale);
-        holder.text.setScaleY(initialTextScale);
-        holder.translation.setScaleX(initialTranslationScale);
-        holder.translation.setScaleY(initialTranslationScale);
+        holder.targetTextColor = textColor;
+        holder.targetTextAlpha = textAlpha;
+        holder.targetTranslationAlpha = translationAlpha;
 
-        ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
-        holder.styleAnimator = animator;
-        animator.setDuration(STYLE_ANIMATION_DURATION_MS);
-        animator.setInterpolator(STYLE_INTERPOLATOR);
-        animator.addUpdateListener(animation -> {
-            float progress = (float) animation.getAnimatedValue();
-            
-            int currentColor = (int) ARGB_EVALUATOR.evaluate(progress, startTextColor, textColor);
-            holder.text.setTextColor(currentColor);
-            holder.text.setAlpha(lerp(startTextAlpha, textAlpha, progress));
-            holder.translation.setTextColor(currentColor);
-            holder.translation.setAlpha(lerp(startTranslationAlpha, translationAlpha, progress));
+        holder.text.setScaleX(holder.startTextScale);
+        holder.text.setScaleY(holder.startTextScale);
+        holder.translation.setScaleX(holder.startTranslationScale);
+        holder.translation.setScaleY(holder.startTranslationScale);
 
-            holder.text.setScaleX(lerp(initialTextScale, 1f, progress));
-            holder.text.setScaleY(lerp(initialTextScale, 1f, progress));
-            holder.translation.setScaleX(lerp(initialTranslationScale, 1f, progress));
-            holder.translation.setScaleY(lerp(initialTranslationScale, 1f, progress));
-        });
-        animator.addListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                if (holder.styleAnimator == animation) {
-                    holder.styleAnimator = null;
-                }
-            }
-
-            @Override
-            public void onAnimationCancel(Animator animation) {
-                if (holder.styleAnimator == animation) {
-                    holder.styleAnimator = null;
-                }
-            }
-        });
-        animator.start();
+        holder.styleAnimator.start();
     }
 
     private static float spToPx(@NonNull Resources resources, float sp) {
@@ -217,16 +186,44 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.LyricViewH
         TextView translation;
         ValueAnimator styleAnimator;
 
+        int targetTextColor;
+        float targetTextAlpha;
+        float targetTranslationAlpha;
+        float startTextScale;
+        float startTranslationScale;
+        int startTextColor;
+        float startTextAlpha;
+        float startTranslationAlpha;
+
         public LyricViewHolder(@NonNull View itemView) {
             super(itemView);
             text = itemView.findViewById(R.id.text_lyric_line);
             translation = itemView.findViewById(R.id.text_lyric_translation);
+
+            styleAnimator = ValueAnimator.ofFloat(0f, 1f);
+            styleAnimator.setDuration(STYLE_ANIMATION_DURATION_MS);
+            styleAnimator.setInterpolator(STYLE_INTERPOLATOR);
+            styleAnimator.addUpdateListener(animation -> {
+                float progress = (float) animation.getAnimatedValue();
+
+                int currentColor = (int) ARGB_EVALUATOR.evaluate(progress, startTextColor, targetTextColor);
+                text.setTextColor(currentColor);
+                text.setAlpha(lerp(startTextAlpha, targetTextAlpha, progress));
+                translation.setTextColor(currentColor);
+                translation.setAlpha(lerp(startTranslationAlpha, targetTranslationAlpha, progress));
+
+                float currentTextScale = lerp(startTextScale, 1f, progress);
+                text.setScaleX(currentTextScale);
+                text.setScaleY(currentTextScale);
+                float currentTransScale = lerp(startTranslationScale, 1f, progress);
+                translation.setScaleX(currentTransScale);
+                translation.setScaleY(currentTransScale);
+            });
         }
 
         void cancelStyleAnimation() {
             if (styleAnimator != null) {
                 styleAnimator.cancel();
-                styleAnimator = null;
             }
         }
     }

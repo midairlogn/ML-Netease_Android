@@ -268,15 +268,25 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
         handler.removeCallbacks(hideOverlayRunnable);
         if (recyclerView != null) {
             recyclerView.removeOnLayoutChangeListener(paddingLayoutListener);
+            recyclerView.stopScroll();
             recyclerView.setAdapter(null);
         }
-        adapter = null;
+        clearViewReferences();
         MusicPlayerManager.getInstance(getContext()).removeOnSongChangedListener(this);
         MusicPlayerManager.getInstance(getContext()).removeOnFullInfoAvailableListener(this);
         MusicPlayerManager.getInstance(getContext()).removeOnPlaybackStateChangedListener(this);
         if (settingsManager != null && preferenceChangeListener != null) {
             settingsManager.getPrefs().unregisterOnSharedPreferenceChangeListener(preferenceChangeListener);
         }
+    }
+
+    private void clearViewReferences() {
+        recyclerView = null;
+        adapter = null;
+        lyricsHighlightBg = null;
+        lyricsTimelineLine = null;
+        lyricsTimelineTime = null;
+        lyricsTimelinePlay = null;
     }
 
     @Override

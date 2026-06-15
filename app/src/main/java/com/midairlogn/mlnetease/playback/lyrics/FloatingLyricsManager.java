@@ -449,9 +449,32 @@ public class FloatingLyricsManager {
         }
         stopLyricUpdates();
         handler.removeCallbacks(autoCollapseTask);
-        floatingView = null; // Clean up
+        clearViewReferences();
+        currentLyrics = null;
         isExpanded = false;
         isSettingsExpanded = false;
+    }
+
+    private void clearViewReferences() {
+        floatingView = null;
+        rootLayout = null;
+        tvLyricsCurrent = null;
+        tvLyricsCurrentTranslation = null;
+        tvLyricsNext = null;
+        tvLyricsNextTranslation = null;
+        tvSongTitle = null;
+        tvSongArtist = null;
+        layoutHeader = null;
+        layoutControls = null;
+        layoutSettings = null;
+        colorRed = null;
+        colorBlue = null;
+        colorGreen = null;
+        colorYellow = null;
+        colorPurple = null;
+        btnFontPlus = null;
+        btnFontMinus = null;
+        btnTranslation = null;
     }
 
     private void expand() {
@@ -651,7 +674,11 @@ public class FloatingLyricsManager {
         int pos = musicPlayerManager.getCurrentPosition();
         int newIndex = -1;
 
-        for (int i = 0; i < currentLyrics.size(); i++) {
+        // Optimization: start searching from current index if valid
+        int searchStartIndex = (currentLyricIndex != -1 && currentLyricIndex < currentLyrics.size()
+                && currentLyrics.get(currentLyricIndex).time <= pos) ? currentLyricIndex : 0;
+
+        for (int i = searchStartIndex; i < currentLyrics.size(); i++) {
             if (currentLyrics.get(i).time > pos) {
                 break;
             }
