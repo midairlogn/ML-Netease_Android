@@ -479,6 +479,14 @@ public class MusicPlayerManager {
                 playbackActive = false;
                 e.printStackTrace();
             }
+            // Release large mutable data from the previous song to allow GC.
+            // These fields are repopulated by getSongFullInfo or local metadata read.
+            if (index != currentIndex && currentIndex >= 0 && currentIndex < playlist.size()) {
+                Song prev = playlist.get(currentIndex);
+                prev.embeddedPicture = null;
+                prev.lyric = null;
+                prev.translatedLyric = null;
+            }
         }
 
         Song song = playlist.get(index);

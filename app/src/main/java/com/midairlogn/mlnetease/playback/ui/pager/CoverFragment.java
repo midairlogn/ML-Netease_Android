@@ -12,7 +12,6 @@ import androidx.fragment.app.Fragment;
 
 import com.midairlogn.mlnetease.image.ImageDetailActivity;
 import com.midairlogn.mlnetease.image.ImageManager;
-import com.midairlogn.mlnetease.image.ImageUtils;
 import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
 import com.midairlogn.mlnetease.shared.model.Song;
@@ -21,7 +20,7 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
 
     private ImageView albumCover;
     private String currentUrl;
-    private byte[] currentEmbeddedPicture;
+    private String currentEmbeddedCacheKey;
     private boolean isPlaceholder = true;
 
     @Nullable
@@ -36,11 +35,11 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
         albumCover = view.findViewById(R.id.album_cover);
 
         albumCover.setOnClickListener(v -> {
-            if (!isPlaceholder && ((currentUrl != null && !currentUrl.isEmpty()) || hasEmbeddedPicture())) {
+            if (!isPlaceholder && ((currentUrl != null && !currentUrl.isEmpty()) || currentEmbeddedCacheKey != null)) {
                 Intent intent = new Intent(getContext(), ImageDetailActivity.class);
                 intent.putExtra("url", currentUrl);
-                if (hasEmbeddedPicture()) {
-                    intent.putExtra("image_bytes", currentEmbeddedPicture);
+                if (currentEmbeddedCacheKey != null) {
+                    intent.putExtra("embedded_cache_key", currentEmbeddedCacheKey);
                 }
                 intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(intent);
@@ -61,6 +60,7 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
         super.onDestroyView();
         MusicPlayerManager.getInstance(getContext()).removeOnSongChangedListener(this);
         MusicPlayerManager.getInstance(getContext()).removeOnFullInfoAvailableListener(this);
+        currentEmbeddedCacheKey = null;
     }
 
     @Override
@@ -79,14 +79,14 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
 
     private void updateCover(Song song) {
         if (song.embeddedPicture != null && song.embeddedPicture.length > 0) {
-            currentEmbeddedPicture = song.embeddedPicture;
-            ImageManager.getInstance().loadEmbedded("embedded:" + song.id, song.embeddedPicture, albumCover, R.drawable.ic_ml_app_logo_foreground, true);
+            currentEmbeddedCacheKey = "embedded:" + song.id;
+            ImageManager.getInstance().loadEmbedded(currentEmbeddedCacheKey, song.embeddedPicture, albumCover, R.drawable.ic_ml_app_logo_foreground, true);
             currentUrl = null;
             isPlaceholder = false;
             return;
         }
 
-        currentEmbeddedPicture = null;
+        currentEmbeddedCacheKey = null;
         String urlString = song.picUrl;
         if (urlString == null || urlString.isEmpty()) {
             albumCover.setImageResource(R.drawable.ic_ml_app_logo_foreground);
@@ -95,18 +95,9 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
             return;
         }
 
-        // Allow update if the URL is different, OR if we were previously in a placeholder state (failed load)
-        if (ImageUtils.isSameImage(urlString, currentUrl) && !isPlaceholder && albumCover.getTag() != null) {
-            return;
-        }
-
         currentUrl = urlString;
         isPlaceholder = false;
 
         ImageManager.getInstance().load(urlString, albumCover, R.drawable.ic_ml_app_logo_foreground);
-    }
-
-    private boolean hasEmbeddedPicture() {
-        return currentEmbeddedPicture != null && currentEmbeddedPicture.length > 0;
     }
 }

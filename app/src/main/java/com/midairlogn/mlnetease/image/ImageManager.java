@@ -7,40 +7,62 @@ import android.os.Looper;
 import android.util.LruCache;
 import android.widget.ImageView;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.io.ByteArrayOutputStream;
+
+import okhttp3.Call;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class ImageManager {
 
+    public interface FetchCallback {
+        void onResult(Bitmap bitmap);
+    }
+
     private static final int MAX_MINI_ART_SIZE_PX = 192;
-    private static final int MAX_COVER_ART_SIZE_PX = 1024;
-    private static final int MAX_NOTIFICATION_ART_SIZE_PX = 512;
+    private static final int MAX_COVER_ART_SIZE_PX = 512;
+    private static final int THUMBNAIL_SIZE_PX = 96;
+    private static final int FIXED_CACHE_SIZE_KB = 16 * 1024;
 
     private static ImageManager instance;
     private final LruCache<String, Bitmap> memoryCache;
     private final ExecutorService executorService;
     private final Handler mainHandler;
+    private final OkHttpClient httpClient;
+
+    private final ConcurrentHashMap<String, Boolean> activeFetches = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, List<FetchCallback>> pendingCallbacks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Call> activeCalls = new ConcurrentHashMap<>();
 
     private static String remoteCacheKey(String url, int maxDimensionPx) {
         return ImageUtils.normalizeUrl(url) + ":remote:" + Math.max(1, maxDimensionPx);
     }
 
+    private static String thumbnailCacheKey(String url) {
+        return ImageUtils.normalizeUrl(url) + ":thumb:" + THUMBNAIL_SIZE_PX;
+    }
+
     private ImageManager() {
-        final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        final int cacheSize = maxMemory / 8;
-        memoryCache = new LruCache<String, Bitmap>(cacheSize) {
+        memoryCache = new LruCache<String, Bitmap>(FIXED_CACHE_SIZE_KB) {
             @Override
             protected int sizeOf(String key, Bitmap bitmap) {
                 return bitmap.getByteCount() / 1024;
             }
         };
-        executorService = Executors.newFixedThreadPool(4);
+        executorService = Executors.newFixedThreadPool(2);
         mainHandler = new Handler(Looper.getMainLooper());
+        httpClient = new OkHttpClient.Builder()
+                .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                .build();
     }
 
     public static synchronized ImageManager getInstance() {
@@ -48,6 +70,100 @@ public class ImageManager {
             instance = new ImageManager();
         }
         return instance;
+    }
+
+    public void fetchWithCallback(String url, FetchCallback callback) {
+        if (url == null || url.isEmpty()) {
+            if (callback != null) callback.onResult(null);
+            return;
+        }
+
+        String cacheKey = remoteCacheKey(url, MAX_COVER_ART_SIZE_PX);
+
+        Bitmap cached = memoryCache.get(cacheKey);
+        if (cached != null && !cached.isRecycled()) {
+            if (callback != null) callback.onResult(cached);
+            return;
+        }
+
+        if (callback != null) {
+            pendingCallbacks.computeIfAbsent(cacheKey, k -> new ArrayList<>()).add(callback);
+        }
+
+        if (activeFetches.putIfAbsent(cacheKey, Boolean.TRUE) == null) {
+            // New fetch — cancel any stale fetch from a previous song
+            cancelStaleFetches(cacheKey);
+
+            final String fetchUrl = url;
+            executorService.submit(() -> {
+                Call call = null;
+                try {
+                    Request request = new Request.Builder()
+                            .url(fetchUrl)
+                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+                            .header("Referer", "https://music.163.com/")
+                            .build();
+                    call = httpClient.newCall(request);
+                    activeCalls.put(cacheKey, call);
+
+                    Response response = call.execute();
+                    try {
+                        if (!response.isSuccessful() || response.body() == null) {
+                            notifyCallbacks(cacheKey, null);
+                            return;
+                        }
+
+                        InputStream is = response.body().byteStream();
+                        final Bitmap bitmap = decodeSampledBitmapFromStream(is, MAX_COVER_ART_SIZE_PX);
+                        is.close();
+
+                        if (bitmap != null) {
+                            memoryCache.put(cacheKey, bitmap);
+                        }
+                        notifyCallbacks(cacheKey, bitmap);
+                    } finally {
+                        response.close();
+                    }
+                } catch (Exception e) {
+                    notifyCallbacks(cacheKey, null);
+                } finally {
+                    activeCalls.remove(cacheKey);
+                }
+            });
+        }
+    }
+
+    private void notifyCallbacks(String cacheKey, Bitmap bitmap) {
+        mainHandler.post(() -> {
+            activeFetches.remove(cacheKey);
+            List<FetchCallback> callbacks = pendingCallbacks.remove(cacheKey);
+            if (callbacks != null) {
+                for (FetchCallback cb : callbacks) {
+                    cb.onResult(bitmap);
+                }
+            }
+        });
+    }
+
+    /**
+     * Cancel HTTP fetches for stale cache keys (old URLs no longer being requested).
+     * This immediately terminates the OkHttp call, freeing the thread, connection,
+     * and response body bytes — instead of waiting for a 5-second timeout.
+     */
+    private void cancelStaleFetches(String currentCacheKey) {
+        for (String key : activeCalls.keySet()) {
+            if (!key.equals(currentCacheKey)) {
+                Call staleCall = activeCalls.remove(key);
+                if (staleCall != null) {
+                    staleCall.cancel();
+                }
+                // Also remove pending callbacks for the stale key
+                List<FetchCallback> staleCallbacks = pendingCallbacks.remove(key);
+                if (staleCallbacks != null) {
+                    staleCallbacks.clear();
+                }
+            }
+        }
     }
 
     public void load(final String url, final ImageView imageView, int placeholderResId) {
@@ -58,55 +174,73 @@ public class ImageManager {
         }
 
         String normalizedUrl = ImageUtils.normalizeUrl(url);
-        String cacheKey = remoteCacheKey(url, MAX_COVER_ART_SIZE_PX);
-
-        if (normalizedUrl.equals(imageView.getTag())) {
-            Bitmap cachedBitmap = memoryCache.get(cacheKey);
-            if (cachedBitmap != null) {
-                imageView.setImageBitmap(cachedBitmap);
-            }
-            return;
-        }
-
         imageView.setTag(normalizedUrl);
-
-        // Set placeholder immediately
         imageView.setImageResource(placeholderResId);
 
-        // Check cache
-        Bitmap cachedBitmap = memoryCache.get(cacheKey);
-        if (cachedBitmap != null) {
-            imageView.setImageBitmap(cachedBitmap);
-            return;
-        }
-
-        WeakReference<ImageView> imageViewRef = new WeakReference<>(imageView);
-        executorService.submit(() -> {
-            Bitmap bitmap = fetchBitmap(url, MAX_COVER_ART_SIZE_PX);
-            if (bitmap != null) {
-                mainHandler.post(() -> {
-                    ImageView targetView = imageViewRef.get();
-                    if (targetView == null) {
-                        return;
-                    }
-                    // This is the critical part: ensure the UI is still expecting this image
-                    if (normalizedUrl.equals(targetView.getTag())) {
-                        targetView.setImageBitmap(bitmap);
-                    }
-                });
-            } else {
-                // If it failed, clear the tag so the next call is forced to reload
-                mainHandler.post(() -> {
-                    ImageView targetView = imageViewRef.get();
-                    if (targetView == null) {
-                        return;
-                    }
-                    if (normalizedUrl.equals(targetView.getTag())) {
-                        targetView.setTag(null);
-                    }
-                });
+        fetchWithCallback(url, bitmap -> {
+            if (normalizedUrl.equals(imageView.getTag()) && bitmap != null && !bitmap.isRecycled()) {
+                imageView.setImageBitmap(bitmap);
             }
         });
+    }
+
+    public Bitmap getCachedBitmap(String url) {
+        if (url == null || url.isEmpty()) return null;
+        String cacheKey = remoteCacheKey(url, MAX_COVER_ART_SIZE_PX);
+        Bitmap cached = memoryCache.get(cacheKey);
+        if (cached != null && !cached.isRecycled()) {
+            return cached;
+        }
+        return null;
+    }
+
+    /**
+     * Returns a 96×96 thumbnail for the given bitmap, cached per source URL.
+     * Eliminates bitmap allocation churn during rapid song switching.
+     */
+    public Bitmap getThumbnail(Bitmap source, String sourceUrl) {
+        if (source == null || source.isRecycled()) return null;
+        if (sourceUrl == null || sourceUrl.isEmpty()) return createThumbnailUncached(source);
+
+        String key = thumbnailCacheKey(sourceUrl);
+        Bitmap cached = memoryCache.get(key);
+        if (cached != null && !cached.isRecycled()) {
+            return cached;
+        }
+
+        int w = source.getWidth();
+        int h = source.getHeight();
+        Bitmap thumb;
+        if (w <= THUMBNAIL_SIZE_PX && h <= THUMBNAIL_SIZE_PX) {
+            thumb = source;
+        } else {
+            float scale = Math.min((float) THUMBNAIL_SIZE_PX / w, (float) THUMBNAIL_SIZE_PX / h);
+            int tw = Math.max(1, Math.round(w * scale));
+            int th = Math.max(1, Math.round(h * scale));
+            thumb = Bitmap.createScaledBitmap(source, tw, th, true);
+        }
+        memoryCache.put(key, thumb);
+        return thumb;
+    }
+
+    /**
+     * Creates an uncached thumbnail. Use only when sourceUrl is unavailable.
+     */
+    public Bitmap createThumbnail(Bitmap source) {
+        return createThumbnailUncached(source);
+    }
+
+    private Bitmap createThumbnailUncached(Bitmap source) {
+        if (source == null || source.isRecycled()) return null;
+        int w = source.getWidth();
+        int h = source.getHeight();
+        if (w <= THUMBNAIL_SIZE_PX && h <= THUMBNAIL_SIZE_PX) {
+            return source;
+        }
+        float scale = Math.min((float) THUMBNAIL_SIZE_PX / w, (float) THUMBNAIL_SIZE_PX / h);
+        int tw = Math.max(1, Math.round(w * scale));
+        int th = Math.max(1, Math.round(h * scale));
+        return Bitmap.createScaledBitmap(source, tw, th, true);
     }
 
     public Bitmap getEmbeddedBitmap(String cacheKey, byte[] imageData, boolean large) {
@@ -115,11 +249,21 @@ public class ImageManager {
         }
         String sizedKey = cacheKey + (large ? ":large" : ":small");
         Bitmap cachedBitmap = memoryCache.get(sizedKey);
-        if (cachedBitmap != null) {
+        if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
             return cachedBitmap;
         }
 
-        Bitmap bitmap = decodeSampledBitmap(imageData, large ? MAX_COVER_ART_SIZE_PX : MAX_MINI_ART_SIZE_PX);
+        BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
+        boundsOptions.inJustDecodeBounds = true;
+        BitmapFactory.decodeByteArray(imageData, 0, imageData.length, boundsOptions);
+        if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
+            return null;
+        }
+        int targetSize = large ? MAX_COVER_ART_SIZE_PX : MAX_MINI_ART_SIZE_PX;
+        BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
+        decodeOptions.inSampleSize = calculateInSampleSize(boundsOptions, targetSize, targetSize);
+        decodeOptions.inPreferredConfig = Bitmap.Config.RGB_565;
+        Bitmap bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, decodeOptions);
         if (bitmap != null) {
             memoryCache.put(sizedKey, bitmap);
         }
@@ -136,90 +280,47 @@ public class ImageManager {
         String sizedKey = cacheKey + (large ? ":large" : ":small");
         imageView.setTag(sizedKey);
         Bitmap bitmap = getEmbeddedBitmap(cacheKey, imageData, large);
-        if (bitmap != null) {
+        if (bitmap != null && !bitmap.isRecycled()) {
             imageView.setImageBitmap(bitmap);
         } else {
             imageView.setImageResource(placeholderResId);
         }
     }
 
-    public Bitmap fetchBitmap(final String url) {
-        return fetchBitmap(url, MAX_COVER_ART_SIZE_PX);
-    }
-
-    public Bitmap fetchBitmap(final String url, int maxDimensionPx) {
-        if (url == null || url.isEmpty()) return null;
-        String cacheKey = remoteCacheKey(url, maxDimensionPx);
-        Bitmap cachedBitmap = memoryCache.get(cacheKey);
-        if (cachedBitmap != null) {
-            return cachedBitmap;
-        }
-        return fetchBitmapInternal(url, cacheKey, maxDimensionPx);
-    }
-
-    public Bitmap fetchNotificationBitmap(final String url) {
-        return fetchBitmap(url, MAX_NOTIFICATION_ART_SIZE_PX);
-    }
-
-    private Bitmap fetchBitmapInternal(String url, String cacheKey, int maxDimensionPx) {
-        HttpURLConnection connection = null;
-        InputStream is = null;
+    private Bitmap decodeSampledBitmapFromStream(InputStream is, int maxDimensionPx) {
         try {
-            connection = (HttpURLConnection) new URL(url).openConnection();
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
-            connection.setRequestProperty("Referer", "https://music.163.com/");
-            connection.setConnectTimeout(5000);
-            connection.setReadTimeout(5000);
+            byte[] data = readAllBytes(is);
+            if (data == null || data.length == 0) return null;
 
-            is = connection.getInputStream();
-            final Bitmap bitmap = decodeSampledBitmap(readAllBytes(is), maxDimensionPx);
-            if (bitmap != null) {
-                memoryCache.put(cacheKey, bitmap);
-            }
-            return bitmap;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        } finally {
-            if (is != null) {
-                try {
-                    is.close();
-                } catch (Exception ignored) {
-                }
-            }
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
-    }
-
-    private Bitmap decodeSampledBitmap(byte[] imageData, int maxDimensionPx) {
-        try {
             BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
             boundsOptions.inJustDecodeBounds = true;
-            BitmapFactory.decodeByteArray(imageData, 0, imageData.length, boundsOptions);
+            BitmapFactory.decodeByteArray(data, 0, data.length, boundsOptions);
             if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
                 return null;
             }
 
             BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
             decodeOptions.inSampleSize = calculateInSampleSize(boundsOptions, maxDimensionPx, maxDimensionPx);
-            decodeOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
-            return BitmapFactory.decodeByteArray(imageData, 0, imageData.length, decodeOptions);
+            decodeOptions.inPreferredConfig = Bitmap.Config.RGB_565;
+            Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, decodeOptions);
+            data = null;
+            return bitmap;
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
     }
 
-    private byte[] readAllBytes(InputStream inputStream) throws java.io.IOException {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    private byte[] readAllBytes(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream(8192);
         byte[] buffer = new byte[8192];
         int count;
         while ((count = inputStream.read(buffer)) != -1) {
             outputStream.write(buffer, 0, count);
         }
-        return outputStream.toByteArray();
+        byte[] result = outputStream.toByteArray();
+        outputStream.reset();
+        return result;
     }
 
     private int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {

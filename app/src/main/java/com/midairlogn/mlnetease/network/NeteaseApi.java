@@ -13,6 +13,8 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -98,6 +100,12 @@ public class NeteaseApi {
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)
             .build();
+
+    private static final ExecutorService apiExecutor = Executors.newCachedThreadPool(r -> {
+        Thread t = new Thread(r, "NeteaseApi-worker");
+        t.setDaemon(true);
+        return t;
+    });
 
     private SettingsManager settingsManager;
     private android.content.Context context;
@@ -195,7 +203,7 @@ public class NeteaseApi {
             String payloadJson = CryptoUtils.toPayloadJsonStr(id, level, headerJson);
 
             // Debug: log payload
-            android.util.Log.d("NeteaseApi", "songUrl raw payload: " + payloadJson);
+            // android.util.Log.d("NeteaseApi", "songUrl raw payload: " + payloadJson);
 
             String url = "https://interface3.music.163.com/eapi/song/enhance/player/url/v1";
             String params = CryptoUtils.eapiEncrypt(url, payloadJson);
@@ -238,7 +246,7 @@ public class NeteaseApi {
     }
 
     public void albumDetail(String id, ApiCallback callback) {
-        new Thread(() -> {
+        apiExecutor.execute(() -> {
             try {
                 Request request = getBrowserBuilder("https://music.163.com/api/v1/album/" + id)
                         .get()
@@ -297,11 +305,11 @@ public class NeteaseApi {
             } catch (Exception e) {
                 postError(callback, e.getMessage());
             }
-        }).start();
+        });
     }
 
     public void playlistDetail(String id, ApiCallback callback) {
-        new Thread(() -> {
+        apiExecutor.execute(() -> {
             try {
                 // 1. Get Playlist Info
                 Request req1 = getBrowserBuilder("https://music.163.com/api/v6/playlist/detail")
@@ -392,12 +400,12 @@ public class NeteaseApi {
             } catch (Exception e) {
                 postError(callback, e.getMessage());
             }
-        }).start();
+        });
     }
 
     public CancelableRequest getSongFullInfo(String id, ApiCallback callback) {
         CallGroup callGroup = new CallGroup();
-        new Thread(() -> {
+        apiExecutor.execute(() -> {
             try {
                 if (callGroup.isCanceled()) {
                     return;
@@ -412,7 +420,9 @@ public class NeteaseApi {
                 String url = "https://interface3.music.163.com/eapi/song/enhance/player/url/v1";
                 String params = CryptoUtils.eapiEncrypt(url, payloadJson);
 
-                android.util.Log.d("NeteaseApi", "songUrl payload: " + payloadJson);
+                // android.util.Log.d("NeteaseApi", "songUrl payload: " + payloadJson);
+                headerJson = null;
+                payloadJson = null;
 
                 FormBody bodyUrl = new FormBody.Builder().add("params", params).build();
                 // Override Referer for songUrl
@@ -421,9 +431,10 @@ public class NeteaseApi {
                 if (callGroup.isCanceled()) {
                     return;
                 }
-                android.util.Log.d("NeteaseApi", "songUrl response: " + resUrlStr);
+                // android.util.Log.d("NeteaseApi", "songUrl response: " + resUrlStr);
 
                 JSONObject jsonUrl = new JSONObject(resUrlStr);
+                resUrlStr = null;
 
                 // 2. Get Song Detail (Name, Pic, etc)
                 JSONArray jsonIds = new JSONArray();
@@ -487,6 +498,7 @@ public class NeteaseApi {
                         result.put("closedPeak", dataObj.optDouble("closedPeak", 0d));
                     }
                 }
+                jsonUrl = null;
 
                 // Process Detail
                 if (jsonDetail.has("songs") && jsonDetail.getJSONArray("songs").length() > 0) {
@@ -513,6 +525,7 @@ public class NeteaseApi {
                     postError(callback, context.getString(R.string.song_not_found));
                     return;
                 }
+                jsonDetail = null;
 
                 // Process Lyric
                 if (jsonLyric.has("lrc")) {
@@ -521,6 +534,7 @@ public class NeteaseApi {
                 if (jsonLyric.has("tlyric")) {
                     result.put("tlyric", jsonLyric.getJSONObject("tlyric").optString("lyric", ""));
                 }
+                jsonLyric = null;
 
                 result.put("id", id);
                 result.put("status", 200);
@@ -532,7 +546,7 @@ public class NeteaseApi {
                     postError(callback, e.getMessage());
                 }
             }
-        }).start();
+        });
         return callGroup;
     }
 
@@ -571,7 +585,6 @@ public class NeteaseApi {
     }
 
     private void postSuccess(ApiCallback callback, String result) {
-        android.util.Log.d("NeteaseApi", "Response Success Body: " + result);
         mainHandler.post(() -> callback.onSuccess(result));
     }
 

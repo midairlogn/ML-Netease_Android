@@ -40,9 +40,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class MusicService extends Service {
@@ -96,6 +93,7 @@ public class MusicService extends Service {
     private FloatingLyricsManager floatingLyricsManager;
     private HearingProtectionController hearingProtectionController;
     private AudioManager audioManager;
+    private SettingsManager settingsManager;
     private AudioFocusRequest audioFocusRequest;
     private boolean hasAudioFocus = false;
     private boolean pausedByFocusLoss = false;
@@ -109,11 +107,10 @@ public class MusicService extends Service {
     private String lastSongId = "";
     private String lastPicUrl = "";
     private Bitmap lastBitmap = null;
+    private Bitmap logoPlaceholder = null;
     private String fetchingPicUrl = null;
-    private final ExecutorService artworkExecutor = Executors.newSingleThreadExecutor();
     private final AtomicLong artworkRequestIdGenerator = new AtomicLong(0);
     private volatile long activeArtworkRequestId = 0;
-    private volatile Future<?> activeArtworkTask;
 
     // State tracking to prevent redundant notification updates
     private String lastNotifiedSongId = "";
@@ -171,8 +168,14 @@ public class MusicService extends Service {
     private final MusicPlayerManager.OnFullInfoAvailableListener fullInfoAvailableListener = new MusicPlayerManager.OnFullInfoAvailableListener() {
         @Override
         public void onFullInfoAvailable(Song song) {
-            // Update metadata with full info (high-res album art)
+            if (song == null) return;
+
+            // Update metadata — the full-info Song has the complete picUrl which
+            // onSongChanged did not have yet. updateMetadata is idempotent for the
+            // same song ID; the artwork fetch path will short-circuit via the
+            // fetchingPicUrl guard if nothing changed.
             updateMetadata(song);
+
             // Update lyrics for floating window
             if (floatingLyricsManager != null) {
                 floatingLyricsManager.updateLyrics(musicPlayerManager.getCurrentLyric(), musicPlayerManager.getCurrentTLyric());
@@ -246,6 +249,7 @@ public class MusicService extends Service {
         musicPlayerManager.restorePlaybackSnapshotIfNeeded();
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        settingsManager = new SettingsManager(this);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
                     .setAudioAttributes(new AudioAttributes.Builder()
@@ -283,7 +287,7 @@ public class MusicService extends Service {
             updateMetadata(currentSong);
         } else {
             Song placeholder = new Song("", getString(R.string.music_player), getString(R.string.ready_to_play), "", "");
-            showNotification(placeholder, false, BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground), true, "service:init-placeholder");
+            showNotification(placeholder, false, getLogoPlaceholder(), true, "service:init-placeholder");
         }
 
         // Ensure PlaybackState is initialized with CustomActions
@@ -301,7 +305,7 @@ public class MusicService extends Service {
                 if ("ACTION_TOGGLE_MODE".equals(action)) {
                     musicPlayerManager.togglePlaybackMode();
                 } else if ("ACTION_TOGGLE_FLOATING".equals(action)) {
-                    SettingsManager sm = new SettingsManager(MusicService.this);
+                    SettingsManager sm = settingsManager;
                     boolean currentState = sm.isFloatingLyricsEnabled();
                     if (!currentState) {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(MusicService.this)) {
@@ -739,15 +743,23 @@ public class MusicService extends Service {
         handleExternalPreviousRequest();
     }
 
+    private Bitmap getLogoPlaceholder() {
+        if (logoPlaceholder == null || logoPlaceholder.isRecycled()) {
+            logoPlaceholder = BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground);
+        }
+        return logoPlaceholder;
+    }
+
     private void updateMetadata(Song song) {
         if (song == null) {
             cancelActiveArtworkTask();
             lastSongId = "";
             lastPicUrl = "";
+            // Don't recycle - bitmap may be in ImageManager's LRU cache
             lastBitmap = null;
             fetchingPicUrl = null;
             Song placeholder = new Song("", getString(R.string.music_player), getString(R.string.ready_to_play), "", "");
-            showNotification(placeholder, false, BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground), true, "metadata:null-song");
+            showNotification(placeholder, false, getLogoPlaceholder(), true, "metadata:null-song");
             return;
         }
 
@@ -756,11 +768,14 @@ public class MusicService extends Service {
 
         if (isNewSong) {
             cancelActiveArtworkTask();
+            lastBitmap = null;
+            lastPicUrl = "";
         }
 
         if (song.embeddedPicture != null && song.embeddedPicture.length > 0) {
             Bitmap embeddedBitmap = ImageManager.getInstance().getEmbeddedBitmap("embedded:" + song.id, song.embeddedPicture, true);
             if (embeddedBitmap != null) {
+                // Don't recycle - bitmap may be in ImageManager's LRU cache
                 lastBitmap = embeddedBitmap;
                 lastPicUrl = "";
                 fetchingPicUrl = null;
@@ -770,7 +785,23 @@ public class MusicService extends Service {
             }
         }
 
-        // 1. Optimization: If the image URL hasn't changed and a bitmap already exists, update Metadata directly
+        // 1. Check ImageManager cache first (uses correct cache key with :remote:512 suffix)
+        if (song.picUrl != null && !song.picUrl.isEmpty()) {
+            Bitmap cached = ImageManager.getInstance().getCachedBitmap(song.picUrl);
+            if (cached != null) {
+                // Don't recycle - bitmap is in ImageManager's LRU cache
+                lastBitmap = cached;
+                lastPicUrl = song.picUrl;
+                fetchingPicUrl = null;
+                updateMediaSessionMetadata(song, cached);
+                if (isNewSong) {
+                    showNotification(song, isPlaybackActive(), cached, false, "metadata:cached-art");
+                }
+                return;
+            }
+        }
+
+        // 2. Optimization: If the image URL hasn't changed and a bitmap already exists, update Metadata directly
         if (song.picUrl != null && ImageUtils.isSameImage(song.picUrl, lastPicUrl) && lastBitmap != null) {
             updateMediaSessionMetadata(song, lastBitmap);
             if (isNewSong) {
@@ -779,14 +810,14 @@ public class MusicService extends Service {
             return;
         }
 
-        // 2. Prevent duplicate downloads
+        // 3. Prevent duplicate downloads
         if (song.picUrl != null && !song.picUrl.isEmpty() && ImageUtils.isSameImage(song.picUrl, fetchingPicUrl)) {
             return;
         }
 
-        // 3. Initial update for new song with logo placeholder
+        // 4. Initial update for new song with logo placeholder
         if (isNewSong) {
-            Bitmap logo = BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground);
+            Bitmap logo = getLogoPlaceholder();
             updateMediaSessionMetadata(song, logo);
             showNotification(song, isPlaybackActive(), logo, false, "metadata:new-song");
         }
@@ -801,62 +832,55 @@ public class MusicService extends Service {
         activeArtworkRequestId = artworkRequestId;
         fetchingPicUrl = song.picUrl;
 
-        activeArtworkTask = artworkExecutor.submit(() -> {
-            Bitmap albumArt = ImageManager.getInstance().fetchNotificationBitmap(song.picUrl);
-            if (Thread.currentThread().isInterrupted() || artworkRequestId != activeArtworkRequestId) {
+        ImageManager.getInstance().fetchWithCallback(song.picUrl, albumArt -> {
+            if (artworkRequestId != activeArtworkRequestId) {
                 return;
             }
             if (albumArt == null) {
-                albumArt = BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground);
+                albumArt = getLogoPlaceholder();
             }
 
-            Bitmap finalAlbumArt = albumArt;
+            final Bitmap finalAlbumArt = albumArt;
 
-            handler.post(() -> {
-                if (artworkRequestId != activeArtworkRequestId) {
-                    return;
-                }
-                if (song.picUrl != null && ImageUtils.isSameImage(song.picUrl, fetchingPicUrl)) {
-                    fetchingPicUrl = null;
-                }
+            // Callback is already on main thread (via ImageManager.mainHandler)
+            if (song.picUrl != null && ImageUtils.isSameImage(song.picUrl, fetchingPicUrl)) {
+                fetchingPicUrl = null;
+            }
 
-                if (!targetSongId.equals(lastSongId)) {
-                    return;
-                }
+            if (!targetSongId.equals(lastSongId)) {
+                return;
+            }
 
-                lastBitmap = finalAlbumArt;
-                lastPicUrl = song.picUrl;
+            // Don't recycle - bitmap is in ImageManager's LRU cache
+            lastBitmap = finalAlbumArt;
+            lastPicUrl = song.picUrl;
 
-                updateMediaSessionMetadata(song, finalAlbumArt);
-                showNotification(song, isPlaybackActive(), finalAlbumArt, true, "metadata:art-ready");
-            });
+            updateMediaSessionMetadata(song, finalAlbumArt);
+            showNotification(song, isPlaybackActive(), finalAlbumArt, true, "metadata:art-ready");
         });
     }
 
     private void cancelActiveArtworkTask() {
         activeArtworkRequestId = artworkRequestIdGenerator.incrementAndGet();
         fetchingPicUrl = null;
-        Future<?> task = activeArtworkTask;
-        activeArtworkTask = null;
-        if (task != null) {
-            task.cancel(true);
-        }
     }
 
     private void updateMediaSessionMetadata(Song song, Bitmap albumArt) {
         long duration = musicPlayerManager.getDuration();
+        Bitmap thumbnail = ImageManager.getInstance().getThumbnail(albumArt, song.picUrl);
         MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.name)
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artists)
                 .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, song.album)
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration > 0 ? duration : 0)
-                .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, albumArt);
+                .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, thumbnail);
 
         mediaSession.setMetadata(builder.build());
     }
 
     private Bitmap decodeBoundedBitmap(InputStream inputStream, int maxSizePx, Bitmap.Config preferredConfig) throws IOException {
         byte[] imageBytes = readAllBytes(inputStream);
+        if (imageBytes == null || imageBytes.length == 0) return null;
 
         BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
         boundsOptions.inJustDecodeBounds = true;
@@ -868,6 +892,7 @@ public class MusicService extends Service {
         decodeOptions.inDither = true;
 
         Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, decodeOptions);
+        imageBytes = null;
         if (bitmap == null) {
             return null;
         }
@@ -968,7 +993,7 @@ public class MusicService extends Service {
         }
         builder.addCustomAction("ACTION_TOGGLE_MODE", "Mode", modeIcon);
 
-        SettingsManager sm = new SettingsManager(this);
+        SettingsManager sm = settingsManager;
         boolean isFloatingEnabled = sm.isFloatingLyricsEnabled();
         int floatIcon = isFloatingEnabled ? R.drawable.ic_floating_active : R.drawable.ic_floating;
         builder.addCustomAction("ACTION_TOGGLE_FLOATING", "Lyrics", floatIcon);
@@ -1016,7 +1041,7 @@ public class MusicService extends Service {
     private void showNotification(Song song, boolean isPlaying, Bitmap albumArt, boolean forceUpdate, String reason) {
         String songId = (song != null) ? song.id : "";
         int mode = musicPlayerManager.getPlaybackMode();
-        boolean floatingState = new SettingsManager(this).isFloatingLyricsEnabled();
+        boolean floatingState = settingsManager.isFloatingLyricsEnabled();
 
         // Check strict deduplication (ID, State, Mode, Floating)
         boolean isSameState = songId.equals(lastNotifiedSongId) &&
@@ -1053,7 +1078,7 @@ public class MusicService extends Service {
                 albumArt = metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON);
             }
             if (albumArt == null) {
-                 albumArt = BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground);
+                 albumArt = getLogoPlaceholder();
             }
         }
 
@@ -1085,7 +1110,7 @@ public class MusicService extends Service {
         NotificationCompat.Action modeAction = new NotificationCompat.Action(modeIcon, "Mode", modePendingIntent);
 
         // Floating Action
-        SettingsManager sm = new SettingsManager(this);
+        SettingsManager sm = settingsManager;
         boolean isFloatingEnabled = sm.isFloatingLyricsEnabled();
         int floatIcon = isFloatingEnabled ? R.drawable.ic_floating_active : R.drawable.ic_floating;
 
@@ -1094,11 +1119,13 @@ public class MusicService extends Service {
             PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         NotificationCompat.Action floatAction = new NotificationCompat.Action(floatIcon, "Lyrics", floatPendingIntent);
 
+        Bitmap notificationIcon = ImageManager.getInstance().getThumbnail(albumArt, song.picUrl);
+
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(song.name)
                 .setContentText(song.artists)
                 .setSmallIcon(R.drawable.ic_ml_app_logo_foreground)
-                .setLargeIcon(albumArt)
+                .setLargeIcon(notificationIcon)
                 .setContentIntent(pendingIntent)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .addAction(modeAction)
@@ -1146,7 +1173,7 @@ public class MusicService extends Service {
         }
         boolean appVolumeChanged = (updateMask & SETTINGS_UPDATE_APP_VOLUME) != 0;
         if ((updateMask & SETTINGS_UPDATE_APP_VOLUME) != 0) {
-            SettingsManager sm = new SettingsManager(this);
+            SettingsManager sm = settingsManager;
             musicPlayerManager.setAppVolume(sm.getAppVolume());
         }
         if ((updateMask & SETTINGS_UPDATE_DYNAMIC_VOLUME) != 0) {
@@ -1182,7 +1209,7 @@ public class MusicService extends Service {
             if ("ACTION_TOGGLE_MODE".equals(action)) {
                 musicPlayerManager.togglePlaybackMode();
             } else if ("ACTION_TOGGLE_FLOATING".equals(action)) {
-                SettingsManager sm = new SettingsManager(this);
+                SettingsManager sm = settingsManager;
                 boolean currentState = sm.isFloatingLyricsEnabled();
                 if (!currentState) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
@@ -1286,7 +1313,10 @@ public class MusicService extends Service {
         musicPlayerManager.removeOnPlaybackModeChangedListener(playbackModeChangedListener);
         musicPlayerManager.removeOnSeekListener(seekListener);
         cancelActiveArtworkTask();
-        artworkExecutor.shutdownNow();
+        // Don't recycle lastBitmap - it may be in ImageManager's cache
+        lastBitmap = null;
+        // Don't recycle logoPlaceholder - it's a static resource
+        logoPlaceholder = null;
         if (hearingProtectionController != null) {
             hearingProtectionController.stop();
         }
@@ -1294,14 +1324,6 @@ public class MusicService extends Service {
             floatingLyricsManager.release();
         }
         mediaSession.release();
-        // Note: MusicPlayerManager is intentionally NOT released here.
-        // It is a singleton whose reference is cached by long-lived UI
-        // components (MainActivity, PlayerActivity, LyricsFragment, etc.),
-        // and the system can destroy/restart MusicService while those
-        // components are still alive. Calling release() would tear down
-        // the shared MediaPlayer and null the singleton handle, leaving
-        // those cached references pointing at a dead instance and
-        // fragmenting state across a new singleton built on demand.
         super.onDestroy();
     }
 }
