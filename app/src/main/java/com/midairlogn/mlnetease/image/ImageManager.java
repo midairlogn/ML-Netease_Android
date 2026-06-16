@@ -7,15 +7,18 @@ import android.os.Looper;
 import android.util.LruCache;
 import android.widget.ImageView;
 
+import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.io.ByteArrayOutputStream;
+
+import okhttp3.Call;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class ImageManager {
 
@@ -25,18 +28,25 @@ public class ImageManager {
 
     private static final int MAX_MINI_ART_SIZE_PX = 192;
     private static final int MAX_COVER_ART_SIZE_PX = 512;
+    private static final int THUMBNAIL_SIZE_PX = 96;
     private static final int FIXED_CACHE_SIZE_KB = 16 * 1024;
 
     private static ImageManager instance;
     private final LruCache<String, Bitmap> memoryCache;
     private final ExecutorService executorService;
     private final Handler mainHandler;
+    private final OkHttpClient httpClient;
 
     private final ConcurrentHashMap<String, Boolean> activeFetches = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, List<FetchCallback>> pendingCallbacks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Call> activeCalls = new ConcurrentHashMap<>();
 
     private static String remoteCacheKey(String url, int maxDimensionPx) {
         return ImageUtils.normalizeUrl(url) + ":remote:" + Math.max(1, maxDimensionPx);
+    }
+
+    private static String thumbnailCacheKey(String url) {
+        return ImageUtils.normalizeUrl(url) + ":thumb:" + THUMBNAIL_SIZE_PX;
     }
 
     private ImageManager() {
@@ -48,6 +58,10 @@ public class ImageManager {
         };
         executorService = Executors.newFixedThreadPool(2);
         mainHandler = new Handler(Looper.getMainLooper());
+        httpClient = new OkHttpClient.Builder()
+                .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                .build();
     }
 
     public static synchronized ImageManager getInstance() {
@@ -76,31 +90,76 @@ public class ImageManager {
         }
 
         if (activeFetches.putIfAbsent(cacheKey, Boolean.TRUE) == null) {
+            // New fetch — cancel any stale fetch from a previous song
+            cancelStaleFetches(cacheKey);
+
             final String fetchUrl = url;
             executorService.submit(() -> {
+                Call call = null;
                 try {
-                    Bitmap bitmap = fetchBitmap(fetchUrl, MAX_COVER_ART_SIZE_PX);
-                    mainHandler.post(() -> {
-                        activeFetches.remove(cacheKey);
-                        List<FetchCallback> callbacks = pendingCallbacks.remove(cacheKey);
-                        if (callbacks != null) {
-                            for (FetchCallback cb : callbacks) {
-                                cb.onResult(bitmap);
-                            }
-                        }
-                    });
+                    Request request = new Request.Builder()
+                            .url(fetchUrl)
+                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+                            .header("Referer", "https://music.163.com/")
+                            .build();
+                    call = httpClient.newCall(request);
+                    activeCalls.put(cacheKey, call);
+
+                    Response response = call.execute();
+                    if (!response.isSuccessful() || response.body() == null) {
+                        response.close();
+                        notifyCallbacks(cacheKey, null);
+                        return;
+                    }
+
+                    InputStream is = response.body().byteStream();
+                    final Bitmap bitmap = decodeSampledBitmapFromStream(is, MAX_COVER_ART_SIZE_PX);
+                    is.close();
+                    response.close();
+
+                    if (bitmap != null) {
+                        memoryCache.put(cacheKey, bitmap);
+                    }
+                    notifyCallbacks(cacheKey, bitmap);
                 } catch (Exception e) {
-                    mainHandler.post(() -> {
-                        activeFetches.remove(cacheKey);
-                        List<FetchCallback> callbacks = pendingCallbacks.remove(cacheKey);
-                        if (callbacks != null) {
-                            for (FetchCallback cb : callbacks) {
-                                cb.onResult(null);
-                            }
-                        }
-                    });
+                    notifyCallbacks(cacheKey, null);
+                } finally {
+                    activeCalls.remove(cacheKey);
                 }
             });
+        }
+    }
+
+    private void notifyCallbacks(String cacheKey, Bitmap bitmap) {
+        mainHandler.post(() -> {
+            activeFetches.remove(cacheKey);
+            List<FetchCallback> callbacks = pendingCallbacks.remove(cacheKey);
+            if (callbacks != null) {
+                for (FetchCallback cb : callbacks) {
+                    cb.onResult(bitmap);
+                }
+            }
+        });
+    }
+
+    /**
+     * Cancel HTTP fetches for stale cache keys (old URLs no longer being requested).
+     * This immediately terminates the OkHttp call, freeing the thread, connection,
+     * and response body bytes — instead of waiting for a 5-second timeout.
+     */
+    private void cancelStaleFetches(String currentCacheKey) {
+        for (String key : activeCalls.keySet()) {
+            if (!key.equals(currentCacheKey)) {
+                Call staleCall = activeCalls.remove(key);
+                if (staleCall != null) {
+                    staleCall.cancel();
+                }
+                // Also remove pending callbacks for the stale key
+                List<FetchCallback> staleCallbacks = pendingCallbacks.remove(key);
+                if (staleCallbacks != null) {
+                    staleCallbacks.clear();
+                }
+            }
         }
     }
 
@@ -132,9 +191,43 @@ public class ImageManager {
         return null;
     }
 
-    private static final int THUMBNAIL_SIZE_PX = 96;
+    /**
+     * Returns a 96×96 thumbnail for the given bitmap, cached per source URL.
+     * Eliminates bitmap allocation churn during rapid song switching.
+     */
+    public Bitmap getThumbnail(Bitmap source, String sourceUrl) {
+        if (source == null || source.isRecycled()) return null;
+        if (sourceUrl == null || sourceUrl.isEmpty()) return createThumbnailUncached(source);
 
+        String key = thumbnailCacheKey(sourceUrl);
+        Bitmap cached = memoryCache.get(key);
+        if (cached != null && !cached.isRecycled()) {
+            return cached;
+        }
+
+        int w = source.getWidth();
+        int h = source.getHeight();
+        Bitmap thumb;
+        if (w <= THUMBNAIL_SIZE_PX && h <= THUMBNAIL_SIZE_PX) {
+            thumb = source;
+        } else {
+            float scale = Math.min((float) THUMBNAIL_SIZE_PX / w, (float) THUMBNAIL_SIZE_PX / h);
+            int tw = Math.max(1, Math.round(w * scale));
+            int th = Math.max(1, Math.round(h * scale));
+            thumb = Bitmap.createScaledBitmap(source, tw, th, true);
+        }
+        memoryCache.put(key, thumb);
+        return thumb;
+    }
+
+    /**
+     * Creates an uncached thumbnail. Use only when sourceUrl is unavailable.
+     */
     public Bitmap createThumbnail(Bitmap source) {
+        return createThumbnailUncached(source);
+    }
+
+    private Bitmap createThumbnailUncached(Bitmap source) {
         if (source == null || source.isRecycled()) return null;
         int w = source.getWidth();
         int h = source.getHeight();
@@ -191,45 +284,6 @@ public class ImageManager {
         }
     }
 
-    private Bitmap fetchBitmap(final String url, int maxDimensionPx) {
-        if (url == null || url.isEmpty()) return null;
-        String cacheKey = remoteCacheKey(url, maxDimensionPx);
-        Bitmap cachedBitmap = memoryCache.get(cacheKey);
-        if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
-            return cachedBitmap;
-        }
-        return fetchBitmapInternal(url, cacheKey, maxDimensionPx);
-    }
-
-    private Bitmap fetchBitmapInternal(String url, String cacheKey, int maxDimensionPx) {
-        HttpURLConnection connection = null;
-        InputStream is = null;
-        try {
-            connection = (HttpURLConnection) new URL(url).openConnection();
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
-            connection.setRequestProperty("Referer", "https://music.163.com/");
-            connection.setConnectTimeout(5000);
-            connection.setReadTimeout(5000);
-
-            is = connection.getInputStream();
-            final Bitmap bitmap = decodeSampledBitmapFromStream(is, maxDimensionPx);
-            if (bitmap != null) {
-                memoryCache.put(cacheKey, bitmap);
-            }
-            return bitmap;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        } finally {
-            if (is != null) {
-                try { is.close(); } catch (Exception ignored) {}
-            }
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
-    }
-
     private Bitmap decodeSampledBitmapFromStream(InputStream is, int maxDimensionPx) {
         try {
             byte[] data = readAllBytes(is);
@@ -255,7 +309,7 @@ public class ImageManager {
     }
 
     private byte[] readAllBytes(InputStream inputStream) throws java.io.IOException {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream(8192);
+        java.io.ByteArrayOutputStream outputStream = new java.io.ByteArrayOutputStream(8192);
         byte[] buffer = new byte[8192];
         int count;
         while ((count = inputStream.read(buffer)) != -1) {

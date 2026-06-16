@@ -168,8 +168,21 @@ public class MusicService extends Service {
     private final MusicPlayerManager.OnFullInfoAvailableListener fullInfoAvailableListener = new MusicPlayerManager.OnFullInfoAvailableListener() {
         @Override
         public void onFullInfoAvailable(Song song) {
-            // Update metadata with full info (high-res album art)
-            updateMetadata(song);
+            if (song == null) return;
+
+            // If this song has embedded art and we don't have a bitmap yet, update now
+            if (song.embeddedPicture != null && song.embeddedPicture.length > 0 && lastBitmap == null) {
+                Bitmap embeddedBitmap = ImageManager.getInstance().getEmbeddedBitmap(
+                        "embedded:" + song.id, song.embeddedPicture, true);
+                if (embeddedBitmap != null) {
+                    lastBitmap = embeddedBitmap;
+                    lastPicUrl = "";
+                    fetchingPicUrl = null;
+                    updateMediaSessionMetadata(song, embeddedBitmap);
+                    showNotification(song, isPlaybackActive(), embeddedBitmap, false, "fullinfo:embedded-art");
+                }
+            }
+
             // Update lyrics for floating window
             if (floatingLyricsManager != null) {
                 floatingLyricsManager.updateLyrics(musicPlayerManager.getCurrentLyric(), musicPlayerManager.getCurrentTLyric());
@@ -861,7 +874,7 @@ public class MusicService extends Service {
 
     private void updateMediaSessionMetadata(Song song, Bitmap albumArt) {
         long duration = musicPlayerManager.getDuration();
-        Bitmap thumbnail = ImageManager.getInstance().createThumbnail(albumArt);
+        Bitmap thumbnail = ImageManager.getInstance().getThumbnail(albumArt, song.picUrl);
         MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.name)
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artists)
@@ -1113,7 +1126,7 @@ public class MusicService extends Service {
             PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         NotificationCompat.Action floatAction = new NotificationCompat.Action(floatIcon, "Lyrics", floatPendingIntent);
 
-        Bitmap notificationIcon = ImageManager.getInstance().createThumbnail(albumArt);
+        Bitmap notificationIcon = ImageManager.getInstance().getThumbnail(albumArt, song.picUrl);
 
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(song.name)
