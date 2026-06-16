@@ -505,7 +505,6 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
                     miniPlayerThumb.setTag(normalizedUrl);
                 } else {
                     miniPlayerThumb.setImageResource(R.drawable.ic_ml_app_logo_foreground);
-                    miniPlayerThumb.setTag(normalizedUrl);
                 }
             }
         } else {
