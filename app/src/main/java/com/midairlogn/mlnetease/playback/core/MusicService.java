@@ -744,18 +744,12 @@ public class MusicService extends Service {
         return logoPlaceholder;
     }
 
-    private void recycleBitmap(Bitmap oldBitmap, Bitmap newBitmap) {
-        if (oldBitmap != null && oldBitmap != newBitmap && !oldBitmap.isRecycled()) {
-            oldBitmap.recycle();
-        }
-    }
-
     private void updateMetadata(Song song) {
         if (song == null) {
             cancelActiveArtworkTask();
             lastSongId = "";
             lastPicUrl = "";
-            recycleBitmap(lastBitmap, null);
+            // Don't recycle - bitmap may be in ImageManager's LRU cache
             lastBitmap = null;
             fetchingPicUrl = null;
             Song placeholder = new Song("", getString(R.string.music_player), getString(R.string.ready_to_play), "", "");
@@ -773,7 +767,7 @@ public class MusicService extends Service {
         if (song.embeddedPicture != null && song.embeddedPicture.length > 0) {
             Bitmap embeddedBitmap = ImageManager.getInstance().getEmbeddedBitmap("embedded:" + song.id, song.embeddedPicture, true);
             if (embeddedBitmap != null) {
-                recycleBitmap(lastBitmap, embeddedBitmap);
+                // Don't recycle - bitmap may be in ImageManager's LRU cache
                 lastBitmap = embeddedBitmap;
                 lastPicUrl = "";
                 fetchingPicUrl = null;
@@ -783,7 +777,23 @@ public class MusicService extends Service {
             }
         }
 
-        // 1. Optimization: If the image URL hasn't changed and a bitmap already exists, update Metadata directly
+        // 1. Check ImageManager cache first (uses correct cache key with :remote:512 suffix)
+        if (song.picUrl != null && !song.picUrl.isEmpty()) {
+            Bitmap cached = ImageManager.getInstance().getCachedBitmap(song.picUrl);
+            if (cached != null) {
+                // Don't recycle - bitmap is in ImageManager's LRU cache
+                lastBitmap = cached;
+                lastPicUrl = song.picUrl;
+                fetchingPicUrl = null;
+                updateMediaSessionMetadata(song, cached);
+                if (isNewSong) {
+                    showNotification(song, isPlaybackActive(), cached, false, "metadata:cached-art");
+                }
+                return;
+            }
+        }
+
+        // 2. Optimization: If the image URL hasn't changed and a bitmap already exists, update Metadata directly
         if (song.picUrl != null && ImageUtils.isSameImage(song.picUrl, lastPicUrl) && lastBitmap != null) {
             updateMediaSessionMetadata(song, lastBitmap);
             if (isNewSong) {
@@ -792,12 +802,12 @@ public class MusicService extends Service {
             return;
         }
 
-        // 2. Prevent duplicate downloads
+        // 3. Prevent duplicate downloads
         if (song.picUrl != null && !song.picUrl.isEmpty() && ImageUtils.isSameImage(song.picUrl, fetchingPicUrl)) {
             return;
         }
 
-        // 3. Initial update for new song with logo placeholder
+        // 4. Initial update for new song with logo placeholder
         if (isNewSong) {
             Bitmap logo = getLogoPlaceholder();
             updateMediaSessionMetadata(song, logo);
@@ -822,27 +832,23 @@ public class MusicService extends Service {
                 albumArt = getLogoPlaceholder();
             }
 
-            Bitmap finalAlbumArt = albumArt;
+            final Bitmap finalAlbumArt = albumArt;
 
-            handler.post(() -> {
-                if (artworkRequestId != activeArtworkRequestId) {
-                    return;
-                }
-                if (song.picUrl != null && ImageUtils.isSameImage(song.picUrl, fetchingPicUrl)) {
-                    fetchingPicUrl = null;
-                }
+            // Callback is already on main thread (via ImageManager.mainHandler)
+            if (song.picUrl != null && ImageUtils.isSameImage(song.picUrl, fetchingPicUrl)) {
+                fetchingPicUrl = null;
+            }
 
-                if (!targetSongId.equals(lastSongId)) {
-                    return;
-                }
+            if (!targetSongId.equals(lastSongId)) {
+                return;
+            }
 
-                recycleBitmap(lastBitmap, finalAlbumArt);
-                lastBitmap = finalAlbumArt;
-                lastPicUrl = song.picUrl;
+            // Don't recycle - bitmap is in ImageManager's LRU cache
+            lastBitmap = finalAlbumArt;
+            lastPicUrl = song.picUrl;
 
-                updateMediaSessionMetadata(song, finalAlbumArt);
-                showNotification(song, isPlaybackActive(), finalAlbumArt, true, "metadata:art-ready");
-            });
+            updateMediaSessionMetadata(song, finalAlbumArt);
+            showNotification(song, isPlaybackActive(), finalAlbumArt, true, "metadata:art-ready");
         });
     }
 
@@ -1296,9 +1302,9 @@ public class MusicService extends Service {
         musicPlayerManager.removeOnPlaybackModeChangedListener(playbackModeChangedListener);
         musicPlayerManager.removeOnSeekListener(seekListener);
         cancelActiveArtworkTask();
-        recycleBitmap(lastBitmap, null);
+        // Don't recycle lastBitmap - it may be in ImageManager's cache
         lastBitmap = null;
-        recycleBitmap(logoPlaceholder, null);
+        // Don't recycle logoPlaceholder - it's a static resource
         logoPlaceholder = null;
         if (hearingProtectionController != null) {
             hearingProtectionController.stop();

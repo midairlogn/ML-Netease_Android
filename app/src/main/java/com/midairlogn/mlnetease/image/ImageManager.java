@@ -122,6 +122,16 @@ public class ImageManager {
         });
     }
 
+    public Bitmap getCachedBitmap(String url) {
+        if (url == null || url.isEmpty()) return null;
+        String cacheKey = remoteCacheKey(url, MAX_COVER_ART_SIZE_PX);
+        Bitmap cached = memoryCache.get(cacheKey);
+        if (cached != null && !cached.isRecycled()) {
+            return cached;
+        }
+        return null;
+    }
+
     public Bitmap getEmbeddedBitmap(String cacheKey, byte[] imageData, boolean large) {
         if (cacheKey == null || cacheKey.isEmpty() || imageData == null || imageData.length == 0) {
             return null;
