@@ -10,20 +10,21 @@ import android.widget.ImageView;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
 public class ImageManager {
 
+    public interface FetchCallback {
+        void onResult(Bitmap bitmap);
+    }
+
     private static final int MAX_MINI_ART_SIZE_PX = 192;
     private static final int MAX_COVER_ART_SIZE_PX = 512;
-    private static final int MAX_NOTIFICATION_ART_SIZE_PX = 512;
     private static final int FIXED_CACHE_SIZE_KB = 16 * 1024;
 
     private static ImageManager instance;
@@ -32,8 +33,7 @@ public class ImageManager {
     private final Handler mainHandler;
 
     private final ConcurrentHashMap<String, Boolean> activeFetches = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, List<WeakReference<ImageView>>> pendingImageViews = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Object> fetchLocks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, List<FetchCallback>> pendingCallbacks = new ConcurrentHashMap<>();
 
     private static String remoteCacheKey(String url, int maxDimensionPx) {
         return ImageUtils.normalizeUrl(url) + ":remote:" + Math.max(1, maxDimensionPx);
@@ -46,7 +46,7 @@ public class ImageManager {
                 return bitmap.getByteCount() / 1024;
             }
         };
-        executorService = Executors.newFixedThreadPool(4);
+        executorService = Executors.newFixedThreadPool(2);
         mainHandler = new Handler(Looper.getMainLooper());
     }
 
@@ -57,6 +57,53 @@ public class ImageManager {
         return instance;
     }
 
+    public void fetchWithCallback(String url, FetchCallback callback) {
+        if (url == null || url.isEmpty()) {
+            if (callback != null) callback.onResult(null);
+            return;
+        }
+
+        String cacheKey = remoteCacheKey(url, MAX_COVER_ART_SIZE_PX);
+
+        Bitmap cached = memoryCache.get(cacheKey);
+        if (cached != null && !cached.isRecycled()) {
+            if (callback != null) callback.onResult(cached);
+            return;
+        }
+
+        if (callback != null) {
+            pendingCallbacks.computeIfAbsent(cacheKey, k -> new ArrayList<>()).add(callback);
+        }
+
+        if (activeFetches.putIfAbsent(cacheKey, Boolean.TRUE) == null) {
+            final String fetchUrl = url;
+            executorService.submit(() -> {
+                try {
+                    Bitmap bitmap = fetchBitmap(fetchUrl, MAX_COVER_ART_SIZE_PX);
+                    mainHandler.post(() -> {
+                        activeFetches.remove(cacheKey);
+                        List<FetchCallback> callbacks = pendingCallbacks.remove(cacheKey);
+                        if (callbacks != null) {
+                            for (FetchCallback cb : callbacks) {
+                                cb.onResult(bitmap);
+                            }
+                        }
+                    });
+                } catch (Exception e) {
+                    mainHandler.post(() -> {
+                        activeFetches.remove(cacheKey);
+                        List<FetchCallback> callbacks = pendingCallbacks.remove(cacheKey);
+                        if (callbacks != null) {
+                            for (FetchCallback cb : callbacks) {
+                                cb.onResult(null);
+                            }
+                        }
+                    });
+                }
+            });
+        }
+    }
+
     public void load(final String url, final ImageView imageView, int placeholderResId) {
         if (url == null || url.isEmpty()) {
             imageView.setImageResource(placeholderResId);
@@ -65,57 +112,14 @@ public class ImageManager {
         }
 
         String normalizedUrl = ImageUtils.normalizeUrl(url);
-        String cacheKey = remoteCacheKey(url, MAX_COVER_ART_SIZE_PX);
-
-        // Always set tag to mark this ImageView as "interested in this URL"
         imageView.setTag(normalizedUrl);
         imageView.setImageResource(placeholderResId);
 
-        // Check cache first
-        Bitmap cachedBitmap = memoryCache.get(cacheKey);
-        if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
-            imageView.setImageBitmap(cachedBitmap);
-            return;
-        }
-
-        // Register this ImageView to be updated when the fetch completes
-        List<WeakReference<ImageView>> viewers = pendingImageViews.computeIfAbsent(
-                cacheKey, k -> new ArrayList<>());
-        synchronized (viewers) {
-            viewers.add(new WeakReference<>(imageView));
-        }
-
-        // Only start a fetch if one isn't already in progress
-        if (activeFetches.putIfAbsent(cacheKey, Boolean.TRUE) == null) {
-            final String fetchUrl = url;
-            executorService.submit(() -> {
-                try {
-                    Bitmap bitmap = fetchBitmap(fetchUrl, MAX_COVER_ART_SIZE_PX);
-                    mainHandler.post(() -> {
-                        activeFetches.remove(cacheKey);
-                        fetchLocks.remove(cacheKey);
-                        List<WeakReference<ImageView>> pending;
-                        synchronized (viewers) {
-                            pending = new ArrayList<>(viewers);
-                            viewers.clear();
-                        }
-                        pendingImageViews.remove(cacheKey);
-                        for (WeakReference<ImageView> ref : pending) {
-                            ImageView iv = ref.get();
-                            if (iv != null && normalizedUrl.equals(iv.getTag()) && bitmap != null && !bitmap.isRecycled()) {
-                                iv.setImageBitmap(bitmap);
-                            }
-                        }
-                    });
-                } catch (Exception e) {
-                    mainHandler.post(() -> {
-                        activeFetches.remove(cacheKey);
-                        fetchLocks.remove(cacheKey);
-                        pendingImageViews.remove(cacheKey);
-                    });
-                }
-            });
-        }
+        fetchWithCallback(url, bitmap -> {
+            if (normalizedUrl.equals(imageView.getTag()) && bitmap != null && !bitmap.isRecycled()) {
+                imageView.setImageBitmap(bitmap);
+            }
+        });
     }
 
     public Bitmap getEmbeddedBitmap(String cacheKey, byte[] imageData, boolean large) {
@@ -162,11 +166,7 @@ public class ImageManager {
         }
     }
 
-    public Bitmap fetchBitmap(final String url) {
-        return fetchBitmap(url, MAX_COVER_ART_SIZE_PX);
-    }
-
-    public Bitmap fetchBitmap(final String url, int maxDimensionPx) {
+    private Bitmap fetchBitmap(final String url, int maxDimensionPx) {
         if (url == null || url.isEmpty()) return null;
         String cacheKey = remoteCacheKey(url, maxDimensionPx);
         Bitmap cachedBitmap = memoryCache.get(cacheKey);
@@ -176,56 +176,31 @@ public class ImageManager {
         return fetchBitmapInternal(url, cacheKey, maxDimensionPx);
     }
 
-    public Bitmap fetchNotificationBitmap(final String url) {
-        return fetchBitmap(url, MAX_NOTIFICATION_ART_SIZE_PX);
-    }
-
-    public Bitmap getCachedBitmap(String url) {
-        if (url == null || url.isEmpty()) return null;
-        String cacheKey = remoteCacheKey(url, MAX_COVER_ART_SIZE_PX);
-        Bitmap cached = memoryCache.get(cacheKey);
-        if (cached != null && !cached.isRecycled()) {
-            return cached;
-        }
-        return null;
-    }
-
     private Bitmap fetchBitmapInternal(String url, String cacheKey, int maxDimensionPx) {
-        Object lock = fetchLocks.computeIfAbsent(cacheKey, k -> new Object());
-        synchronized (lock) {
-            Bitmap cached = memoryCache.get(cacheKey);
-            if (cached != null && !cached.isRecycled()) {
-                return cached;
+        HttpURLConnection connection = null;
+        InputStream is = null;
+        try {
+            connection = (HttpURLConnection) new URL(url).openConnection();
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+            connection.setRequestProperty("Referer", "https://music.163.com/");
+            connection.setConnectTimeout(5000);
+            connection.setReadTimeout(5000);
+
+            is = connection.getInputStream();
+            final Bitmap bitmap = decodeSampledBitmapFromStream(is, maxDimensionPx);
+            if (bitmap != null) {
+                memoryCache.put(cacheKey, bitmap);
             }
-
-            HttpURLConnection connection = null;
-            InputStream is = null;
-            try {
-                connection = (HttpURLConnection) new URL(url).openConnection();
-                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
-                connection.setRequestProperty("Referer", "https://music.163.com/");
-                connection.setConnectTimeout(5000);
-                connection.setReadTimeout(5000);
-
-                is = connection.getInputStream();
-                final Bitmap bitmap = decodeSampledBitmapFromStream(is, maxDimensionPx);
-                if (bitmap != null) {
-                    memoryCache.put(cacheKey, bitmap);
-                }
-                return bitmap;
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
-            } finally {
-                if (is != null) {
-                    try {
-                        is.close();
-                    } catch (Exception ignored) {
-                    }
-                }
-                if (connection != null) {
-                    connection.disconnect();
-                }
+            return bitmap;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (is != null) {
+                try { is.close(); } catch (Exception ignored) {}
+            }
+            if (connection != null) {
+                connection.disconnect();
             }
         }
     }

@@ -1,7 +1,6 @@
 package com.midairlogn.mlnetease.playback.ui.pager;
 
 import android.content.Intent;
-import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -97,8 +96,7 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
         }
 
         currentUrl = urlString;
-        Bitmap cached = ImageManager.getInstance().getCachedBitmap(urlString);
-        isPlaceholder = (cached == null || cached.isRecycled());
+        isPlaceholder = false;
 
         ImageManager.getInstance().load(urlString, albumCover, R.drawable.ic_ml_app_logo_foreground);
     }

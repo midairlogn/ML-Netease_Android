@@ -40,9 +40,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class MusicService extends Service {
@@ -112,10 +109,8 @@ public class MusicService extends Service {
     private Bitmap lastBitmap = null;
     private Bitmap logoPlaceholder = null;
     private String fetchingPicUrl = null;
-    private final ExecutorService artworkExecutor = Executors.newSingleThreadExecutor();
     private final AtomicLong artworkRequestIdGenerator = new AtomicLong(0);
     private volatile long activeArtworkRequestId = 0;
-    private volatile Future<?> activeArtworkTask;
 
     // State tracking to prevent redundant notification updates
     private String lastNotifiedSongId = "";
@@ -819,9 +814,8 @@ public class MusicService extends Service {
         activeArtworkRequestId = artworkRequestId;
         fetchingPicUrl = song.picUrl;
 
-        activeArtworkTask = artworkExecutor.submit(() -> {
-            Bitmap albumArt = ImageManager.getInstance().fetchNotificationBitmap(song.picUrl);
-            if (Thread.currentThread().isInterrupted() || artworkRequestId != activeArtworkRequestId) {
+        ImageManager.getInstance().fetchWithCallback(song.picUrl, albumArt -> {
+            if (artworkRequestId != activeArtworkRequestId) {
                 return;
             }
             if (albumArt == null) {
@@ -855,11 +849,6 @@ public class MusicService extends Service {
     private void cancelActiveArtworkTask() {
         activeArtworkRequestId = artworkRequestIdGenerator.incrementAndGet();
         fetchingPicUrl = null;
-        Future<?> task = activeArtworkTask;
-        activeArtworkTask = null;
-        if (task != null) {
-            task.cancel(true);
-        }
     }
 
     private void updateMediaSessionMetadata(Song song, Bitmap albumArt) {
@@ -1307,7 +1296,6 @@ public class MusicService extends Service {
         musicPlayerManager.removeOnPlaybackModeChangedListener(playbackModeChangedListener);
         musicPlayerManager.removeOnSeekListener(seekListener);
         cancelActiveArtworkTask();
-        artworkExecutor.shutdownNow();
         recycleBitmap(lastBitmap, null);
         lastBitmap = null;
         recycleBitmap(logoPlaceholder, null);

@@ -87,18 +87,15 @@ public class ImageDetailActivity extends AppCompatActivity {
 
     private void loadImage(String urlString) {
         final int requestVersion = imageRequestVersion;
-        new Thread(() -> {
-            Bitmap bitmap = ImageManager.getInstance().fetchBitmap(urlString);
-            if (bitmap != null) {
-                runOnUiThread(() -> {
-                    if (requestVersion != imageRequestVersion || !urlString.equals(imageUrl)) {
-                        return;
-                    }
-                    currentBitmap = bitmap;
-                    imageView.setImageBitmap(bitmap);
-                });
+        ImageManager.getInstance().fetchWithCallback(urlString, bitmap -> {
+            if (requestVersion != imageRequestVersion || !urlString.equals(imageUrl)) {
+                return;
             }
-        }).start();
+            if (bitmap != null && !bitmap.isRecycled()) {
+                currentBitmap = bitmap;
+                imageView.setImageBitmap(bitmap);
+            }
+        });
     }
 
     private void downloadImage() {
