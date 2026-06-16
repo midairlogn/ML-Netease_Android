@@ -170,18 +170,11 @@ public class MusicService extends Service {
         public void onFullInfoAvailable(Song song) {
             if (song == null) return;
 
-            // If this song has embedded art and we don't have a bitmap yet, update now
-            if (song.embeddedPicture != null && song.embeddedPicture.length > 0 && lastBitmap == null) {
-                Bitmap embeddedBitmap = ImageManager.getInstance().getEmbeddedBitmap(
-                        "embedded:" + song.id, song.embeddedPicture, true);
-                if (embeddedBitmap != null) {
-                    lastBitmap = embeddedBitmap;
-                    lastPicUrl = "";
-                    fetchingPicUrl = null;
-                    updateMediaSessionMetadata(song, embeddedBitmap);
-                    showNotification(song, isPlaybackActive(), embeddedBitmap, false, "fullinfo:embedded-art");
-                }
-            }
+            // Update metadata — the full-info Song has the complete picUrl which
+            // onSongChanged did not have yet. updateMetadata is idempotent for the
+            // same song ID; the artwork fetch path will short-circuit via the
+            // fetchingPicUrl guard if nothing changed.
+            updateMetadata(song);
 
             // Update lyrics for floating window
             if (floatingLyricsManager != null) {

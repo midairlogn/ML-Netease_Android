@@ -7,6 +7,7 @@ import android.os.Looper;
 import android.util.LruCache;
 import android.widget.ImageView;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -106,21 +107,23 @@ public class ImageManager {
                     activeCalls.put(cacheKey, call);
 
                     Response response = call.execute();
-                    if (!response.isSuccessful() || response.body() == null) {
+                    try {
+                        if (!response.isSuccessful() || response.body() == null) {
+                            notifyCallbacks(cacheKey, null);
+                            return;
+                        }
+
+                        InputStream is = response.body().byteStream();
+                        final Bitmap bitmap = decodeSampledBitmapFromStream(is, MAX_COVER_ART_SIZE_PX);
+                        is.close();
+
+                        if (bitmap != null) {
+                            memoryCache.put(cacheKey, bitmap);
+                        }
+                        notifyCallbacks(cacheKey, bitmap);
+                    } finally {
                         response.close();
-                        notifyCallbacks(cacheKey, null);
-                        return;
                     }
-
-                    InputStream is = response.body().byteStream();
-                    final Bitmap bitmap = decodeSampledBitmapFromStream(is, MAX_COVER_ART_SIZE_PX);
-                    is.close();
-                    response.close();
-
-                    if (bitmap != null) {
-                        memoryCache.put(cacheKey, bitmap);
-                    }
-                    notifyCallbacks(cacheKey, bitmap);
                 } catch (Exception e) {
                     notifyCallbacks(cacheKey, null);
                 } finally {
@@ -308,8 +311,8 @@ public class ImageManager {
         }
     }
 
-    private byte[] readAllBytes(InputStream inputStream) throws java.io.IOException {
-        java.io.ByteArrayOutputStream outputStream = new java.io.ByteArrayOutputStream(8192);
+    private byte[] readAllBytes(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream(8192);
         byte[] buffer = new byte[8192];
         int count;
         while ((count = inputStream.read(buffer)) != -1) {
