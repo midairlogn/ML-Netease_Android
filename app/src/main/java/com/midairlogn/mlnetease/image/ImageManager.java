@@ -11,6 +11,8 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,6 +30,9 @@ public class ImageManager {
     private final LruCache<String, Bitmap> memoryCache;
     private final ExecutorService executorService;
     private final Handler mainHandler;
+
+    private final ConcurrentHashMap<String, Boolean> activeFetches = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, List<WeakReference<ImageView>>> pendingImageViews = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Object> fetchLocks = new ConcurrentHashMap<>();
 
     private static String remoteCacheKey(String url, int maxDimensionPx) {
@@ -39,14 +44,6 @@ public class ImageManager {
             @Override
             protected int sizeOf(String key, Bitmap bitmap) {
                 return bitmap.getByteCount() / 1024;
-            }
-
-            @Override
-            protected void entryRemoved(boolean evicted, String key, Bitmap oldValue, Bitmap newValue) {
-                if (evicted && oldValue != null && !oldValue.isRecycled() && newValue == null) {
-                    oldValue.recycle();
-                }
-                fetchLocks.remove(key);
             }
         };
         executorService = Executors.newFixedThreadPool(4);
@@ -70,53 +67,55 @@ public class ImageManager {
         String normalizedUrl = ImageUtils.normalizeUrl(url);
         String cacheKey = remoteCacheKey(url, MAX_COVER_ART_SIZE_PX);
 
-        if (normalizedUrl.equals(imageView.getTag())) {
-            Bitmap cachedBitmap = memoryCache.get(cacheKey);
-            if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
-                imageView.setImageBitmap(cachedBitmap);
-                return;
-            }
-            // Cache miss — a fetch is likely in progress. Fall through to re-submit;
-            // the per-URL lock in fetchBitmapInternal prevents duplicate network fetches.
-        }
-
+        // Always set tag to mark this ImageView as "interested in this URL"
         imageView.setTag(normalizedUrl);
-
-        // Set placeholder immediately
         imageView.setImageResource(placeholderResId);
 
-        // Check cache
+        // Check cache first
         Bitmap cachedBitmap = memoryCache.get(cacheKey);
         if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
             imageView.setImageBitmap(cachedBitmap);
             return;
         }
 
-        WeakReference<ImageView> imageViewRef = new WeakReference<>(imageView);
-        executorService.submit(() -> {
-            Bitmap bitmap = fetchBitmap(url, MAX_COVER_ART_SIZE_PX);
-            if (bitmap != null && !bitmap.isRecycled()) {
-                mainHandler.post(() -> {
-                    ImageView targetView = imageViewRef.get();
-                    if (targetView == null) {
-                        return;
-                    }
-                    if (normalizedUrl.equals(targetView.getTag())) {
-                        targetView.setImageBitmap(bitmap);
-                    }
-                });
-            } else {
-                mainHandler.post(() -> {
-                    ImageView targetView = imageViewRef.get();
-                    if (targetView == null) {
-                        return;
-                    }
-                    if (normalizedUrl.equals(targetView.getTag())) {
-                        targetView.setTag(null);
-                    }
-                });
-            }
-        });
+        // Register this ImageView to be updated when the fetch completes
+        List<WeakReference<ImageView>> viewers = pendingImageViews.computeIfAbsent(
+                cacheKey, k -> new ArrayList<>());
+        synchronized (viewers) {
+            viewers.add(new WeakReference<>(imageView));
+        }
+
+        // Only start a fetch if one isn't already in progress
+        if (activeFetches.putIfAbsent(cacheKey, Boolean.TRUE) == null) {
+            final String fetchUrl = url;
+            executorService.submit(() -> {
+                try {
+                    Bitmap bitmap = fetchBitmap(fetchUrl, MAX_COVER_ART_SIZE_PX);
+                    mainHandler.post(() -> {
+                        activeFetches.remove(cacheKey);
+                        fetchLocks.remove(cacheKey);
+                        List<WeakReference<ImageView>> pending;
+                        synchronized (viewers) {
+                            pending = new ArrayList<>(viewers);
+                            viewers.clear();
+                        }
+                        pendingImageViews.remove(cacheKey);
+                        for (WeakReference<ImageView> ref : pending) {
+                            ImageView iv = ref.get();
+                            if (iv != null && normalizedUrl.equals(iv.getTag()) && bitmap != null && !bitmap.isRecycled()) {
+                                iv.setImageBitmap(bitmap);
+                            }
+                        }
+                    });
+                } catch (Exception e) {
+                    mainHandler.post(() -> {
+                        activeFetches.remove(cacheKey);
+                        fetchLocks.remove(cacheKey);
+                        pendingImageViews.remove(cacheKey);
+                    });
+                }
+            });
+        }
     }
 
     public Bitmap getEmbeddedBitmap(String cacheKey, byte[] imageData, boolean large) {
