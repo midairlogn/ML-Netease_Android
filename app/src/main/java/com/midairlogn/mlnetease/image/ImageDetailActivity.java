@@ -57,7 +57,8 @@ public class ImageDetailActivity extends AppCompatActivity {
     private void bindIntent(android.content.Intent intent) {
         imageUrl = intent.getStringExtra("url");
         String embeddedCacheKey = intent.getStringExtra("embedded_cache_key");
-        byte[] imageBytes = ImageManager.consumePendingEmbeddedBytes();
+        String embeddedBytesKey = intent.getStringExtra("embedded_bytes_key");
+        byte[] imageBytes = ImageManager.consumePendingEmbeddedBytes(embeddedBytesKey);
         imageRequestVersion++;
         currentBitmap = null;
         imageView.resetZoom();

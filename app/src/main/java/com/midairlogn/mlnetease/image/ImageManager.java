@@ -33,7 +33,7 @@ public class ImageManager {
     private static final int THUMBNAIL_SIZE_PX = 96;
     private static final int FIXED_CACHE_SIZE_KB = 16 * 1024;
 
-    private static volatile byte[] pendingEmbeddedBytes;
+    private static final ConcurrentHashMap<String, byte[]> pendingImageBytes = new ConcurrentHashMap<>();
     private static ImageManager instance;
     private final LruCache<String, Bitmap> memoryCache;
     private final ExecutorService executorService;
@@ -78,14 +78,15 @@ public class ImageManager {
         return instance;
     }
 
-    public static void setPendingEmbeddedBytes(byte[] bytes) {
-        pendingEmbeddedBytes = bytes;
+    public static String storePendingEmbeddedBytes(byte[] bytes) {
+        String key = java.util.UUID.randomUUID().toString();
+        pendingImageBytes.put(key, bytes);
+        return key;
     }
 
-    public static byte[] consumePendingEmbeddedBytes() {
-        byte[] bytes = pendingEmbeddedBytes;
-        pendingEmbeddedBytes = null;
-        return bytes;
+    public static byte[] consumePendingEmbeddedBytes(String key) {
+        if (key == null) return null;
+        return pendingImageBytes.remove(key);
     }
 
     public void fetchWithCallback(String url, FetchCallback callback) {
@@ -367,9 +368,7 @@ public class ImageManager {
             BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
             decodeOptions.inSampleSize = calculateInSampleSize(boundsOptions, maxDimensionPx, maxDimensionPx);
             decodeOptions.inPreferredConfig = Bitmap.Config.RGB_565;
-            Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, decodeOptions);
-            data = null;
-            return bitmap;
+            return BitmapFactory.decodeByteArray(data, 0, data.length, decodeOptions);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -383,9 +382,7 @@ public class ImageManager {
         while ((count = inputStream.read(buffer)) != -1) {
             outputStream.write(buffer, 0, count);
         }
-        byte[] result = outputStream.toByteArray();
-        outputStream.reset();
-        return result;
+        return outputStream.toByteArray();
     }
 
     private int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
