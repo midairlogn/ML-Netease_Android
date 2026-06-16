@@ -132,6 +132,21 @@ public class ImageManager {
         return null;
     }
 
+    private static final int THUMBNAIL_SIZE_PX = 96;
+
+    public Bitmap createThumbnail(Bitmap source) {
+        if (source == null || source.isRecycled()) return null;
+        int w = source.getWidth();
+        int h = source.getHeight();
+        if (w <= THUMBNAIL_SIZE_PX && h <= THUMBNAIL_SIZE_PX) {
+            return source;
+        }
+        float scale = Math.min((float) THUMBNAIL_SIZE_PX / w, (float) THUMBNAIL_SIZE_PX / h);
+        int tw = Math.max(1, Math.round(w * scale));
+        int th = Math.max(1, Math.round(h * scale));
+        return Bitmap.createScaledBitmap(source, tw, th, true);
+    }
+
     public Bitmap getEmbeddedBitmap(String cacheKey, byte[] imageData, boolean large) {
         if (cacheKey == null || cacheKey.isEmpty() || imageData == null || imageData.length == 0) {
             return null;

@@ -762,6 +762,8 @@ public class MusicService extends Service {
 
         if (isNewSong) {
             cancelActiveArtworkTask();
+            lastBitmap = null;
+            lastPicUrl = "";
         }
 
         if (song.embeddedPicture != null && song.embeddedPicture.length > 0) {
@@ -859,12 +861,13 @@ public class MusicService extends Service {
 
     private void updateMediaSessionMetadata(Song song, Bitmap albumArt) {
         long duration = musicPlayerManager.getDuration();
+        Bitmap thumbnail = ImageManager.getInstance().createThumbnail(albumArt);
         MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.name)
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artists)
                 .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, song.album)
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration > 0 ? duration : 0)
-                .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, albumArt);
+                .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, thumbnail);
 
         mediaSession.setMetadata(builder.build());
     }
@@ -1110,11 +1113,13 @@ public class MusicService extends Service {
             PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         NotificationCompat.Action floatAction = new NotificationCompat.Action(floatIcon, "Lyrics", floatPendingIntent);
 
+        Bitmap notificationIcon = ImageManager.getInstance().createThumbnail(albumArt);
+
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(song.name)
                 .setContentText(song.artists)
                 .setSmallIcon(R.drawable.ic_ml_app_logo_foreground)
-                .setLargeIcon(albumArt)
+                .setLargeIcon(notificationIcon)
                 .setContentIntent(pendingIntent)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .addAction(modeAction)
