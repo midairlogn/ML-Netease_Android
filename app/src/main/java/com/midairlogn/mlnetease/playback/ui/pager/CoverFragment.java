@@ -42,7 +42,7 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
                     intent.putExtra("embedded_cache_key", currentEmbeddedCacheKey);
                     Song current = MusicPlayerManager.getInstance(getContext()).getCurrentSong();
                     if (current != null && current.embeddedPicture != null) {
-                        intent.putExtra("image_bytes", current.embeddedPicture);
+                        ImageManager.setPendingEmbeddedBytes(current.embeddedPicture);
                     }
                 }
                 intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);

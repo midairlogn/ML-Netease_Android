@@ -33,6 +33,7 @@ public class ImageManager {
     private static final int THUMBNAIL_SIZE_PX = 96;
     private static final int FIXED_CACHE_SIZE_KB = 16 * 1024;
 
+    private static volatile byte[] pendingEmbeddedBytes;
     private static ImageManager instance;
     private final LruCache<String, Bitmap> memoryCache;
     private final ExecutorService executorService;
@@ -77,74 +78,33 @@ public class ImageManager {
         return instance;
     }
 
+    public static void setPendingEmbeddedBytes(byte[] bytes) {
+        pendingEmbeddedBytes = bytes;
+    }
+
+    public static byte[] consumePendingEmbeddedBytes() {
+        byte[] bytes = pendingEmbeddedBytes;
+        pendingEmbeddedBytes = null;
+        return bytes;
+    }
+
     public void fetchWithCallback(String url, FetchCallback callback) {
-        if (url == null || url.isEmpty()) {
-            if (callback != null) callback.onResult(null);
-            return;
-        }
-
-        String cacheKey = remoteCacheKey(url, MAX_COVER_ART_SIZE_PX);
-
-        Bitmap cached = memoryCache.get(cacheKey);
-        if (cached != null && !cached.isRecycled()) {
-            if (callback != null) callback.onResult(cached);
-            return;
-        }
-
-        if (callback != null) {
-            pendingCallbacks.computeIfAbsent(cacheKey, k -> new ArrayList<>()).add(callback);
-        }
-
-        if (activeFetches.putIfAbsent(cacheKey, Boolean.TRUE) == null) {
-            // New fetch — cancel any stale fetch from a previous song
-            cancelStaleFetches(cacheKey);
-
-            final String fetchUrl = url;
-            executorService.submit(() -> {
-                Call call = null;
-                try {
-                    Request request = new Request.Builder()
-                            .url(fetchUrl)
-                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-                            .header("Referer", "https://music.163.com/")
-                            .build();
-                    call = httpClient.newCall(request);
-                    activeCalls.put(cacheKey, call);
-
-                    Response response = call.execute();
-                    try {
-                        if (!response.isSuccessful() || response.body() == null) {
-                            notifyCallbacks(cacheKey, null);
-                            return;
-                        }
-
-                        InputStream is = response.body().byteStream();
-                        final Bitmap bitmap = decodeSampledBitmapFromStream(is, MAX_COVER_ART_SIZE_PX);
-                        is.close();
-
-                        if (bitmap != null) {
-                            memoryCache.put(cacheKey, bitmap);
-                        }
-                        notifyCallbacks(cacheKey, bitmap);
-                    } finally {
-                        response.close();
-                    }
-                } catch (Exception e) {
-                    notifyCallbacks(cacheKey, null);
-                } finally {
-                    activeCalls.remove(cacheKey);
-                }
-            });
-        }
+        fetchBitmap(url, MAX_COVER_ART_SIZE_PX, callback);
     }
 
     public void fetchOriginalBitmap(String url, FetchCallback callback) {
+        fetchBitmap(url, ORIGINAL_ART_SIZE_PX, callback);
+    }
+
+    private void fetchBitmap(String url, int targetSizePx, FetchCallback callback) {
         if (url == null || url.isEmpty()) {
             if (callback != null) callback.onResult(null);
             return;
         }
 
-        String cacheKey = originalRemoteCacheKey(url);
+        String cacheKey = targetSizePx == ORIGINAL_ART_SIZE_PX
+                ? originalRemoteCacheKey(url)
+                : remoteCacheKey(url, targetSizePx);
 
         Bitmap cached = memoryCache.get(cacheKey);
         if (cached != null && !cached.isRecycled()) {
@@ -179,7 +139,9 @@ public class ImageManager {
                         }
 
                         InputStream is = response.body().byteStream();
-                        final Bitmap bitmap = decodeOriginalFromStream(is);
+                        final Bitmap bitmap = targetSizePx == ORIGINAL_ART_SIZE_PX
+                                ? decodeOriginalFromStream(is)
+                                : decodeSampledBitmapFromStream(is, targetSizePx);
                         is.close();
 
                         if (bitmap != null) {
@@ -229,9 +191,7 @@ public class ImageManager {
             BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
             decodeOptions.inSampleSize = calculateInSampleSize(boundsOptions, ORIGINAL_ART_SIZE_PX, ORIGINAL_ART_SIZE_PX);
             decodeOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
-            Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, decodeOptions);
-            data = null;
-            return bitmap;
+            return BitmapFactory.decodeByteArray(data, 0, data.length, decodeOptions);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
