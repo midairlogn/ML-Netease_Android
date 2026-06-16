@@ -112,11 +112,15 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
         btnShareSong = findViewById(R.id.btn_share_song);
         btnDownloadSong = findViewById(R.id.btn_download_song);
         btnBack = findViewById(R.id.btn_back);
-        viewPager = findViewById(R.id.view_pager);
+        viewPager = findViewById(R.id.player_view_pager);
     }
 
     private void setupViewPager() {
         viewPager.setAdapter(new PlayerPagerAdapter(this));
+        View child = viewPager.getChildAt(0);
+        if (child instanceof androidx.recyclerview.widget.RecyclerView) {
+            child.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        }
     }
 
     private void setupControls() {

@@ -26,14 +26,15 @@
         android:layout_alignParentEnd="true"
         android:contentDescription="@string/close" />
 
-    <androidx.recyclerview.widget.RecyclerView
+    <com.midairlogn.mlnetease.shared.ui.HuaweiSafeRecyclerView
         android:id="@+id/rv_manage_shortcuts"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_below="@id/tv_manage_shortcuts_title"
         android:layout_above="@id/btn_add_shortcut"
         android:layout_marginTop="16dp"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="16dp"
+        android:overScrollMode="never" />
 
     <LinearLayout
         android:id="@+id/tv_manage_shortcuts_empty"

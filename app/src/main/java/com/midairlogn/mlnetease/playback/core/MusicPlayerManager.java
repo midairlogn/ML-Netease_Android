@@ -1006,8 +1006,18 @@ public class MusicPlayerManager {
         return currentTLyric;
     }
 
+    private void runOnMainThread(Runnable runnable) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            runnable.run();
+        } else {
+            mainHandler.post(runnable);
+        }
+    }
+
     public void addOnSongChangedListener(OnSongChangedListener listener) {
-        songChangedListeners.add(listener);
+        if (!songChangedListeners.contains(listener)) {
+            songChangedListeners.add(listener);
+        }
     }
 
     public void removeOnSongChangedListener(OnSongChangedListener listener) {
@@ -1015,7 +1025,9 @@ public class MusicPlayerManager {
     }
 
     public void addOnPlaylistChangedListener(OnPlaylistChangedListener listener) {
-        playlistChangedListeners.add(listener);
+        if (!playlistChangedListeners.contains(listener)) {
+            playlistChangedListeners.add(listener);
+        }
     }
 
     public void removeOnPlaylistChangedListener(OnPlaylistChangedListener listener) {
@@ -1023,7 +1035,7 @@ public class MusicPlayerManager {
     }
 
     private void notifyPlaylistChanged() {
-        mainHandler.post(() -> {
+        runOnMainThread(() -> {
             for (OnPlaylistChangedListener listener : playlistChangedListeners) {
                 listener.onPlaylistChanged(playlist);
             }
@@ -1043,15 +1055,13 @@ public class MusicPlayerManager {
                 mainHandler.removeCallbacks(pendingSongNotifyRunnable);
             }
             pendingSongNotifyRunnable = () -> {
-                // Double check we are still auto skipping. If it ended,
-                // we'll send a final notification.
                 for (OnSongChangedListener listener : songChangedListeners) {
                     listener.onSongChanged(song);
                 }
             };
             mainHandler.postDelayed(pendingSongNotifyRunnable, NOTIFY_DEBOUNCE_MS);
         } else {
-            mainHandler.post(() -> {
+            runOnMainThread(() -> {
                 for (OnSongChangedListener listener : songChangedListeners) {
                     listener.onSongChanged(song);
                 }
@@ -1060,7 +1070,9 @@ public class MusicPlayerManager {
     }
 
     public void addOnPlaybackStateChangedListener(OnPlaybackStateChangedListener listener) {
-        playbackStateChangedListeners.add(listener);
+        if (!playbackStateChangedListeners.contains(listener)) {
+            playbackStateChangedListeners.add(listener);
+        }
     }
 
     public void removeOnPlaybackStateChangedListener(OnPlaybackStateChangedListener listener) {
@@ -1068,7 +1080,9 @@ public class MusicPlayerManager {
     }
 
     public void addOnPlaybackModeChangedListener(OnPlaybackModeChangedListener listener) {
-        playbackModeChangedListeners.add(listener);
+        if (!playbackModeChangedListeners.contains(listener)) {
+            playbackModeChangedListeners.add(listener);
+        }
     }
 
     public void removeOnPlaybackModeChangedListener(OnPlaybackModeChangedListener listener) {
@@ -1076,7 +1090,9 @@ public class MusicPlayerManager {
     }
 
     public void addOnFullInfoAvailableListener(OnFullInfoAvailableListener listener) {
-        fullInfoAvailableListeners.add(listener);
+        if (!fullInfoAvailableListeners.contains(listener)) {
+            fullInfoAvailableListeners.add(listener);
+        }
     }
 
     public void removeOnFullInfoAvailableListener(OnFullInfoAvailableListener listener) {
@@ -1084,7 +1100,9 @@ public class MusicPlayerManager {
     }
 
     public void addOnSeekListener(OnSeekListener listener) {
-        seekListeners.add(listener);
+        if (!seekListeners.contains(listener)) {
+            seekListeners.add(listener);
+        }
     }
 
     public void removeOnSeekListener(OnSeekListener listener) {
@@ -1413,7 +1431,7 @@ public class MusicPlayerManager {
     }
 
     private void notifySeek(int msec) {
-        mainHandler.post(() -> {
+        runOnMainThread(() -> {
             for (OnSeekListener listener : seekListeners) {
                 listener.onSeek(msec);
             }
@@ -1438,12 +1456,11 @@ public class MusicPlayerManager {
         }
 
         // Only notify full info if we are not auto-skipping.
-        // During auto-skips, we don't care about lyrics or album art for intermediate songs.
         if (isAutoSkipping) {
             return;
         }
 
-        mainHandler.post(() -> {
+        runOnMainThread(() -> {
             for (OnFullInfoAvailableListener listener : fullInfoAvailableListeners) {
                 listener.onFullInfoAvailable(song);
             }
@@ -1451,7 +1468,7 @@ public class MusicPlayerManager {
     }
 
     private void notifyPlaybackModeChanged(int mode) {
-        mainHandler.post(() -> {
+        runOnMainThread(() -> {
             for (OnPlaybackModeChangedListener listener : playbackModeChangedListeners) {
                 listener.onPlaybackModeChanged(mode);
             }
@@ -1466,7 +1483,7 @@ public class MusicPlayerManager {
         }
         forceNextPlaybackStateDispatch = false;
         lastNotifiedState = isPlaying;
-        mainHandler.post(() -> {
+        runOnMainThread(() -> {
             for (OnPlaybackStateChangedListener listener : playbackStateChangedListeners) {
                 listener.onPlaybackStateChanged(isPlaying);
             }
@@ -1506,7 +1523,7 @@ public class MusicPlayerManager {
     private void notifyProgressUpdate(int current, int total) {
         final int safeCurrent = Math.max(0, current);
         final int safeTotal = Math.max(0, total);
-        mainHandler.post(() -> {
+        runOnMainThread(() -> {
             for (OnProgressUpdateListener listener : progressUpdateListeners) {
                 listener.onProgressUpdate(safeCurrent, safeTotal);
             }
@@ -1514,6 +1531,7 @@ public class MusicPlayerManager {
     }
 
     private boolean notifySongCompleted(Song song, int completedIndex) {
+        // ...
         boolean consumed = false;
         for (OnSongCompletionListener listener : songCompletionListeners) {
             if (listener.onSongCompleted(song, completedIndex)) {
@@ -1527,7 +1545,7 @@ public class MusicPlayerManager {
         if (playbackActionListeners.isEmpty()) {
             return;
         }
-        mainHandler.post(() -> {
+        runOnMainThread(() -> {
             for (OnPlaybackActionListener listener : playbackActionListeners) {
                 listener.onPlaybackAction(userInitiated, action);
             }

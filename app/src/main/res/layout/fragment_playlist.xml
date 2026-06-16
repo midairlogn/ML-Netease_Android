@@ -35,10 +35,11 @@
 
     </LinearLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
+    <com.midairlogn.mlnetease.shared.ui.HuaweiSafeRecyclerView
         android:id="@+id/recycler_view_playlist"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"/>
+        android:layout_weight="1"
+        android:overScrollMode="never" />
 
 </LinearLayout>

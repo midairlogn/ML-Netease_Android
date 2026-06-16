@@ -14,13 +14,14 @@
         android:background="@drawable/shape_highlight_bg"
         android:visibility="gone"/>
 
-    <androidx.recyclerview.widget.RecyclerView
+    <com.midairlogn.mlnetease.shared.ui.HuaweiSafeRecyclerView
         android:id="@+id/recycler_lyrics"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
         android:scrollbars="none"
-        android:paddingHorizontal="8dp"/>
+        android:paddingHorizontal="8dp"
+        android:overScrollMode="never" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/lyrics_timeline_overlay"

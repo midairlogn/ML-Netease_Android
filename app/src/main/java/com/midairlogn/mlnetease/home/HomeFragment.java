@@ -101,7 +101,7 @@ public class HomeFragment extends Fragment {
         searchButton = view.findViewById(R.id.search_button);
         btnResetSearch = view.findViewById(R.id.btn_reset_search);
         searchTypeGroup = view.findViewById(R.id.search_type_group);
-        recyclerView = view.findViewById(R.id.recycler_view);
+        recyclerView = view.findViewById(R.id.home_recycler_view);
         btnManageShortcuts = view.findViewById(R.id.btn_manage_shortcuts);
         emptyShortcutLayout = view.findViewById(R.id.home_shortcut_empty_state);
 

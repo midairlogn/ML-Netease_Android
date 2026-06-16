@@ -3,6 +3,7 @@ package com.midairlogn.mlnetease.playback.ui.pager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,6 +15,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.SimpleItemAnimator;
 
 import com.midairlogn.mlnetease.playback.lyrics.LyricsAdapter;
 import com.midairlogn.mlnetease.playback.lyrics.LyricsUtils;
@@ -29,6 +31,11 @@ import java.util.List;
 import java.util.Locale;
 
 public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener, MusicPlayerManager.OnFullInfoAvailableListener {
+
+    private static final long LYRIC_SYNC_INTERVAL_MS = 100L;
+    private static final float LYRIC_SCROLL_MILLISECONDS_PER_INCH = 150f;
+    private static final int LYRIC_SCROLL_MIN_DURATION_MS = 350;
+    private static final int LYRIC_SCROLL_MAX_DURATION_MS = 800;
 
     private RecyclerView recyclerView;
     private LyricsAdapter adapter;
@@ -49,6 +56,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
     private SettingsManager settingsManager;
     private android.content.SharedPreferences.OnSharedPreferenceChangeListener preferenceChangeListener;
     private boolean hasTimestampedLyrics = false;
+    private int pendingAutoScrollPosition = RecyclerView.NO_POSITION;
     private final View.OnLayoutChangeListener paddingLayoutListener = (v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> updateRecyclerPadding();
 
     @Nullable
@@ -69,6 +77,9 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
         lyricsTimelinePlay = view.findViewById(R.id.lyrics_timeline_play);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        if (recyclerView.getItemAnimator() instanceof SimpleItemAnimator) {
+            ((SimpleItemAnimator) recyclerView.getItemAnimator()).setSupportsChangeAnimations(false);
+        }
         adapter = new LyricsAdapter();
         adapter.setOnLyricClickListener((line, position) -> {
             if (!hasTimestampedLyrics) {
@@ -111,6 +122,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
                 if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    pendingAutoScrollPosition = RecyclerView.NO_POSITION;
                     if (!hasTimestampedLyrics) {
                         clearTimelineOverlay();
                         return;
@@ -125,6 +137,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
                     }
                     // Start timer to hide overlay
                     handler.postDelayed(hideOverlayRunnable, 3000);
+                    pendingAutoScrollPosition = RecyclerView.NO_POSITION;
                 }
             }
 
@@ -255,13 +268,25 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
         handler.removeCallbacks(hideOverlayRunnable);
         if (recyclerView != null) {
             recyclerView.removeOnLayoutChangeListener(paddingLayoutListener);
+            recyclerView.stopScroll();
+            recyclerView.setAdapter(null);
         }
+        clearViewReferences();
         MusicPlayerManager.getInstance(getContext()).removeOnSongChangedListener(this);
         MusicPlayerManager.getInstance(getContext()).removeOnFullInfoAvailableListener(this);
         MusicPlayerManager.getInstance(getContext()).removeOnPlaybackStateChangedListener(this);
         if (settingsManager != null && preferenceChangeListener != null) {
             settingsManager.getPrefs().unregisterOnSharedPreferenceChangeListener(preferenceChangeListener);
         }
+    }
+
+    private void clearViewReferences() {
+        recyclerView = null;
+        adapter = null;
+        lyricsHighlightBg = null;
+        lyricsTimelineLine = null;
+        lyricsTimelineTime = null;
+        lyricsTimelinePlay = null;
     }
 
     @Override
@@ -292,6 +317,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
             boolean showTranslation = settingsManager.isTranslationIntegrationEnabled();
             hasTimestampedLyrics = LyricsUtils.hasTimestampedLyrics(lyrics);
             selectedTime = -1;
+            pendingAutoScrollPosition = RecyclerView.NO_POSITION;
             clearTimelineOverlay();
             if (showTranslation && hasTimestampedLyrics) {
                 lyricLines = LyricsUtils.mergeLyricsWithTranslation(lyrics, tlyrics);
@@ -337,7 +363,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
             @Override
             public void run() {
                 syncLyrics();
-                handler.postDelayed(this, 300);
+                handler.postDelayed(this, LYRIC_SYNC_INTERVAL_MS);
             }
         };
         handler.post(updateTask);
@@ -356,7 +382,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
         MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
         if (manager == null) return;
 
-        if (!LyricsUtils.hasTimestampedLyrics(manager.getCurrentLyric())) {
+        if (!hasTimestampedLyrics) {
             if (currentLineIndex != 0) {
                 currentLineIndex = 0;
                 adapter.setActiveIndex(currentLineIndex);
@@ -390,6 +416,18 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
 
     private void scrollToPosition(int position) {
         if (recyclerView == null) return;
+        if (position < 0 || position >= lyricLines.size()) return;
+
+        RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
+        if (layoutManager == null) return;
+
+        if (pendingAutoScrollPosition == position && recyclerView.getScrollState() != RecyclerView.SCROLL_STATE_IDLE) {
+            return;
+        }
+        if (pendingAutoScrollPosition != RecyclerView.NO_POSITION && recyclerView.getScrollState() != RecyclerView.SCROLL_STATE_IDLE) {
+            recyclerView.stopScroll();
+        }
+        pendingAutoScrollPosition = position;
 
         LinearSmoothScroller smoothScroller = new LinearSmoothScroller(recyclerView.getContext()) {
             @Override
@@ -401,10 +439,38 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
             public int calculateDtToFit(int viewStart, int viewEnd, int boxStart, int boxEnd, int snapPreference) {
                 return (boxStart + (boxEnd - boxStart) / 2) - (viewStart + (viewEnd - viewStart) / 2);
             }
+
+            @Override
+            protected float calculateSpeedPerPixel(DisplayMetrics displayMetrics) {
+                return LYRIC_SCROLL_MILLISECONDS_PER_INCH / displayMetrics.densityDpi;
+            }
+
+            @Override
+            protected int calculateTimeForScrolling(int dx) {
+                int distance = Math.abs(dx);
+                if (distance == 0) {
+                    return 0;
+                }
+                return Math.min(super.calculateTimeForScrolling(distance), LYRIC_SCROLL_MAX_DURATION_MS);
+            }
+
+            @Override
+            protected int calculateTimeForDeceleration(int dx) {
+                int distance = Math.abs(dx);
+                if (distance == 0) {
+                    return 0;
+                }
+                int duration = super.calculateTimeForDeceleration(distance);
+                return Math.max(LYRIC_SCROLL_MIN_DURATION_MS, Math.min(duration, LYRIC_SCROLL_MAX_DURATION_MS));
+            }
+
+            @Override
+            protected void onStop() {
+                super.onStop();
+                pendingAutoScrollPosition = RecyclerView.NO_POSITION;
+            }
         };
         smoothScroller.setTargetPosition(position);
-        if (recyclerView.getLayoutManager() != null) {
-            recyclerView.getLayoutManager().startSmoothScroll(smoothScroller);
-        }
+        layoutManager.startSmoothScroll(smoothScroller);
     }
 }
