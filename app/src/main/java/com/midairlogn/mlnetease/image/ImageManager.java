@@ -74,8 +74,10 @@ public class ImageManager {
             Bitmap cachedBitmap = memoryCache.get(cacheKey);
             if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
                 imageView.setImageBitmap(cachedBitmap);
+                return;
             }
-            return;
+            // Cache miss — a fetch is likely in progress. Fall through to re-submit;
+            // the per-URL lock in fetchBitmapInternal prevents duplicate network fetches.
         }
 
         imageView.setTag(normalizedUrl);
