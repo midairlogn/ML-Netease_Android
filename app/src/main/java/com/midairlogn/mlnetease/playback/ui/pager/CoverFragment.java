@@ -1,7 +1,6 @@
 package com.midairlogn.mlnetease.playback.ui.pager;
 
 import android.content.Intent;
-import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,7 +12,6 @@ import androidx.fragment.app.Fragment;
 
 import com.midairlogn.mlnetease.image.ImageDetailActivity;
 import com.midairlogn.mlnetease.image.ImageManager;
-import com.midairlogn.mlnetease.image.ImageUtils;
 import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
 import com.midairlogn.mlnetease.shared.model.Song;
@@ -98,15 +96,8 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
         }
 
         currentUrl = urlString;
-        Bitmap cached = ImageManager.getInstance().getCachedBitmap(urlString);
-        if (cached != null && !cached.isRecycled()) {
-            albumCover.setImageBitmap(cached);
-            albumCover.setTag(ImageUtils.normalizeUrl(urlString));
-            isPlaceholder = false;
-        } else {
-            albumCover.setImageResource(R.drawable.ic_ml_app_logo_foreground);
-            albumCover.setTag(ImageUtils.normalizeUrl(urlString));
-            isPlaceholder = true;
-        }
+        isPlaceholder = false;
+
+        ImageManager.getInstance().load(urlString, albumCover, R.drawable.ic_ml_app_logo_foreground);
     }
 }
