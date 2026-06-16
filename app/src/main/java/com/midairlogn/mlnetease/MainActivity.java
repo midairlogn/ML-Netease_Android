@@ -1,6 +1,7 @@
 package com.midairlogn.mlnetease;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageButton;
@@ -495,11 +496,17 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         if (song.embeddedPicture != null && song.embeddedPicture.length > 0) {
             ImageManager.getInstance().loadEmbedded("embedded:" + song.id, song.embeddedPicture, miniPlayerThumb, R.drawable.ic_ml_app_logo_foreground, false);
         } else if (song.picUrl != null && !song.picUrl.isEmpty()) {
-            // Check if current view is showing placeholder (logo)
+            String normalizedUrl = ImageUtils.normalizeUrl(song.picUrl);
             boolean isPlaceholder = miniPlayerThumb.getTag() == null || miniPlayerThumb.getTag().equals(R.drawable.ic_ml_app_logo_foreground);
             if (isPlaceholder || !ImageUtils.isSameImage(song.picUrl, (String) miniPlayerThumb.getTag())) {
-                miniPlayerThumb.setTag(song.picUrl);
-                ImageManager.getInstance().load(song.picUrl, miniPlayerThumb, R.drawable.ic_ml_app_logo_foreground);
+                Bitmap cached = ImageManager.getInstance().getCachedBitmap(song.picUrl);
+                if (cached != null && !cached.isRecycled()) {
+                    miniPlayerThumb.setImageBitmap(cached);
+                    miniPlayerThumb.setTag(normalizedUrl);
+                } else {
+                    miniPlayerThumb.setImageResource(R.drawable.ic_ml_app_logo_foreground);
+                    miniPlayerThumb.setTag(normalizedUrl);
+                }
             }
         } else {
             miniPlayerThumb.setImageResource(R.drawable.ic_ml_app_logo_foreground);

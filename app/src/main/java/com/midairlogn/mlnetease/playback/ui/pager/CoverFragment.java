@@ -1,6 +1,7 @@
 package com.midairlogn.mlnetease.playback.ui.pager;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -96,14 +97,16 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
             return;
         }
 
-        // Allow update if the URL is different, OR if we were previously in a placeholder state (failed load)
-        if (ImageUtils.isSameImage(urlString, currentUrl) && !isPlaceholder && albumCover.getTag() != null) {
-            return;
-        }
-
         currentUrl = urlString;
-        isPlaceholder = false;
-
-        ImageManager.getInstance().load(urlString, albumCover, R.drawable.ic_ml_app_logo_foreground);
+        Bitmap cached = ImageManager.getInstance().getCachedBitmap(urlString);
+        if (cached != null && !cached.isRecycled()) {
+            albumCover.setImageBitmap(cached);
+            albumCover.setTag(ImageUtils.normalizeUrl(urlString));
+            isPlaceholder = false;
+        } else {
+            albumCover.setImageResource(R.drawable.ic_ml_app_logo_foreground);
+            albumCover.setTag(ImageUtils.normalizeUrl(urlString));
+            isPlaceholder = true;
+        }
     }
 }

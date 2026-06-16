@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.lang.ref.WeakReference;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.io.ByteArrayInputStream;
@@ -27,6 +28,7 @@ public class ImageManager {
     private final LruCache<String, Bitmap> memoryCache;
     private final ExecutorService executorService;
     private final Handler mainHandler;
+    private final ConcurrentHashMap<String, Object> fetchLocks = new ConcurrentHashMap<>();
 
     private static String remoteCacheKey(String url, int maxDimensionPx) {
         return ImageUtils.normalizeUrl(url) + ":remote:" + Math.max(1, maxDimensionPx);
@@ -44,6 +46,7 @@ public class ImageManager {
                 if (evicted && oldValue != null && !oldValue.isRecycled() && newValue == null) {
                     oldValue.recycle();
                 }
+                fetchLocks.remove(key);
             }
         };
         executorService = Executors.newFixedThreadPool(4);
@@ -176,34 +179,52 @@ public class ImageManager {
         return fetchBitmap(url, MAX_NOTIFICATION_ART_SIZE_PX);
     }
 
-    private Bitmap fetchBitmapInternal(String url, String cacheKey, int maxDimensionPx) {
-        HttpURLConnection connection = null;
-        InputStream is = null;
-        try {
-            connection = (HttpURLConnection) new URL(url).openConnection();
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
-            connection.setRequestProperty("Referer", "https://music.163.com/");
-            connection.setConnectTimeout(5000);
-            connection.setReadTimeout(5000);
+    public Bitmap getCachedBitmap(String url) {
+        if (url == null || url.isEmpty()) return null;
+        String cacheKey = remoteCacheKey(url, MAX_COVER_ART_SIZE_PX);
+        Bitmap cached = memoryCache.get(cacheKey);
+        if (cached != null && !cached.isRecycled()) {
+            return cached;
+        }
+        return null;
+    }
 
-            is = connection.getInputStream();
-            final Bitmap bitmap = decodeSampledBitmapFromStream(is, maxDimensionPx);
-            if (bitmap != null) {
-                memoryCache.put(cacheKey, bitmap);
+    private Bitmap fetchBitmapInternal(String url, String cacheKey, int maxDimensionPx) {
+        Object lock = fetchLocks.computeIfAbsent(cacheKey, k -> new Object());
+        synchronized (lock) {
+            Bitmap cached = memoryCache.get(cacheKey);
+            if (cached != null && !cached.isRecycled()) {
+                return cached;
             }
-            return bitmap;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        } finally {
-            if (is != null) {
-                try {
-                    is.close();
-                } catch (Exception ignored) {
+
+            HttpURLConnection connection = null;
+            InputStream is = null;
+            try {
+                connection = (HttpURLConnection) new URL(url).openConnection();
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+                connection.setRequestProperty("Referer", "https://music.163.com/");
+                connection.setConnectTimeout(5000);
+                connection.setReadTimeout(5000);
+
+                is = connection.getInputStream();
+                final Bitmap bitmap = decodeSampledBitmapFromStream(is, maxDimensionPx);
+                if (bitmap != null) {
+                    memoryCache.put(cacheKey, bitmap);
                 }
-            }
-            if (connection != null) {
-                connection.disconnect();
+                return bitmap;
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            } finally {
+                if (is != null) {
+                    try {
+                        is.close();
+                    } catch (Exception ignored) {
+                    }
+                }
+                if (connection != null) {
+                    connection.disconnect();
+                }
             }
         }
     }
