@@ -62,32 +62,36 @@ public class ImageDetailActivity extends AppCompatActivity {
         currentBitmap = null;
         imageView.resetZoom();
         imageView.setImageResource(R.drawable.ic_ml_app_logo_foreground);
+
         if (embeddedCacheKey != null && !embeddedCacheKey.isEmpty()) {
+            if (imageBytes != null && imageBytes.length > 0) {
+                currentBitmap = ImageManager.getInstance().decodeOriginalFromBytes(imageBytes);
+                if (currentBitmap != null) {
+                    imageView.setImageBitmap(currentBitmap);
+                    return;
+                }
+            }
             Bitmap cached = ImageManager.getInstance().getEmbeddedBitmap(
                     embeddedCacheKey.replace(":large", "").replace(":small", ""),
                     null, true);
             if (cached != null && !cached.isRecycled()) {
                 currentBitmap = cached;
                 imageView.setImageBitmap(cached);
-            } else if (imageBytes != null && imageBytes.length > 0) {
-                currentBitmap = android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
-                if (currentBitmap != null) {
-                    imageView.setImageBitmap(currentBitmap);
-                }
             }
+        } else if (imageUrl != null && !imageUrl.isEmpty()) {
+            String originalUrl = imageUrl.replaceAll("\\?param=[^&]*", "");
+            loadImage(originalUrl);
         } else if (imageBytes != null && imageBytes.length > 0) {
             currentBitmap = android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
             if (currentBitmap != null) {
                 imageView.setImageBitmap(currentBitmap);
             }
-        } else if (imageUrl != null) {
-            loadImage(imageUrl);
         }
     }
 
     private void loadImage(String urlString) {
         final int requestVersion = imageRequestVersion;
-        ImageManager.getInstance().fetchWithCallback(urlString, bitmap -> {
+        ImageManager.getInstance().fetchOriginalBitmap(urlString, bitmap -> {
             if (requestVersion != imageRequestVersion || !urlString.equals(imageUrl)) {
                 return;
             }

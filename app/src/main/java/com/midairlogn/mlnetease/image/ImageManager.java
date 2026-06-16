@@ -29,6 +29,7 @@ public class ImageManager {
 
     private static final int MAX_MINI_ART_SIZE_PX = 192;
     private static final int MAX_COVER_ART_SIZE_PX = 512;
+    private static final int ORIGINAL_ART_SIZE_PX = 2048;
     private static final int THUMBNAIL_SIZE_PX = 96;
     private static final int FIXED_CACHE_SIZE_KB = 16 * 1024;
 
@@ -48,6 +49,10 @@ public class ImageManager {
 
     private static String thumbnailCacheKey(String url) {
         return ImageUtils.normalizeUrl(url) + ":thumb:" + THUMBNAIL_SIZE_PX;
+    }
+
+    private static String originalRemoteCacheKey(String url) {
+        return ImageUtils.normalizeUrl(url) + ":original";
     }
 
     private ImageManager() {
@@ -130,6 +135,106 @@ public class ImageManager {
                     activeCalls.remove(cacheKey);
                 }
             });
+        }
+    }
+
+    public void fetchOriginalBitmap(String url, FetchCallback callback) {
+        if (url == null || url.isEmpty()) {
+            if (callback != null) callback.onResult(null);
+            return;
+        }
+
+        String cacheKey = originalRemoteCacheKey(url);
+
+        Bitmap cached = memoryCache.get(cacheKey);
+        if (cached != null && !cached.isRecycled()) {
+            if (callback != null) callback.onResult(cached);
+            return;
+        }
+
+        if (callback != null) {
+            pendingCallbacks.computeIfAbsent(cacheKey, k -> new ArrayList<>()).add(callback);
+        }
+
+        if (activeFetches.putIfAbsent(cacheKey, Boolean.TRUE) == null) {
+            cancelStaleFetches(cacheKey);
+
+            final String fetchUrl = url;
+            executorService.submit(() -> {
+                Call call = null;
+                try {
+                    Request request = new Request.Builder()
+                            .url(fetchUrl)
+                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+                            .header("Referer", "https://music.163.com/")
+                            .build();
+                    call = httpClient.newCall(request);
+                    activeCalls.put(cacheKey, call);
+
+                    Response response = call.execute();
+                    try {
+                        if (!response.isSuccessful() || response.body() == null) {
+                            notifyCallbacks(cacheKey, null);
+                            return;
+                        }
+
+                        InputStream is = response.body().byteStream();
+                        final Bitmap bitmap = decodeOriginalFromStream(is);
+                        is.close();
+
+                        if (bitmap != null) {
+                            memoryCache.put(cacheKey, bitmap);
+                        }
+                        notifyCallbacks(cacheKey, bitmap);
+                    } finally {
+                        response.close();
+                    }
+                } catch (Exception e) {
+                    notifyCallbacks(cacheKey, null);
+                } finally {
+                    activeCalls.remove(cacheKey);
+                }
+            });
+        }
+    }
+
+    public Bitmap decodeOriginalFromBytes(byte[] imageData) {
+        if (imageData == null || imageData.length == 0) return null;
+
+        BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
+        boundsOptions.inJustDecodeBounds = true;
+        BitmapFactory.decodeByteArray(imageData, 0, imageData.length, boundsOptions);
+        if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
+            return null;
+        }
+
+        BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
+        decodeOptions.inSampleSize = calculateInSampleSize(boundsOptions, ORIGINAL_ART_SIZE_PX, ORIGINAL_ART_SIZE_PX);
+        decodeOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
+        return BitmapFactory.decodeByteArray(imageData, 0, imageData.length, decodeOptions);
+    }
+
+    private Bitmap decodeOriginalFromStream(InputStream is) {
+        try {
+            byte[] data = readAllBytes(is);
+            if (data == null || data.length == 0) return null;
+
+            BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
+            boundsOptions.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(data, 0, data.length, boundsOptions);
+            if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
+                return null;
+            }
+
+            BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
+            decodeOptions.inSampleSize = calculateInSampleSize(boundsOptions, ORIGINAL_ART_SIZE_PX, ORIGINAL_ART_SIZE_PX);
+            decodeOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
+            Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, decodeOptions);
+            data = null;
+            return bitmap;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
     }
 
