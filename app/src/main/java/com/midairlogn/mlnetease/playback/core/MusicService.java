@@ -286,7 +286,7 @@ public class MusicService extends Service {
             updateMetadata(currentSong);
         } else {
             Song placeholder = new Song("", getString(R.string.music_player), getString(R.string.ready_to_play), "", "");
-            showNotification(placeholder, false, BitmapFactory.decodeResource(getResources(), R.drawable.ic_ml_app_logo_foreground), true, "service:init-placeholder");
+            showNotification(placeholder, false, getLogoPlaceholder(), true, "service:init-placeholder");
         }
 
         // Ensure PlaybackState is initialized with CustomActions
@@ -876,6 +876,7 @@ public class MusicService extends Service {
 
     private Bitmap decodeBoundedBitmap(InputStream inputStream, int maxSizePx, Bitmap.Config preferredConfig) throws IOException {
         byte[] imageBytes = readAllBytes(inputStream);
+        if (imageBytes == null || imageBytes.length == 0) return null;
 
         BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
         boundsOptions.inJustDecodeBounds = true;
@@ -887,6 +888,7 @@ public class MusicService extends Service {
         decodeOptions.inDither = true;
 
         Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, decodeOptions);
+        imageBytes = null;
         if (bitmap == null) {
             return null;
         }

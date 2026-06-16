@@ -25,7 +25,6 @@ import java.io.OutputStream;
 public class ImageDetailActivity extends AppCompatActivity {
     private ZoomImageView imageView;
     private String imageUrl;
-    private byte[] imageBytes;
     private Bitmap currentBitmap;
     private volatile int imageRequestVersion;
 
@@ -57,12 +56,26 @@ public class ImageDetailActivity extends AppCompatActivity {
 
     private void bindIntent(android.content.Intent intent) {
         imageUrl = intent.getStringExtra("url");
-        imageBytes = intent.getByteArrayExtra("image_bytes");
+        String embeddedCacheKey = intent.getStringExtra("embedded_cache_key");
+        byte[] imageBytes = intent.getByteArrayExtra("image_bytes");
         imageRequestVersion++;
         currentBitmap = null;
         imageView.resetZoom();
         imageView.setImageResource(R.drawable.ic_ml_app_logo_foreground);
-        if (imageBytes != null && imageBytes.length > 0) {
+        if (embeddedCacheKey != null && !embeddedCacheKey.isEmpty()) {
+            Bitmap cached = ImageManager.getInstance().getEmbeddedBitmap(
+                    embeddedCacheKey.replace(":large", "").replace(":small", ""),
+                    null, true);
+            if (cached != null && !cached.isRecycled()) {
+                currentBitmap = cached;
+                imageView.setImageBitmap(cached);
+            } else if (imageBytes != null && imageBytes.length > 0) {
+                currentBitmap = android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+                if (currentBitmap != null) {
+                    imageView.setImageBitmap(currentBitmap);
+                }
+            }
+        } else if (imageBytes != null && imageBytes.length > 0) {
             currentBitmap = android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
             if (currentBitmap != null) {
                 imageView.setImageBitmap(currentBitmap);
