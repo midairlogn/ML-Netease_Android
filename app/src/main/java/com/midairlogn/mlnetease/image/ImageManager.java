@@ -13,13 +13,15 @@ import java.net.URL;
 import java.lang.ref.WeakReference;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
 public class ImageManager {
 
     private static final int MAX_MINI_ART_SIZE_PX = 192;
-    private static final int MAX_COVER_ART_SIZE_PX = 1024;
+    private static final int MAX_COVER_ART_SIZE_PX = 512;
     private static final int MAX_NOTIFICATION_ART_SIZE_PX = 512;
+    private static final int FIXED_CACHE_SIZE_KB = 16 * 1024;
 
     private static ImageManager instance;
     private final LruCache<String, Bitmap> memoryCache;
@@ -31,12 +33,17 @@ public class ImageManager {
     }
 
     private ImageManager() {
-        final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        final int cacheSize = maxMemory / 8;
-        memoryCache = new LruCache<String, Bitmap>(cacheSize) {
+        memoryCache = new LruCache<String, Bitmap>(FIXED_CACHE_SIZE_KB) {
             @Override
             protected int sizeOf(String key, Bitmap bitmap) {
                 return bitmap.getByteCount() / 1024;
+            }
+
+            @Override
+            protected void entryRemoved(boolean evicted, String key, Bitmap oldValue, Bitmap newValue) {
+                if (evicted && oldValue != null && !oldValue.isRecycled() && newValue == null) {
+                    oldValue.recycle();
+                }
             }
         };
         executorService = Executors.newFixedThreadPool(4);
@@ -62,7 +69,7 @@ public class ImageManager {
 
         if (normalizedUrl.equals(imageView.getTag())) {
             Bitmap cachedBitmap = memoryCache.get(cacheKey);
-            if (cachedBitmap != null) {
+            if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
                 imageView.setImageBitmap(cachedBitmap);
             }
             return;
@@ -75,7 +82,7 @@ public class ImageManager {
 
         // Check cache
         Bitmap cachedBitmap = memoryCache.get(cacheKey);
-        if (cachedBitmap != null) {
+        if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
             imageView.setImageBitmap(cachedBitmap);
             return;
         }
@@ -83,19 +90,17 @@ public class ImageManager {
         WeakReference<ImageView> imageViewRef = new WeakReference<>(imageView);
         executorService.submit(() -> {
             Bitmap bitmap = fetchBitmap(url, MAX_COVER_ART_SIZE_PX);
-            if (bitmap != null) {
+            if (bitmap != null && !bitmap.isRecycled()) {
                 mainHandler.post(() -> {
                     ImageView targetView = imageViewRef.get();
                     if (targetView == null) {
                         return;
                     }
-                    // This is the critical part: ensure the UI is still expecting this image
                     if (normalizedUrl.equals(targetView.getTag())) {
                         targetView.setImageBitmap(bitmap);
                     }
                 });
             } else {
-                // If it failed, clear the tag so the next call is forced to reload
                 mainHandler.post(() -> {
                     ImageView targetView = imageViewRef.get();
                     if (targetView == null) {
@@ -115,11 +120,21 @@ public class ImageManager {
         }
         String sizedKey = cacheKey + (large ? ":large" : ":small");
         Bitmap cachedBitmap = memoryCache.get(sizedKey);
-        if (cachedBitmap != null) {
+        if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
             return cachedBitmap;
         }
 
-        Bitmap bitmap = decodeSampledBitmap(imageData, large ? MAX_COVER_ART_SIZE_PX : MAX_MINI_ART_SIZE_PX);
+        BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
+        boundsOptions.inJustDecodeBounds = true;
+        BitmapFactory.decodeByteArray(imageData, 0, imageData.length, boundsOptions);
+        if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
+            return null;
+        }
+        int targetSize = large ? MAX_COVER_ART_SIZE_PX : MAX_MINI_ART_SIZE_PX;
+        BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
+        decodeOptions.inSampleSize = calculateInSampleSize(boundsOptions, targetSize, targetSize);
+        decodeOptions.inPreferredConfig = Bitmap.Config.RGB_565;
+        Bitmap bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, decodeOptions);
         if (bitmap != null) {
             memoryCache.put(sizedKey, bitmap);
         }
@@ -136,7 +151,7 @@ public class ImageManager {
         String sizedKey = cacheKey + (large ? ":large" : ":small");
         imageView.setTag(sizedKey);
         Bitmap bitmap = getEmbeddedBitmap(cacheKey, imageData, large);
-        if (bitmap != null) {
+        if (bitmap != null && !bitmap.isRecycled()) {
             imageView.setImageBitmap(bitmap);
         } else {
             imageView.setImageResource(placeholderResId);
@@ -151,7 +166,7 @@ public class ImageManager {
         if (url == null || url.isEmpty()) return null;
         String cacheKey = remoteCacheKey(url, maxDimensionPx);
         Bitmap cachedBitmap = memoryCache.get(cacheKey);
-        if (cachedBitmap != null) {
+        if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
             return cachedBitmap;
         }
         return fetchBitmapInternal(url, cacheKey, maxDimensionPx);
@@ -172,7 +187,7 @@ public class ImageManager {
             connection.setReadTimeout(5000);
 
             is = connection.getInputStream();
-            final Bitmap bitmap = decodeSampledBitmap(readAllBytes(is), maxDimensionPx);
+            final Bitmap bitmap = decodeSampledBitmapFromStream(is, maxDimensionPx);
             if (bitmap != null) {
                 memoryCache.put(cacheKey, bitmap);
             }
@@ -193,19 +208,24 @@ public class ImageManager {
         }
     }
 
-    private Bitmap decodeSampledBitmap(byte[] imageData, int maxDimensionPx) {
+    private Bitmap decodeSampledBitmapFromStream(InputStream is, int maxDimensionPx) {
         try {
+            byte[] data = readAllBytes(is);
+            if (data == null || data.length == 0) return null;
+
             BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
             boundsOptions.inJustDecodeBounds = true;
-            BitmapFactory.decodeByteArray(imageData, 0, imageData.length, boundsOptions);
+            BitmapFactory.decodeByteArray(data, 0, data.length, boundsOptions);
             if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
                 return null;
             }
 
             BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
             decodeOptions.inSampleSize = calculateInSampleSize(boundsOptions, maxDimensionPx, maxDimensionPx);
-            decodeOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
-            return BitmapFactory.decodeByteArray(imageData, 0, imageData.length, decodeOptions);
+            decodeOptions.inPreferredConfig = Bitmap.Config.RGB_565;
+            Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, decodeOptions);
+            data = null;
+            return bitmap;
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -213,13 +233,15 @@ public class ImageManager {
     }
 
     private byte[] readAllBytes(InputStream inputStream) throws java.io.IOException {
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream(8192);
         byte[] buffer = new byte[8192];
         int count;
         while ((count = inputStream.read(buffer)) != -1) {
             outputStream.write(buffer, 0, count);
         }
-        return outputStream.toByteArray();
+        byte[] result = outputStream.toByteArray();
+        outputStream.reset();
+        return result;
     }
 
     private int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
