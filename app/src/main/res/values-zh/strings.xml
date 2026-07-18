@@ -220,6 +220,7 @@
     <string name="download_metadata_lyrics">歌词</string>
     <string name="download_metadata_cover">封面</string>
     <string name="download_metadata_resize_cover">缩小封面</string>
+    <string name="download_metadata_cover_with_resize">封面（%1$s）</string>
     <string name="download_metadata_extra">歌曲 ID 和音质</string>
     <string name="download_metadata_volume">ReplayGain 和网易云音量数据</string>
     <string name="download_metadata_preview_none">不写入元数据</string>

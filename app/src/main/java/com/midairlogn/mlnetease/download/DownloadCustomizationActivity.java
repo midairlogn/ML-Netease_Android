@@ -321,10 +321,10 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
             items.add(getString(R.string.download_metadata_lyrics));
         }
         if (checkboxMetadataCover.isChecked()) {
-            items.add(getString(R.string.download_metadata_cover));
-            if (checkboxMetadataResizeCover.isChecked()) {
-                items.add(getString(R.string.download_metadata_resize_cover));
-            }
+            String coverLabel = checkboxMetadataResizeCover.isChecked()
+                    ? getString(R.string.download_metadata_cover_with_resize, getString(R.string.download_metadata_resize_cover))
+                    : getString(R.string.download_metadata_cover);
+            items.add(coverLabel);
         }
         if (checkboxMetadataExtra.isChecked()) {
             items.add(getString(R.string.download_metadata_extra));
