@@ -74,6 +74,7 @@ public class SettingsManager {
     private static final String KEY_DOWNLOAD_METADATA_ALBUM = "download_metadata_album";
     private static final String KEY_DOWNLOAD_METADATA_LYRICS = "download_metadata_lyrics";
     private static final String KEY_DOWNLOAD_METADATA_COVER = "download_metadata_cover";
+    private static final String KEY_DOWNLOAD_METADATA_RESIZE_COVER = "download_metadata_resize_cover";
     private static final String KEY_DOWNLOAD_METADATA_EXTRA = "download_metadata_extra";
     private static final String KEY_DOWNLOAD_METADATA_VOLUME = "download_metadata_volume";
     private static final String BACKUP_FORMAT = "mlnetease-settings";
@@ -751,6 +752,7 @@ public class SettingsManager {
         settings.writeAlbum = isDownloadMetadataAlbumEnabled();
         settings.writeLyrics = isDownloadMetadataLyricsEnabled();
         settings.writeCover = isDownloadMetadataCoverEnabled();
+        settings.resizeCover = isDownloadMetadataResizeCoverEnabled();
         settings.writeExtra = isDownloadMetadataExtraEnabled();
         settings.writeVolumeMetadata = isDownloadMetadataVolumeEnabled();
         return settings;
@@ -770,6 +772,7 @@ public class SettingsManager {
                 && settings.writeAlbum == isDownloadMetadataAlbumEnabled()
                 && settings.writeLyrics == isDownloadMetadataLyricsEnabled()
                 && settings.writeCover == isDownloadMetadataCoverEnabled()
+                && settings.resizeCover == isDownloadMetadataResizeCoverEnabled()
                 && settings.writeExtra == isDownloadMetadataExtraEnabled()
                 && settings.writeVolumeMetadata == isDownloadMetadataVolumeEnabled()) {
             return;
@@ -783,6 +786,7 @@ public class SettingsManager {
                 .putBoolean(KEY_DOWNLOAD_METADATA_ALBUM, settings.writeAlbum)
                 .putBoolean(KEY_DOWNLOAD_METADATA_LYRICS, settings.writeLyrics)
                 .putBoolean(KEY_DOWNLOAD_METADATA_COVER, settings.writeCover)
+                .putBoolean(KEY_DOWNLOAD_METADATA_RESIZE_COVER, settings.resizeCover)
                 .putBoolean(KEY_DOWNLOAD_METADATA_EXTRA, settings.writeExtra)
                 .putBoolean(KEY_DOWNLOAD_METADATA_VOLUME, settings.writeVolumeMetadata)
                 .apply();
@@ -876,6 +880,17 @@ public class SettingsManager {
             return;
         }
         prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_COVER, enabled).apply();
+    }
+
+    public boolean isDownloadMetadataResizeCoverEnabled() {
+        return prefs.getBoolean(KEY_DOWNLOAD_METADATA_RESIZE_COVER, true);
+    }
+
+    public void setDownloadMetadataResizeCoverEnabled(boolean enabled) {
+        if (enabled == isDownloadMetadataResizeCoverEnabled()) {
+            return;
+        }
+        prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_RESIZE_COVER, enabled).apply();
     }
 
     public boolean isDownloadMetadataExtraEnabled() {
@@ -990,6 +1005,7 @@ public class SettingsManager {
         json.put(KEY_DOWNLOAD_METADATA_ALBUM, isDownloadMetadataAlbumEnabled());
         json.put(KEY_DOWNLOAD_METADATA_LYRICS, isDownloadMetadataLyricsEnabled());
         json.put(KEY_DOWNLOAD_METADATA_COVER, isDownloadMetadataCoverEnabled());
+        json.put(KEY_DOWNLOAD_METADATA_RESIZE_COVER, isDownloadMetadataResizeCoverEnabled());
         json.put(KEY_DOWNLOAD_METADATA_EXTRA, isDownloadMetadataExtraEnabled());
         json.put(KEY_DOWNLOAD_METADATA_VOLUME, isDownloadMetadataVolumeEnabled());
         return json;
@@ -1034,6 +1050,7 @@ public class SettingsManager {
         downloadSettings.writeAlbum = json.optBoolean(KEY_DOWNLOAD_METADATA_ALBUM, true);
         downloadSettings.writeLyrics = json.optBoolean(KEY_DOWNLOAD_METADATA_LYRICS, true);
         downloadSettings.writeCover = json.optBoolean(KEY_DOWNLOAD_METADATA_COVER, true);
+        downloadSettings.resizeCover = json.optBoolean(KEY_DOWNLOAD_METADATA_RESIZE_COVER, true);
         downloadSettings.writeExtra = json.optBoolean(KEY_DOWNLOAD_METADATA_EXTRA, true);
         downloadSettings.writeVolumeMetadata = json.optBoolean(KEY_DOWNLOAD_METADATA_VOLUME, true);
         setDownloadCustomizationSettings(downloadSettings);

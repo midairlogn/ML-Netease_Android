@@ -46,6 +46,18 @@ public final class CoverUtils {
         return "image/jpeg";
     }
 
+    public static String getCoverMimeType(byte[] input) {
+        if (input == null || input.length == 0) {
+            return getCoverMimeType();
+        }
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeByteArray(input, 0, input.length, options);
+        return options.outMimeType == null || options.outMimeType.trim().isEmpty()
+                ? getCoverMimeType()
+                : options.outMimeType;
+    }
+
     private static Bitmap scaleDown(Bitmap bitmap, int maxSide) {
         int width = bitmap.getWidth();
         int height = bitmap.getHeight();

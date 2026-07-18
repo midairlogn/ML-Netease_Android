@@ -334,6 +334,15 @@
                 android:textColor="@color/text_primary" />
 
             <CheckBox
+                android:id="@+id/checkbox_metadata_resize_cover"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:buttonTint="@color/brand_primary"
+                android:paddingStart="24dp"
+                android:text="@string/download_metadata_resize_cover"
+                android:textColor="@color/text_primary" />
+
+            <CheckBox
                 android:id="@+id/checkbox_metadata_extra"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

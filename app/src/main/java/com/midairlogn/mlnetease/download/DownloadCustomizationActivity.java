@@ -46,6 +46,7 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
     private CheckBox checkboxMetadataAlbum;
     private CheckBox checkboxMetadataLyrics;
     private CheckBox checkboxMetadataCover;
+    private CheckBox checkboxMetadataResizeCover;
     private CheckBox checkboxMetadataExtra;
     private CheckBox checkboxMetadataVolume;
     private TextView textMetadataPreview;
@@ -76,6 +77,7 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         checkboxMetadataAlbum = findViewById(R.id.checkbox_metadata_album);
         checkboxMetadataLyrics = findViewById(R.id.checkbox_metadata_lyrics);
         checkboxMetadataCover = findViewById(R.id.checkbox_metadata_cover);
+        checkboxMetadataResizeCover = findViewById(R.id.checkbox_metadata_resize_cover);
         checkboxMetadataExtra = findViewById(R.id.checkbox_metadata_extra);
         checkboxMetadataVolume = findViewById(R.id.checkbox_metadata_volume);
         textMetadataPreview = findViewById(R.id.text_metadata_preview);
@@ -119,6 +121,7 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         checkboxMetadataAlbum.setChecked(settings.writeAlbum);
         checkboxMetadataLyrics.setChecked(settings.writeLyrics);
         checkboxMetadataCover.setChecked(settings.writeCover);
+        checkboxMetadataResizeCover.setChecked(settings.resizeCover);
         checkboxMetadataExtra.setChecked(settings.writeExtra);
         checkboxMetadataVolume.setChecked(settings.writeVolumeMetadata);
         updateMetadataControlsState();
@@ -183,6 +186,7 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         checkboxMetadataAlbum.setOnClickListener(metadataListener);
         checkboxMetadataLyrics.setOnClickListener(metadataListener);
         checkboxMetadataCover.setOnClickListener(metadataListener);
+        checkboxMetadataResizeCover.setOnClickListener(metadataListener);
         checkboxMetadataExtra.setOnClickListener(metadataListener);
         checkboxMetadataVolume.setOnClickListener(metadataListener);
     }
@@ -249,6 +253,7 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         settings.writeAlbum = checkboxMetadataAlbum.isChecked();
         settings.writeLyrics = checkboxMetadataLyrics.isChecked();
         settings.writeCover = checkboxMetadataCover.isChecked();
+        settings.resizeCover = checkboxMetadataResizeCover.isChecked();
         settings.writeExtra = checkboxMetadataExtra.isChecked();
         settings.writeVolumeMetadata = checkboxMetadataVolume.isChecked();
         settingsManager.setDownloadCustomizationSettings(settings);
@@ -266,6 +271,7 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         checkboxMetadataAlbum.setEnabled(enabled);
         checkboxMetadataLyrics.setEnabled(enabled);
         checkboxMetadataCover.setEnabled(enabled);
+        checkboxMetadataResizeCover.setEnabled(enabled && checkboxMetadataCover.isChecked());
         checkboxMetadataExtra.setEnabled(enabled);
         checkboxMetadataVolume.setEnabled(enabled);
         float alpha = enabled ? 1f : 0.45f;
@@ -274,6 +280,7 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         checkboxMetadataAlbum.setAlpha(alpha);
         checkboxMetadataLyrics.setAlpha(alpha);
         checkboxMetadataCover.setAlpha(alpha);
+        checkboxMetadataResizeCover.setAlpha(enabled && checkboxMetadataCover.isChecked() ? 1f : 0.45f);
         checkboxMetadataExtra.setAlpha(alpha);
         checkboxMetadataVolume.setAlpha(alpha);
     }
@@ -315,6 +322,9 @@ public class DownloadCustomizationActivity extends AppCompatActivity {
         }
         if (checkboxMetadataCover.isChecked()) {
             items.add(getString(R.string.download_metadata_cover));
+            if (checkboxMetadataResizeCover.isChecked()) {
+                items.add(getString(R.string.download_metadata_resize_cover));
+            }
         }
         if (checkboxMetadataExtra.isChecked()) {
             items.add(getString(R.string.download_metadata_extra));

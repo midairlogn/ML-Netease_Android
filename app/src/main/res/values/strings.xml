@@ -271,6 +271,7 @@
     <string name="download_metadata_album">Album</string>
     <string name="download_metadata_lyrics">Lyrics</string>
     <string name="download_metadata_cover">Cover</string>
+    <string name="download_metadata_resize_cover">Scale down cover</string>
     <string name="download_metadata_extra">Song ID and quality</string>
     <string name="download_metadata_volume">ReplayGain and Netease volume data</string>
     <string name="download_metadata_preview_none">Do not write metadata</string>

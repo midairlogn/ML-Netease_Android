@@ -145,8 +145,10 @@ public class RemoteAudioPreparationHelper {
             }
             byte[] coverBytes = pic == null || pic.isEmpty() ? null : fetchBytesSimple(pic, cancellationSignal);
             throwIfCanceled(cancellationSignal);
-            if (coverBytes != null && coverBytes.length > 0) {
+            String coverMimeType = CoverUtils.getCoverMimeType(coverBytes);
+            if (coverBytes != null && coverBytes.length > 0 && customizationSettings.resizeCover) {
                 coverBytes = CoverUtils.resizeCover(coverBytes);
+                coverMimeType = CoverUtils.getCoverMimeType();
             }
 
             DownloadTagData tagData = new DownloadTagData();
@@ -156,7 +158,7 @@ public class RemoteAudioPreparationHelper {
                 tagData.album = customizationSettings.writeAlbum ? album : null;
                 tagData.lyrics = customizationSettings.writeLyrics ? lyric : null;
                 tagData.coverData = customizationSettings.writeCover ? coverBytes : null;
-                tagData.coverMimeType = customizationSettings.writeCover ? CoverUtils.getCoverMimeType() : null;
+                tagData.coverMimeType = customizationSettings.writeCover ? coverMimeType : null;
                 if (customizationSettings.writeExtra) {
                     tagData.quality = actualQuality.isEmpty() ? quality : actualQuality;
                     tagData.songId = song.id;
