@@ -14,7 +14,18 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class FlacTagWriter {
+    private static final int MAX_METADATA_BLOCK_LENGTH = 0xFFFFFF;
+    private static final String DEFAULT_COVER_MIME_TYPE = "image/jpeg";
+    private static final String COVER_DESCRIPTION = "Cover";
+
     private FlacTagWriter() {}
+
+    public static boolean canWritePictureBlock(byte[] coverData, String mimeType) {
+        if (coverData == null || coverData.length == 0) {
+            return true;
+        }
+        return getPictureBlockLength(coverData.length, mimeType) <= MAX_METADATA_BLOCK_LENGTH;
+    }
 
     public static void writeTaggedFile(File input, File output, DownloadTagData tagData) throws Exception {
         if (input == null || output == null) {
@@ -142,6 +153,9 @@ public final class FlacTagWriter {
     }
 
     private static void writeMetadataBlock(OutputStream outputStream, int type, byte[] data, boolean isLast) throws Exception {
+        if (data.length > MAX_METADATA_BLOCK_LENGTH) {
+            throw new IllegalArgumentException("FLAC metadata block is too large");
+        }
         outputStream.write((isLast ? 0x80 : 0) | type);
         outputStream.write((data.length >> 16) & 0xFF);
         outputStream.write((data.length >> 8) & 0xFF);
@@ -175,8 +189,8 @@ public final class FlacTagWriter {
 
     private static byte[] buildPictureBlock(byte[] coverData, String mimeType) throws Exception {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        byte[] mime = (mimeType == null ? "image/jpeg" : mimeType).getBytes(StandardCharsets.UTF_8);
-        byte[] description = "Cover".getBytes(StandardCharsets.UTF_8);
+        byte[] mime = normalizePictureMimeType(mimeType).getBytes(StandardCharsets.UTF_8);
+        byte[] description = COVER_DESCRIPTION.getBytes(StandardCharsets.UTF_8);
         writeIntBE(output, 3);
         writeIntBE(output, mime.length);
         output.write(mime);
@@ -189,6 +203,16 @@ public final class FlacTagWriter {
         writeIntBE(output, coverData.length);
         output.write(coverData);
         return output.toByteArray();
+    }
+
+    private static long getPictureBlockLength(int coverDataLength, String mimeType) {
+        int mimeLength = normalizePictureMimeType(mimeType).getBytes(StandardCharsets.UTF_8).length;
+        int descriptionLength = COVER_DESCRIPTION.getBytes(StandardCharsets.UTF_8).length;
+        return 32L + mimeLength + descriptionLength + coverDataLength;
+    }
+
+    private static String normalizePictureMimeType(String mimeType) {
+        return mimeType == null || mimeType.trim().isEmpty() ? DEFAULT_COVER_MIME_TYPE : mimeType.trim();
     }
 
     private static void putIfNotEmpty(Map<String, String> map, String key, String value) {

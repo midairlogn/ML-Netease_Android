@@ -146,9 +146,17 @@ public class RemoteAudioPreparationHelper {
             byte[] coverBytes = pic == null || pic.isEmpty() ? null : fetchBytesSimple(pic, cancellationSignal);
             throwIfCanceled(cancellationSignal);
             String coverMimeType = CoverUtils.getCoverMimeType(coverBytes);
-            if (coverBytes != null && coverBytes.length > 0 && customizationSettings.resizeCover) {
-                coverBytes = CoverUtils.resizeCover(coverBytes);
-                coverMimeType = CoverUtils.getCoverMimeType();
+            if (coverBytes != null && coverBytes.length > 0) {
+                boolean needsFlacSafeResize = !"mp3".equals(actualExtension)
+                        && !FlacTagWriter.canWritePictureBlock(coverBytes, coverMimeType);
+                if (customizationSettings.resizeCover || needsFlacSafeResize) {
+                    coverBytes = CoverUtils.resizeCover(coverBytes);
+                    coverMimeType = CoverUtils.getCoverMimeType();
+                }
+                if (!"mp3".equals(actualExtension) && !FlacTagWriter.canWritePictureBlock(coverBytes, coverMimeType)) {
+                    coverBytes = null;
+                    coverMimeType = null;
+                }
             }
 
             DownloadTagData tagData = new DownloadTagData();
