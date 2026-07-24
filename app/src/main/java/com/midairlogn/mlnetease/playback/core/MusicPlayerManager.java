@@ -123,6 +123,7 @@ public class MusicPlayerManager {
             if (!progressUpdateListeners.isEmpty()) {
                 notifyProgressUpdate(getCurrentPosition(), getDuration());
             }
+            clearResumePositionOnceSeekLanded();
             persistPlaybackSnapshotThrottled();
 
             if (shouldRunProgressDispatcher()) {
@@ -306,9 +307,26 @@ public class MusicPlayerManager {
             return Math.max(0, resumePosition);
         }
         try {
-            return Math.max(0, mediaPlayer.getCurrentPosition());
+            int position = Math.max(0, mediaPlayer.getCurrentPosition());
+            // MediaPlayer may still report 0 right after async seekTo (paused or just started).
+            if (position == 0 && resumePosition > 0) {
+                return resumePosition;
+            }
+            return position;
         } catch (Exception ignored) {
             return Math.max(0, resumePosition);
+        }
+    }
+
+    private void clearResumePositionOnceSeekLanded() {
+        if (resumePosition <= 0 || isSwitchingSong) {
+            return;
+        }
+        try {
+            if (mediaPlayer.getCurrentPosition() > 0) {
+                resumePosition = 0;
+            }
+        } catch (Exception ignored) {
         }
     }
 
@@ -867,13 +885,16 @@ public class MusicPlayerManager {
                     pendingSnapshotWasPlaying = false;
                     notifyPlaybackStateChanged(false);
                     notifyProgressUpdate(resumePosition, getDuration());
+                    // resumePosition still holds seekPosition; resolvePositionForSnapshot uses it
+                    // until MediaPlayer reflects the async seek.
                     persistPlaybackSnapshot();
                     return;
                 }
                 mp.start();
                 playbackActive = true;
                 isPaused = false;
-                resumePosition = 0;
+                // Keep resumePosition as the seek anchor until MediaPlayer reports progress so a
+                // kill right after prepare still restores mid-track (not position 0).
                 pendingSnapshotWasPlaying = false;
                 notifyPlaybackStateChanged(true);
                 persistPlaybackSnapshot();
@@ -924,7 +945,11 @@ public class MusicPlayerManager {
             playbackActive = false;
             isPaused = true;
             try {
-                resumePosition = Math.max(0, mediaPlayer.getCurrentPosition());
+                int position = Math.max(0, mediaPlayer.getCurrentPosition());
+                // Prefer a real MediaPlayer offset; keep seek-anchor resumePosition if still 0.
+                if (position > 0 || resumePosition <= 0) {
+                    resumePosition = position;
+                }
             } catch (Exception ignored) {
             }
             notifyPlaybackStateChanged(false);
@@ -963,13 +988,23 @@ public class MusicPlayerManager {
                 mediaPlayer.start();
                 playbackActive = true;
                 isPaused = false;
-                resumePosition = 0;
+                // Leave resumePosition until progress confirms seek/playback position if needed.
+                if (resumePosition > 0) {
+                    try {
+                        if (mediaPlayer.getCurrentPosition() > 0) {
+                            resumePosition = 0;
+                        }
+                    } catch (Exception ignored) {
+                        resumePosition = 0;
+                    }
+                }
                 notifyPlaybackStateChanged(true);
             } catch (IllegalStateException ignored) {
                 // Media not prepared after process death — reload from saved position.
                 if (currentIndex >= 0 && currentIndex < playlist.size()) {
                     keepResumePositionForNextPrepare = true;
                     startPausedAfterPrepare = false;
+                    pendingSnapshotWasPlaying = true;
                     play(currentIndex, false);
                 } else {
                     playbackActive = false;
@@ -978,6 +1013,7 @@ public class MusicPlayerManager {
         } else if (!playbackActive && currentIndex >= 0 && currentIndex < playlist.size()) {
             keepResumePositionForNextPrepare = resumePosition > 0;
             startPausedAfterPrepare = false;
+            pendingSnapshotWasPlaying = true;
             play(currentIndex, false);
         }
         updateProgressDispatcherState();
