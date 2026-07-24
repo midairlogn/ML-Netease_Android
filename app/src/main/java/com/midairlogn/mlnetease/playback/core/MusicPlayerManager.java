@@ -6,6 +6,7 @@ import android.media.MediaPlayer;
 import android.media.audiofx.LoudnessEnhancer;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 
 import com.midairlogn.mlnetease.image.ImageUtils;
 import com.midairlogn.mlnetease.local.media.LocalAudioMetadata;
@@ -48,6 +49,7 @@ public class MusicPlayerManager {
     private int retryCount = 0;
     private static final int MAX_RETRY = 3;
     private static final long PROGRESS_UPDATE_INTERVAL_MS = 500L;
+    private static final long SNAPSHOT_PERSIST_MIN_INTERVAL_MS = 2500L;
     private static final int MILLIBELS_PER_DECIBEL = 100;
     private static final float MAX_NORMALIZED_OUTPUT_PEAK = 0.98f;
     private static final float MAX_FALLBACK_POSITIVE_GAIN_DB = 3.0f;
@@ -59,6 +61,12 @@ public class MusicPlayerManager {
     private static final long LOUDNESS_RAMP_DURATION_MS = 220L;
     private static final long LOUDNESS_RAMP_STEP_MS = 16L;
     private int resumePosition = 0;
+    private boolean keepResumePositionForNextPrepare = false;
+    private boolean startPausedAfterPrepare = false;
+    private boolean snapshotRestoredPendingMedia = false;
+    private boolean restoredWasPlaying = false;
+    private boolean pendingSnapshotWasPlaying = false;
+    private long lastSnapshotPersistElapsedMs = 0L;
     private boolean isCompletionListenerEnabled = false;
     private final AtomicLong playRequestIdGenerator = new AtomicLong(0);
     private volatile long activePlayRequestId = 0;
@@ -111,10 +119,18 @@ public class MusicPlayerManager {
                 return;
             }
 
-            notifyProgressUpdate(getCurrentPosition(), getDuration());
+            // Keep snapshot position current even when no UI is listening (app in background).
+            if (!progressUpdateListeners.isEmpty()) {
+                notifyProgressUpdate(getCurrentPosition(), getDuration());
+            }
+            clearResumePositionOnceSeekLanded();
+            persistPlaybackSnapshotThrottled();
 
             if (shouldRunProgressDispatcher()) {
-                mainHandler.postDelayed(this, PROGRESS_UPDATE_INTERVAL_MS);
+                long interval = progressUpdateListeners.isEmpty()
+                        ? SNAPSHOT_PERSIST_MIN_INTERVAL_MS
+                        : PROGRESS_UPDATE_INTERVAL_MS;
+                mainHandler.postDelayed(this, interval);
             } else {
                 stopProgressDispatcher();
             }
@@ -196,12 +212,13 @@ public class MusicPlayerManager {
     public static MusicPlayerManager getInstance(Context context) {
         if (instance == null) {
             instance = new MusicPlayerManager(context);
+            instance.restorePlaybackSnapshotIfNeeded();
         }
         return instance;
     }
 
     public void restorePlaybackSnapshotIfNeeded() {
-        if (!playlist.isEmpty() || !settingsManager.isHearingProtectionRestActive()) {
+        if (!playlist.isEmpty()) {
             return;
         }
         SettingsManager.PlaybackSnapshot snapshot = settingsManager.getPlaybackSnapshot();
@@ -210,23 +227,118 @@ public class MusicPlayerManager {
         }
         playlist = new ArrayList<>(snapshot.songs);
         currentIndex = snapshot.currentIndex;
+        if (currentIndex < -1) {
+            currentIndex = -1;
+        }
+        if (currentIndex >= playlist.size()) {
+            currentIndex = playlist.isEmpty() ? -1 : 0;
+        }
+        resumePosition = Math.max(0, snapshot.positionMs);
+        isPaused = true;
+        playbackActive = false;
+        snapshotRestoredPendingMedia = currentIndex >= 0;
+        restoredWasPlaying = snapshot.wasPlaying;
+        keepResumePositionForNextPrepare = false;
+        startPausedAfterPrepare = false;
+
         notifyPlaylistChanged();
-        if (currentIndex >= 0 && currentIndex < playlist.size()) {
-            notifySongChanged(playlist.get(currentIndex));
+        Song song = getCurrentSong();
+        if (song != null) {
+            notifySongChanged(song);
+            int duration = song.durationMs > 0 ? (int) song.durationMs : 0;
+            notifyProgressUpdate(resumePosition, duration);
+            notifyPlaybackStateChanged(false);
         }
     }
 
-    private void persistPlaybackSnapshot() {
-        if (!settingsManager.isHearingProtectionEnabled()) {
-            settingsManager.clearPlaybackSnapshot();
+    public boolean hasRestoredPlaybackPendingMedia() {
+        return snapshotRestoredPendingMedia && currentIndex >= 0 && currentIndex < playlist.size();
+    }
+
+    public boolean shouldAutoPlayRestoredSnapshot() {
+        return hasRestoredPlaybackPendingMedia() && restoredWasPlaying;
+    }
+
+    public void prepareRestoredMediaIfNeeded(boolean autoPlay) {
+        if (!hasRestoredPlaybackPendingMedia()) {
             return;
         }
-        settingsManager.setPlaybackSnapshot(playlist, currentIndex);
+        snapshotRestoredPendingMedia = false;
+        keepResumePositionForNextPrepare = true;
+        startPausedAfterPrepare = !autoPlay;
+        // Preserve wasPlaying across the async prepare window so a mid-restore kill
+        // does not rewrite the snapshot as paused.
+        pendingSnapshotWasPlaying = autoPlay;
+        isAutoSkipping = false;
+        continuousSkipCount = 0;
+        play(currentIndex, false);
+    }
+
+    private void persistPlaybackSnapshot() {
+        writePlaybackSnapshot(true);
+    }
+
+    private void persistPlaybackSnapshotThrottled() {
+        writePlaybackSnapshot(false);
+    }
+
+    private void writePlaybackSnapshot(boolean force) {
+        if (playlist.isEmpty()) {
+            settingsManager.clearPlaybackSnapshot();
+            lastSnapshotPersistElapsedMs = SystemClock.elapsedRealtime();
+            return;
+        }
+        long now = SystemClock.elapsedRealtime();
+        if (!force && now - lastSnapshotPersistElapsedMs < SNAPSHOT_PERSIST_MIN_INTERVAL_MS) {
+            return;
+        }
+        boolean wasPlaying = playbackActive || pendingSnapshotWasPlaying;
+        settingsManager.setPlaybackSnapshot(
+                playlist,
+                currentIndex,
+                resolvePositionForSnapshot(),
+                wasPlaying
+        );
+        lastSnapshotPersistElapsedMs = now;
+    }
+
+    private int resolvePositionForSnapshot() {
+        if (isSwitchingSong || startPausedAfterPrepare) {
+            return Math.max(0, resumePosition);
+        }
+        try {
+            int position = Math.max(0, mediaPlayer.getCurrentPosition());
+            // MediaPlayer may still report 0 right after async seekTo (paused or just started).
+            if (position == 0 && resumePosition > 0) {
+                return resumePosition;
+            }
+            return position;
+        } catch (Exception ignored) {
+            return Math.max(0, resumePosition);
+        }
+    }
+
+    private void clearResumePositionOnceSeekLanded() {
+        if (resumePosition <= 0 || isSwitchingSong) {
+            return;
+        }
+        try {
+            if (mediaPlayer.getCurrentPosition() > 0) {
+                resumePosition = 0;
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     public void setPlaylist(List<Song> songs) {
         this.playlist = new ArrayList<>(songs);
         this.currentIndex = -1; // Reset current index since playlist changed
+        resumePosition = 0;
+        snapshotRestoredPendingMedia = false;
+        restoredWasPlaying = false;
+        pendingSnapshotWasPlaying = false;
+        keepResumePositionForNextPrepare = false;
+        startPausedAfterPrepare = false;
         persistPlaybackSnapshot();
         notifyPlaylistChanged();
     }
@@ -410,6 +522,8 @@ public class MusicPlayerManager {
 
     private void handlePlaybackFailure(int index, long requestId, String reason) {
         if (requestId != activePlayRequestId || currentIndex != index) return;
+        startPausedAfterPrepare = false;
+        pendingSnapshotWasPlaying = false;
 
         android.util.Log.e("MusicPlayerManager", "Playback failure: " + reason + " for index " + index);
 
@@ -451,16 +565,28 @@ public class MusicPlayerManager {
         cancelActiveFullInfoRequest();
         forceNextPlaybackStateDispatch = true;
 
+        boolean preserveResumePosition = keepResumePositionForNextPrepare && resumePosition > 0;
         if (!isRetry) {
+            // Cancel any pending post-restore media prepare once an intentional play starts.
+            snapshotRestoredPendingMedia = false;
             retryCount = 0;
-            resumePosition = 0;
+            if (!keepResumePositionForNextPrepare) {
+                resumePosition = 0;
+                pendingSnapshotWasPlaying = false;
+            }
+            keepResumePositionForNextPrepare = false;
         }
 
         boolean wasPlaying = playbackActive;
         boolean isNewSong = (index != currentIndex);
         currentIndex = index;
-        persistPlaybackSnapshot();
+        // Mark switching before snapshot write so we persist the new index with the
+        // new track position (0 / restore offset), not the previous track's offset.
         isSwitchingSong = true;
+        if (!preserveResumePosition && !isRetry) {
+            resumePosition = 0;
+        }
+        persistPlaybackSnapshot();
         updateProgressDispatcherState();
         // Temporarily disable completion listener to prevent race conditions during song loading/switching
         isCompletionListenerEnabled = false;
@@ -495,7 +621,12 @@ public class MusicPlayerManager {
         // During retries or auto-skips, we've already notified the change (or it's debounced).
         if (!isRetry && !isAutoSkipping) {
             notifySongChanged(song);
-            notifyProgressUpdate(0, 0);
+            if (preserveResumePosition) {
+                int duration = song.durationMs > 0 ? (int) song.durationMs : 0;
+                notifyProgressUpdate(resumePosition, duration);
+            } else {
+                notifyProgressUpdate(0, 0);
+            }
         }
 
         if (wasPlaying) {
@@ -730,21 +861,43 @@ public class MusicPlayerManager {
                 isAutoSkipping = false;
                 continuousSkipCount = 0;
                 isSwitchingSong = false;
-                if (resumePosition > 0) {
-                    mp.seekTo(resumePosition);
-                    resumePosition = 0;
+                int seekPosition = Math.max(0, resumePosition);
+                if (seekPosition > 0) {
+                    try {
+                        mp.seekTo(seekPosition);
+                    } catch (Exception ignored) {
+                    }
                 }
+                // seekTo is async; do not re-read getCurrentPosition() here or we may
+                // wipe the restored offset with 0 before the seek completes.
+                resumePosition = seekPosition;
                 // Apply per-track gain without touching the user-configured app volume scalar.
                 if (hasPendingLoudnessNormalization) {
                     applyLoudnessNormalization(pendingLoudnessGainDb);
                 } else {
                     releaseLoudnessEnhancer();
                 }
+                isCompletionListenerEnabled = true;
+                if (startPausedAfterPrepare) {
+                    startPausedAfterPrepare = false;
+                    playbackActive = false;
+                    isPaused = true;
+                    pendingSnapshotWasPlaying = false;
+                    notifyPlaybackStateChanged(false);
+                    notifyProgressUpdate(resumePosition, getDuration());
+                    // resumePosition still holds seekPosition; resolvePositionForSnapshot uses it
+                    // until MediaPlayer reflects the async seek.
+                    persistPlaybackSnapshot();
+                    return;
+                }
                 mp.start();
                 playbackActive = true;
                 isPaused = false;
-                isCompletionListenerEnabled = true;
+                // Keep resumePosition as the seek anchor until MediaPlayer reports progress so a
+                // kill right after prepare still restores mid-track (not position 0).
+                pendingSnapshotWasPlaying = false;
                 notifyPlaybackStateChanged(true);
+                persistPlaybackSnapshot();
             });
 
             mediaPlayer.setOnErrorListener((mp, what, extra) -> {
@@ -770,6 +923,7 @@ public class MusicPlayerManager {
             mediaPlayer.prepareAsync();
         } catch (Exception e) {
             playbackActive = false;
+            startPausedAfterPrepare = false;
             if (requestId == activePlayRequestId) {
                 isSwitchingSong = false;
             }
@@ -783,17 +937,28 @@ public class MusicPlayerManager {
         notifyPlaybackAction(true, PLAYBACK_ACTION_PAUSE);
         if (!playbackActive) {
             updateProgressDispatcherState();
+            persistPlaybackSnapshot();
             return;
         }
         try {
             mediaPlayer.pause();
             playbackActive = false;
             isPaused = true;
+            try {
+                int position = Math.max(0, mediaPlayer.getCurrentPosition());
+                // Prefer a real MediaPlayer offset; keep seek-anchor resumePosition if still 0.
+                if (position > 0 || resumePosition <= 0) {
+                    resumePosition = position;
+                }
+            } catch (Exception ignored) {
+            }
             notifyPlaybackStateChanged(false);
         } catch (IllegalStateException ignored) {
             playbackActive = false;
+            isPaused = true;
         }
         updateProgressDispatcherState();
+        persistPlaybackSnapshot();
     }
 
     public void markPausedForResume() {
@@ -803,10 +968,20 @@ public class MusicPlayerManager {
         if (isPaused && !playbackActive) {
             return;
         }
+        try {
+            if (playbackActive) {
+                int position = Math.max(0, mediaPlayer.getCurrentPosition());
+                if (position > 0 || resumePosition <= 0) {
+                    resumePosition = position;
+                }
+            }
+        } catch (Exception ignored) {
+        }
         isPaused = true;
         playbackActive = false;
         notifyPlaybackStateChanged(false);
         updateProgressDispatcherState();
+        persistPlaybackSnapshot();
     }
 
     public void resume() {
@@ -816,12 +991,37 @@ public class MusicPlayerManager {
                 mediaPlayer.start();
                 playbackActive = true;
                 isPaused = false;
+                // Leave resumePosition until progress confirms seek/playback position if needed.
+                if (resumePosition > 0) {
+                    try {
+                        if (mediaPlayer.getCurrentPosition() > 0) {
+                            resumePosition = 0;
+                        }
+                    } catch (Exception ignored) {
+                        resumePosition = 0;
+                    }
+                }
                 notifyPlaybackStateChanged(true);
             } catch (IllegalStateException ignored) {
-                playbackActive = false;
+                // Media not prepared after process death — reload from saved position.
+                if (currentIndex >= 0 && currentIndex < playlist.size()) {
+                    keepResumePositionForNextPrepare = true;
+                    startPausedAfterPrepare = false;
+                    pendingSnapshotWasPlaying = true;
+                    play(currentIndex, false);
+                } else {
+                    playbackActive = false;
+                }
             }
+        } else if (!playbackActive && currentIndex >= 0 && currentIndex < playlist.size()) {
+            // Always keep so play() does not clear pendingSnapshotWasPlaying mid re-prepare.
+            keepResumePositionForNextPrepare = true;
+            startPausedAfterPrepare = false;
+            pendingSnapshotWasPlaying = true;
+            play(currentIndex, false);
         }
         updateProgressDispatcherState();
+        persistPlaybackSnapshot();
     }
 
     public void continueAfterHearingProtectionRest() {
@@ -959,40 +1159,59 @@ public class MusicPlayerManager {
 
 
     public void seekTo(int msec) {
+        int target = Math.max(0, msec);
+        resumePosition = target;
         try {
-            mediaPlayer.seekTo(msec);
+            mediaPlayer.seekTo(target);
             // Only notify listeners if we are not in the middle of switching songs.
             // This prevents redundant notification updates during song transitions
             // while still allowing synchronization for user-initiated seeks.
             if (!isSwitchingSong) {
-                notifySeek(msec);
+                notifySeek(target);
             }
             notifyPlaybackStateChanged(isPlaying());
+            persistPlaybackSnapshot();
         } catch (Exception e) {
+            // Keep resumePosition so a later prepare/resume lands at the requested offset.
+            if (!isSwitchingSong) {
+                notifySeek(target);
+            }
+            notifyProgressUpdate(target, getDuration());
+            persistPlaybackSnapshot();
             e.printStackTrace();
         }
     }
 
     public int getCurrentPosition() {
         if (isSwitchingSong) {
-            return 0;
+            return Math.max(0, resumePosition);
         }
         try {
-            return mediaPlayer.getCurrentPosition();
+            int position = Math.max(0, mediaPlayer.getCurrentPosition());
+            // After async seekTo, MediaPlayer may report 0 briefly (paused or just started).
+            if (position == 0 && resumePosition > 0) {
+                return resumePosition;
+            }
+            return position;
         } catch (Exception e) {
-            return 0;
+            return Math.max(0, resumePosition);
         }
     }
 
     public int getDuration() {
         if (isSwitchingSong) {
-            return 0;
+            Song song = getCurrentSong();
+            return song != null && song.durationMs > 0 ? (int) song.durationMs : 0;
         }
         try {
-            return mediaPlayer.getDuration();
-        } catch (Exception e) {
-            return 0;
+            int duration = mediaPlayer.getDuration();
+            if (duration > 0) {
+                return duration;
+            }
+        } catch (Exception ignored) {
         }
+        Song song = getCurrentSong();
+        return song != null && song.durationMs > 0 ? (int) song.durationMs : 0;
     }
 
     public boolean isPlaying() {
@@ -1500,7 +1719,8 @@ public class MusicPlayerManager {
     }
 
     private boolean shouldRunProgressDispatcher() {
-        return !isSwitchingSong && playbackActive && !progressUpdateListeners.isEmpty();
+        // Run while playing even with no UI listeners so background position is snapshotted.
+        return !isSwitchingSong && playbackActive;
     }
 
     private void startProgressDispatcher() {
