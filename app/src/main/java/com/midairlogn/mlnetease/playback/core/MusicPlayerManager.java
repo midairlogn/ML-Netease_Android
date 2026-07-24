@@ -6,6 +6,7 @@ import android.media.MediaPlayer;
 import android.media.audiofx.LoudnessEnhancer;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 
 import com.midairlogn.mlnetease.image.ImageUtils;
 import com.midairlogn.mlnetease.local.media.LocalAudioMetadata;
@@ -48,6 +49,7 @@ public class MusicPlayerManager {
     private int retryCount = 0;
     private static final int MAX_RETRY = 3;
     private static final long PROGRESS_UPDATE_INTERVAL_MS = 500L;
+    private static final long SNAPSHOT_PERSIST_MIN_INTERVAL_MS = 2500L;
     private static final int MILLIBELS_PER_DECIBEL = 100;
     private static final float MAX_NORMALIZED_OUTPUT_PEAK = 0.98f;
     private static final float MAX_FALLBACK_POSITIVE_GAIN_DB = 3.0f;
@@ -59,6 +61,11 @@ public class MusicPlayerManager {
     private static final long LOUDNESS_RAMP_DURATION_MS = 220L;
     private static final long LOUDNESS_RAMP_STEP_MS = 16L;
     private int resumePosition = 0;
+    private boolean keepResumePositionForNextPrepare = false;
+    private boolean startPausedAfterPrepare = false;
+    private boolean snapshotRestoredPendingMedia = false;
+    private boolean restoredWasPlaying = false;
+    private long lastSnapshotPersistElapsedMs = 0L;
     private boolean isCompletionListenerEnabled = false;
     private final AtomicLong playRequestIdGenerator = new AtomicLong(0);
     private volatile long activePlayRequestId = 0;
@@ -112,6 +119,7 @@ public class MusicPlayerManager {
             }
 
             notifyProgressUpdate(getCurrentPosition(), getDuration());
+            persistPlaybackSnapshotThrottled();
 
             if (shouldRunProgressDispatcher()) {
                 mainHandler.postDelayed(this, PROGRESS_UPDATE_INTERVAL_MS);
@@ -196,12 +204,13 @@ public class MusicPlayerManager {
     public static MusicPlayerManager getInstance(Context context) {
         if (instance == null) {
             instance = new MusicPlayerManager(context);
+            instance.restorePlaybackSnapshotIfNeeded();
         }
         return instance;
     }
 
     public void restorePlaybackSnapshotIfNeeded() {
-        if (!playlist.isEmpty() || !settingsManager.isHearingProtectionRestActive()) {
+        if (!playlist.isEmpty()) {
             return;
         }
         SettingsManager.PlaybackSnapshot snapshot = settingsManager.getPlaybackSnapshot();
@@ -210,23 +219,96 @@ public class MusicPlayerManager {
         }
         playlist = new ArrayList<>(snapshot.songs);
         currentIndex = snapshot.currentIndex;
+        if (currentIndex < -1) {
+            currentIndex = -1;
+        }
+        if (currentIndex >= playlist.size()) {
+            currentIndex = playlist.isEmpty() ? -1 : 0;
+        }
+        resumePosition = Math.max(0, snapshot.positionMs);
+        isPaused = true;
+        playbackActive = false;
+        snapshotRestoredPendingMedia = currentIndex >= 0;
+        restoredWasPlaying = snapshot.wasPlaying;
+        keepResumePositionForNextPrepare = false;
+        startPausedAfterPrepare = false;
+
         notifyPlaylistChanged();
-        if (currentIndex >= 0 && currentIndex < playlist.size()) {
-            notifySongChanged(playlist.get(currentIndex));
+        Song song = getCurrentSong();
+        if (song != null) {
+            notifySongChanged(song);
+            int duration = song.durationMs > 0 ? (int) song.durationMs : 0;
+            notifyProgressUpdate(resumePosition, duration);
+            notifyPlaybackStateChanged(false);
         }
     }
 
-    private void persistPlaybackSnapshot() {
-        if (!settingsManager.isHearingProtectionEnabled()) {
-            settingsManager.clearPlaybackSnapshot();
+    public boolean hasRestoredPlaybackPendingMedia() {
+        return snapshotRestoredPendingMedia && currentIndex >= 0 && currentIndex < playlist.size();
+    }
+
+    public boolean shouldAutoPlayRestoredSnapshot() {
+        return hasRestoredPlaybackPendingMedia() && restoredWasPlaying;
+    }
+
+    public void prepareRestoredMediaIfNeeded(boolean autoPlay) {
+        if (!hasRestoredPlaybackPendingMedia()) {
             return;
         }
-        settingsManager.setPlaybackSnapshot(playlist, currentIndex);
+        snapshotRestoredPendingMedia = false;
+        keepResumePositionForNextPrepare = true;
+        startPausedAfterPrepare = !autoPlay;
+        isAutoSkipping = false;
+        continuousSkipCount = 0;
+        play(currentIndex, false);
+    }
+
+    private void persistPlaybackSnapshot() {
+        writePlaybackSnapshot(true);
+    }
+
+    private void persistPlaybackSnapshotThrottled() {
+        writePlaybackSnapshot(false);
+    }
+
+    private void writePlaybackSnapshot(boolean force) {
+        if (playlist.isEmpty()) {
+            settingsManager.clearPlaybackSnapshot();
+            lastSnapshotPersistElapsedMs = SystemClock.elapsedRealtime();
+            return;
+        }
+        long now = SystemClock.elapsedRealtime();
+        if (!force && now - lastSnapshotPersistElapsedMs < SNAPSHOT_PERSIST_MIN_INTERVAL_MS) {
+            return;
+        }
+        settingsManager.setPlaybackSnapshot(
+                playlist,
+                currentIndex,
+                resolvePositionForSnapshot(),
+                playbackActive
+        );
+        lastSnapshotPersistElapsedMs = now;
+    }
+
+    private int resolvePositionForSnapshot() {
+        if (isSwitchingSong) {
+            return Math.max(0, resumePosition);
+        }
+        try {
+            return Math.max(0, mediaPlayer.getCurrentPosition());
+        } catch (Exception ignored) {
+            return Math.max(0, resumePosition);
+        }
     }
 
     public void setPlaylist(List<Song> songs) {
         this.playlist = new ArrayList<>(songs);
         this.currentIndex = -1; // Reset current index since playlist changed
+        resumePosition = 0;
+        snapshotRestoredPendingMedia = false;
+        restoredWasPlaying = false;
+        keepResumePositionForNextPrepare = false;
+        startPausedAfterPrepare = false;
         persistPlaybackSnapshot();
         notifyPlaylistChanged();
     }
@@ -410,6 +492,7 @@ public class MusicPlayerManager {
 
     private void handlePlaybackFailure(int index, long requestId, String reason) {
         if (requestId != activePlayRequestId || currentIndex != index) return;
+        startPausedAfterPrepare = false;
 
         android.util.Log.e("MusicPlayerManager", "Playback failure: " + reason + " for index " + index);
 
@@ -451,9 +534,15 @@ public class MusicPlayerManager {
         cancelActiveFullInfoRequest();
         forceNextPlaybackStateDispatch = true;
 
+        boolean preserveResumePosition = keepResumePositionForNextPrepare && resumePosition > 0;
         if (!isRetry) {
+            // Cancel any pending post-restore media prepare once an intentional play starts.
+            snapshotRestoredPendingMedia = false;
             retryCount = 0;
-            resumePosition = 0;
+            if (!keepResumePositionForNextPrepare) {
+                resumePosition = 0;
+            }
+            keepResumePositionForNextPrepare = false;
         }
 
         boolean wasPlaying = playbackActive;
@@ -495,7 +584,12 @@ public class MusicPlayerManager {
         // During retries or auto-skips, we've already notified the change (or it's debounced).
         if (!isRetry && !isAutoSkipping) {
             notifySongChanged(song);
-            notifyProgressUpdate(0, 0);
+            if (preserveResumePosition) {
+                int duration = song.durationMs > 0 ? (int) song.durationMs : 0;
+                notifyProgressUpdate(resumePosition, duration);
+            } else {
+                notifyProgressUpdate(0, 0);
+            }
         }
 
         if (wasPlaying) {
@@ -730,21 +824,40 @@ public class MusicPlayerManager {
                 isAutoSkipping = false;
                 continuousSkipCount = 0;
                 isSwitchingSong = false;
-                if (resumePosition > 0) {
-                    mp.seekTo(resumePosition);
-                    resumePosition = 0;
+                int seekPosition = resumePosition;
+                if (seekPosition > 0) {
+                    try {
+                        mp.seekTo(seekPosition);
+                    } catch (Exception ignored) {
+                    }
                 }
+                resumePosition = Math.max(0, seekPosition);
                 // Apply per-track gain without touching the user-configured app volume scalar.
                 if (hasPendingLoudnessNormalization) {
                     applyLoudnessNormalization(pendingLoudnessGainDb);
                 } else {
                     releaseLoudnessEnhancer();
                 }
+                isCompletionListenerEnabled = true;
+                if (startPausedAfterPrepare) {
+                    startPausedAfterPrepare = false;
+                    playbackActive = false;
+                    isPaused = true;
+                    try {
+                        resumePosition = Math.max(0, mp.getCurrentPosition());
+                    } catch (Exception ignored) {
+                    }
+                    notifyPlaybackStateChanged(false);
+                    notifyProgressUpdate(getCurrentPosition(), getDuration());
+                    persistPlaybackSnapshot();
+                    return;
+                }
                 mp.start();
                 playbackActive = true;
                 isPaused = false;
-                isCompletionListenerEnabled = true;
+                resumePosition = 0;
                 notifyPlaybackStateChanged(true);
+                persistPlaybackSnapshot();
             });
 
             mediaPlayer.setOnErrorListener((mp, what, extra) -> {
@@ -770,6 +883,7 @@ public class MusicPlayerManager {
             mediaPlayer.prepareAsync();
         } catch (Exception e) {
             playbackActive = false;
+            startPausedAfterPrepare = false;
             if (requestId == activePlayRequestId) {
                 isSwitchingSong = false;
             }
@@ -783,17 +897,24 @@ public class MusicPlayerManager {
         notifyPlaybackAction(true, PLAYBACK_ACTION_PAUSE);
         if (!playbackActive) {
             updateProgressDispatcherState();
+            persistPlaybackSnapshot();
             return;
         }
         try {
             mediaPlayer.pause();
             playbackActive = false;
             isPaused = true;
+            try {
+                resumePosition = Math.max(0, mediaPlayer.getCurrentPosition());
+            } catch (Exception ignored) {
+            }
             notifyPlaybackStateChanged(false);
         } catch (IllegalStateException ignored) {
             playbackActive = false;
+            isPaused = true;
         }
         updateProgressDispatcherState();
+        persistPlaybackSnapshot();
     }
 
     public void markPausedForResume() {
@@ -803,10 +924,17 @@ public class MusicPlayerManager {
         if (isPaused && !playbackActive) {
             return;
         }
+        try {
+            if (playbackActive) {
+                resumePosition = Math.max(0, mediaPlayer.getCurrentPosition());
+            }
+        } catch (Exception ignored) {
+        }
         isPaused = true;
         playbackActive = false;
         notifyPlaybackStateChanged(false);
         updateProgressDispatcherState();
+        persistPlaybackSnapshot();
     }
 
     public void resume() {
@@ -816,12 +944,25 @@ public class MusicPlayerManager {
                 mediaPlayer.start();
                 playbackActive = true;
                 isPaused = false;
+                resumePosition = 0;
                 notifyPlaybackStateChanged(true);
             } catch (IllegalStateException ignored) {
-                playbackActive = false;
+                // Media not prepared after process death — reload from saved position.
+                if (currentIndex >= 0 && currentIndex < playlist.size()) {
+                    keepResumePositionForNextPrepare = true;
+                    startPausedAfterPrepare = false;
+                    play(currentIndex, false);
+                } else {
+                    playbackActive = false;
+                }
             }
+        } else if (!playbackActive && currentIndex >= 0 && currentIndex < playlist.size()) {
+            keepResumePositionForNextPrepare = resumePosition > 0;
+            startPausedAfterPrepare = false;
+            play(currentIndex, false);
         }
         updateProgressDispatcherState();
+        persistPlaybackSnapshot();
     }
 
     public void continueAfterHearingProtectionRest() {
@@ -959,40 +1100,54 @@ public class MusicPlayerManager {
 
 
     public void seekTo(int msec) {
+        int target = Math.max(0, msec);
+        resumePosition = target;
         try {
-            mediaPlayer.seekTo(msec);
+            mediaPlayer.seekTo(target);
             // Only notify listeners if we are not in the middle of switching songs.
             // This prevents redundant notification updates during song transitions
             // while still allowing synchronization for user-initiated seeks.
             if (!isSwitchingSong) {
-                notifySeek(msec);
+                notifySeek(target);
             }
             notifyPlaybackStateChanged(isPlaying());
+            persistPlaybackSnapshot();
         } catch (Exception e) {
+            // Keep resumePosition so a later prepare/resume lands at the requested offset.
+            if (!isSwitchingSong) {
+                notifySeek(target);
+            }
+            notifyProgressUpdate(target, getDuration());
+            persistPlaybackSnapshot();
             e.printStackTrace();
         }
     }
 
     public int getCurrentPosition() {
         if (isSwitchingSong) {
-            return 0;
+            return Math.max(0, resumePosition);
         }
         try {
-            return mediaPlayer.getCurrentPosition();
+            return Math.max(0, mediaPlayer.getCurrentPosition());
         } catch (Exception e) {
-            return 0;
+            return Math.max(0, resumePosition);
         }
     }
 
     public int getDuration() {
         if (isSwitchingSong) {
-            return 0;
+            Song song = getCurrentSong();
+            return song != null && song.durationMs > 0 ? (int) song.durationMs : 0;
         }
         try {
-            return mediaPlayer.getDuration();
-        } catch (Exception e) {
-            return 0;
+            int duration = mediaPlayer.getDuration();
+            if (duration > 0) {
+                return duration;
+            }
+        } catch (Exception ignored) {
         }
+        Song song = getCurrentSong();
+        return song != null && song.durationMs > 0 ? (int) song.durationMs : 0;
     }
 
     public boolean isPlaying() {

@@ -66,6 +66,8 @@ public class SettingsManager {
     private static final String KEY_HEARING_PROTECTION_BACKGROUND_PROMPT_DISMISSED = "hearing_protection_background_prompt_dismissed";
     private static final String KEY_PLAYBACK_SNAPSHOT_QUEUE = "playback_snapshot_queue";
     private static final String KEY_PLAYBACK_SNAPSHOT_INDEX = "playback_snapshot_index";
+    private static final String KEY_PLAYBACK_SNAPSHOT_POSITION_MS = "playback_snapshot_position_ms";
+    private static final String KEY_PLAYBACK_SNAPSHOT_WAS_PLAYING = "playback_snapshot_was_playing";
     private static final String KEY_DOWNLOAD_FILENAME_TEMPLATE = "download_filename_template";
     private static final String KEY_DOWNLOAD_FILENAME_SEPARATOR = "download_filename_separator";
     private static final String KEY_DOWNLOAD_METADATA_ENABLED = "download_metadata_enabled";
@@ -95,12 +97,18 @@ public class SettingsManager {
     private SharedPreferences prefs;
     private String lastPlaybackSnapshotQueue = null;
     private int lastPlaybackSnapshotIndex = Integer.MIN_VALUE;
+    private int lastPlaybackSnapshotPositionMs = Integer.MIN_VALUE;
+    private boolean lastPlaybackSnapshotWasPlaying = false;
+    private boolean hasLastPlaybackSnapshotWasPlaying = false;
 
     public SettingsManager(Context context) {
         appContext = context.getApplicationContext();
         prefs = appContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         lastPlaybackSnapshotQueue = prefs.getString(KEY_PLAYBACK_SNAPSHOT_QUEUE, null);
         lastPlaybackSnapshotIndex = prefs.getInt(KEY_PLAYBACK_SNAPSHOT_INDEX, -1);
+        lastPlaybackSnapshotPositionMs = prefs.getInt(KEY_PLAYBACK_SNAPSHOT_POSITION_MS, 0);
+        lastPlaybackSnapshotWasPlaying = prefs.getBoolean(KEY_PLAYBACK_SNAPSHOT_WAS_PLAYING, false);
+        hasLastPlaybackSnapshotWasPlaying = prefs.contains(KEY_PLAYBACK_SNAPSHOT_WAS_PLAYING);
     }
 
     public void setMusicU(String musicU) {
@@ -681,7 +689,7 @@ public class SettingsManager {
         prefs.edit().putBoolean(KEY_HEARING_PROTECTION_BACKGROUND_PROMPT_DISMISSED, dismissed).apply();
     }
 
-    public void setPlaybackSnapshot(List<Song> songs, int currentIndex) {
+    public void setPlaybackSnapshot(List<Song> songs, int currentIndex, int positionMs, boolean wasPlaying) {
         JSONArray array = new JSONArray();
         if (songs != null) {
             for (Song song : songs) {
@@ -692,15 +700,25 @@ public class SettingsManager {
             }
         }
         String serializedQueue = array.toString();
-        if (serializedQueue.equals(lastPlaybackSnapshotQueue) && currentIndex == lastPlaybackSnapshotIndex) {
+        int safePositionMs = Math.max(0, positionMs);
+        if (serializedQueue.equals(lastPlaybackSnapshotQueue)
+                && currentIndex == lastPlaybackSnapshotIndex
+                && safePositionMs == lastPlaybackSnapshotPositionMs
+                && wasPlaying == lastPlaybackSnapshotWasPlaying
+                && hasLastPlaybackSnapshotWasPlaying) {
             return;
         }
         prefs.edit()
                 .putString(KEY_PLAYBACK_SNAPSHOT_QUEUE, serializedQueue)
                 .putInt(KEY_PLAYBACK_SNAPSHOT_INDEX, currentIndex)
+                .putInt(KEY_PLAYBACK_SNAPSHOT_POSITION_MS, safePositionMs)
+                .putBoolean(KEY_PLAYBACK_SNAPSHOT_WAS_PLAYING, wasPlaying)
                 .apply();
         lastPlaybackSnapshotQueue = serializedQueue;
         lastPlaybackSnapshotIndex = currentIndex;
+        lastPlaybackSnapshotPositionMs = safePositionMs;
+        lastPlaybackSnapshotWasPlaying = wasPlaying;
+        hasLastPlaybackSnapshotWasPlaying = true;
     }
 
     public PlaybackSnapshot getPlaybackSnapshot() {
@@ -719,19 +737,30 @@ public class SettingsManager {
         }
         int savedIndex = prefs.getInt(KEY_PLAYBACK_SNAPSHOT_INDEX, -1);
         int normalizedIndex = songs.isEmpty() ? -1 : clamp(savedIndex, -1, songs.size() - 1);
-        return new PlaybackSnapshot(songs, normalizedIndex);
+        int positionMs = Math.max(0, prefs.getInt(KEY_PLAYBACK_SNAPSHOT_POSITION_MS, 0));
+        boolean wasPlaying = prefs.getBoolean(KEY_PLAYBACK_SNAPSHOT_WAS_PLAYING, false);
+        return new PlaybackSnapshot(songs, normalizedIndex, positionMs, wasPlaying);
     }
 
     public void clearPlaybackSnapshot() {
-        if (lastPlaybackSnapshotQueue == null && lastPlaybackSnapshotIndex == -1) {
+        if (lastPlaybackSnapshotQueue == null
+                && lastPlaybackSnapshotIndex == -1
+                && lastPlaybackSnapshotPositionMs <= 0
+                && !lastPlaybackSnapshotWasPlaying
+                && !hasLastPlaybackSnapshotWasPlaying) {
             return;
         }
         prefs.edit()
                 .remove(KEY_PLAYBACK_SNAPSHOT_QUEUE)
                 .remove(KEY_PLAYBACK_SNAPSHOT_INDEX)
+                .remove(KEY_PLAYBACK_SNAPSHOT_POSITION_MS)
+                .remove(KEY_PLAYBACK_SNAPSHOT_WAS_PLAYING)
                 .apply();
         lastPlaybackSnapshotQueue = null;
         lastPlaybackSnapshotIndex = -1;
+        lastPlaybackSnapshotPositionMs = 0;
+        lastPlaybackSnapshotWasPlaying = false;
+        hasLastPlaybackSnapshotWasPlaying = false;
     }
 
     private int clampHearingProtectionListenMinutes(int minutes) {
@@ -1173,10 +1202,14 @@ public class SettingsManager {
     public static final class PlaybackSnapshot {
         public final List<Song> songs;
         public final int currentIndex;
+        public final int positionMs;
+        public final boolean wasPlaying;
 
-        PlaybackSnapshot(List<Song> songs, int currentIndex) {
+        PlaybackSnapshot(List<Song> songs, int currentIndex, int positionMs, boolean wasPlaying) {
             this.songs = songs;
             this.currentIndex = currentIndex;
+            this.positionMs = Math.max(0, positionMs);
+            this.wasPlaying = wasPlaying;
         }
     }
 

@@ -292,6 +292,19 @@ public class MusicService extends Service {
 
         // Ensure PlaybackState is initialized with CustomActions
         updatePlaybackState(isPlaybackActive());
+
+        // After process death, re-prepare media at the restored position (optionally auto-resume).
+        if (musicPlayerManager.hasRestoredPlaybackPendingMedia()) {
+            boolean autoPlay = musicPlayerManager.shouldAutoPlayRestoredSnapshot()
+                    && !isHearingProtectionRestActive();
+            if (autoPlay) {
+                AudioFocusOutcome focusOutcome = requestAudioFocus();
+                if (focusOutcome != AudioFocusOutcome.GRANTED) {
+                    autoPlay = false;
+                }
+            }
+            musicPlayerManager.prepareRestoredMediaIfNeeded(autoPlay);
+        }
     }
 
     private void initMediaSession() {
@@ -1286,7 +1299,8 @@ public class MusicService extends Service {
                 return START_STICKY;
             }
         }
-        return START_NOT_STICKY;
+        // Keep the media service sticky so system restarts can re-show the restored queue.
+        return START_STICKY;
     }
 
     @Nullable
