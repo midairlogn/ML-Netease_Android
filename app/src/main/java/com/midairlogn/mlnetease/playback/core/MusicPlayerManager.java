@@ -274,6 +274,23 @@ public class MusicPlayerManager {
         play(currentIndex, false);
     }
 
+    /**
+     * If restored media is preparing to stay paused, switch to auto-start when ready.
+     * Used when a headset/media PLAY arrives during cold-start restore prepare.
+     */
+    public void promotePendingPrepareToPlay() {
+        if (!startPausedAfterPrepare) {
+            return;
+        }
+        startPausedAfterPrepare = false;
+        pendingSnapshotWasPlaying = true;
+    }
+
+    /** True while play()/prepareAsync is in flight for the current track. */
+    public boolean isMediaPrepareInFlight() {
+        return isSwitchingSong && !playbackActive;
+    }
+
     private void persistPlaybackSnapshot() {
         writePlaybackSnapshot(true);
     }
@@ -494,6 +511,9 @@ public class MusicPlayerManager {
         notifyPlaybackAction(true, PLAYBACK_ACTION_PLAY);
         isAutoSkipping = false;
         continuousSkipCount = 0;
+        // Intentional play (UI/headset next-prev/rest-continue) must auto-start.
+        // Restore-as-paused uses private play() and keeps startPausedAfterPrepare.
+        promotePendingPrepareToPlay();
         if (pendingSongNotifyRunnable != null) {
             mainHandler.removeCallbacks(pendingSongNotifyRunnable);
             pendingSongNotifyRunnable = null;

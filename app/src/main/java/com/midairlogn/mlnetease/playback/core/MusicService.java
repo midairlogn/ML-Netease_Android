@@ -7,9 +7,9 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.view.KeyEvent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.view.KeyEvent;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
@@ -373,7 +373,27 @@ public class MusicService extends Service {
                     performRestCancellationAction(ACTION_CANCEL_REST_AND_RESUME_CURRENT);
                 }
             }
+
+            @Override
+            public boolean onMediaButtonEvent(Intent mediaButtonEvent) {
+                // Keep app-specific key mapping (HEADSETHOOK, hearing-protection rest).
+                if (handleMediaButtonIntent(mediaButtonEvent)) {
+                    return true;
+                }
+                return super.onMediaButtonEvent(mediaButtonEvent);
+            }
         });
+
+        // BLE/cold-start wake: system can restart this service via MediaButtonReceiver
+        // when no other media app owns the buttons (notification may already be gone).
+        Intent mediaButtonIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
+        mediaButtonIntent.setClass(this, MediaButtonReceiver.class);
+        int mediaButtonFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            mediaButtonFlags |= PendingIntent.FLAG_MUTABLE;
+        }
+        mediaSession.setMediaButtonReceiver(
+                PendingIntent.getBroadcast(this, 0, mediaButtonIntent, mediaButtonFlags));
 
         mediaSession.setActive(true);
     }
@@ -521,6 +541,10 @@ public class MusicService extends Service {
         }
         if (ACTION_CANCEL_REST_AND_RESUME_CURRENT.equals(action)
                 || FOCUS_ACTION_RESUME_CURRENT.equals(action)) {
+            musicPlayerManager.promotePendingPrepareToPlay();
+            if (musicPlayerManager.isMediaPrepareInFlight()) {
+                return true;
+            }
             musicPlayerManager.markPausedForResume();
             musicPlayerManager.resume();
             return true;
@@ -583,12 +607,12 @@ public class MusicService extends Service {
             musicPlayerManager.replacePlaylistAndPlay(songs, intent.getIntExtra(EXTRA_PLAY_INDEX, 0));
             return true;
         }
-        if (ACTION_RESUME_CURRENT.equals(action)) {
-            musicPlayerManager.markPausedForResume();
-            musicPlayerManager.resume();
-            return true;
-        }
-        if (ACTION_TOGGLE_PLAY_PAUSE.equals(action)) {
+        if (ACTION_RESUME_CURRENT.equals(action)
+                || ACTION_TOGGLE_PLAY_PAUSE.equals(action)) {
+            musicPlayerManager.promotePendingPrepareToPlay();
+            if (musicPlayerManager.isMediaPrepareInFlight()) {
+                return true;
+            }
             musicPlayerManager.markPausedForResume();
             musicPlayerManager.resume();
             return true;
@@ -1213,6 +1237,8 @@ public class MusicService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // MediaButtonReceiver restarts this service with ACTION_MEDIA_BUTTON after cold start.
+        // Use the same key mapping as live session media buttons (hearing protection, HEADSETHOOK).
         if (handleMediaButtonIntent(intent)) {
             updatePlaybackState(isPlaybackActive(), true);
             return START_STICKY;
