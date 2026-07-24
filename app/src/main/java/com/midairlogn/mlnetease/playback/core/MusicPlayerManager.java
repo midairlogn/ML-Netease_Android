@@ -970,7 +970,10 @@ public class MusicPlayerManager {
         }
         try {
             if (playbackActive) {
-                resumePosition = Math.max(0, mediaPlayer.getCurrentPosition());
+                int position = Math.max(0, mediaPlayer.getCurrentPosition());
+                if (position > 0 || resumePosition <= 0) {
+                    resumePosition = position;
+                }
             }
         } catch (Exception ignored) {
         }
@@ -1011,7 +1014,8 @@ public class MusicPlayerManager {
                 }
             }
         } else if (!playbackActive && currentIndex >= 0 && currentIndex < playlist.size()) {
-            keepResumePositionForNextPrepare = resumePosition > 0;
+            // Always keep so play() does not clear pendingSnapshotWasPlaying mid re-prepare.
+            keepResumePositionForNextPrepare = true;
             startPausedAfterPrepare = false;
             pendingSnapshotWasPlaying = true;
             play(currentIndex, false);
@@ -1184,8 +1188,8 @@ public class MusicPlayerManager {
         }
         try {
             int position = Math.max(0, mediaPlayer.getCurrentPosition());
-            // After async seekTo while still paused, MediaPlayer may report 0 briefly.
-            if (position == 0 && !playbackActive && resumePosition > 0) {
+            // After async seekTo, MediaPlayer may report 0 briefly (paused or just started).
+            if (position == 0 && resumePosition > 0) {
                 return resumePosition;
             }
             return position;
