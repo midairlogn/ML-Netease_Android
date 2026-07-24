@@ -541,6 +541,9 @@ public class MusicService extends Service {
         }
         if (ACTION_CANCEL_REST_AND_RESUME_CURRENT.equals(action)
                 || FOCUS_ACTION_RESUME_CURRENT.equals(action)) {
+            if (isPlaybackActive()) {
+                return true;
+            }
             musicPlayerManager.promotePendingPrepareToPlay();
             if (musicPlayerManager.isMediaPrepareInFlight()) {
                 return true;
@@ -609,6 +612,9 @@ public class MusicService extends Service {
         }
         if (ACTION_RESUME_CURRENT.equals(action)
                 || ACTION_TOGGLE_PLAY_PAUSE.equals(action)) {
+            if (isPlaybackActive()) {
+                return true;
+            }
             musicPlayerManager.promotePendingPrepareToPlay();
             if (musicPlayerManager.isMediaPrepareInFlight()) {
                 return true;
@@ -695,13 +701,14 @@ public class MusicService extends Service {
         }
         switch (keyEvent.getKeyCode()) {
             case KeyEvent.KEYCODE_MEDIA_PLAY:
-            case KeyEvent.KEYCODE_HEADSETHOOK:
                 handleExternalPlayRequest();
                 return true;
             case KeyEvent.KEYCODE_MEDIA_PAUSE:
                 handleExternalPauseRequest();
                 return true;
+            case KeyEvent.KEYCODE_HEADSETHOOK:
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+                // Live headset main button: toggle. Rest mode always resumes/continues.
                 if (isHearingProtectionRestActive()) {
                     handleExternalPlayRequest();
                 } else if (isPlaybackActive()) {
