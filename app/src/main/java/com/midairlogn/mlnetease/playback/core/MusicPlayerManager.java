@@ -307,7 +307,10 @@ public class MusicPlayerManager {
     }
 
     public boolean hasPendingPlaybackRequest() {
-        return playWhenPrepared && isMediaPrepareInFlight();
+        return playWhenPrepared
+                && !playbackActive
+                && currentIndex >= 0
+                && currentIndex < playlist.size();
     }
 
     public void checkpointPlaybackState() {

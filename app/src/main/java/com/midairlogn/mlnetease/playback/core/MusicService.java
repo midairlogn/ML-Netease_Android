@@ -332,6 +332,8 @@ public class MusicService extends Service {
                 AudioFocusOutcome focusOutcome = requestAudioFocus();
                 if (focusOutcome == AudioFocusOutcome.DELAYED) {
                     pendingFocusGainAction = FOCUS_ACTION_RESUME_CURRENT;
+                    pausedByFocusLoss = true;
+                    resumeOnFocusGain = true;
                     autoPlay = false;
                 } else if (focusOutcome != AudioFocusOutcome.GRANTED) {
                     autoPlay = false;
