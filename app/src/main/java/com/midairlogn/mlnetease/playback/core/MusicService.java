@@ -50,6 +50,7 @@ public class MusicService extends Service {
     private static final int MAX_POST_REST_PLAYBACK_RETRIES = 2;
     private static final long POST_REST_AUDIO_FOCUS_RETRY_DELAY_MS = 1_500L;
     private static final int MAX_POST_REST_AUDIO_FOCUS_RETRIES = 6;
+    private static final long HEADSET_HOOK_MULTI_CLICK_WINDOW_MS = 300L;
     private static final String FOCUS_ACTION_RESUME_CURRENT = "focus:resume_current";
     private static final String FOCUS_ACTION_NEXT = "focus:next";
     private static final String FOCUS_ACTION_PREVIOUS = "focus:previous";
@@ -96,6 +97,7 @@ public class MusicService extends Service {
     private SettingsManager settingsManager;
     private AudioFocusRequest audioFocusRequest;
     private boolean hasAudioFocus = false;
+    private boolean audioFocusRequestActive = false;
     private boolean pausedByFocusLoss = false;
     private boolean resumeOnFocusGain = false;
     private boolean pendingAutoContinueAfterRest = false;
@@ -104,6 +106,9 @@ public class MusicService extends Service {
     private boolean awaitingPostRestPlaybackStart = false;
     private int postRestPlaybackRetryCount = 0;
     private int postRestAudioFocusRetryCount = 0;
+    private int headsetHookClickCount = 0;
+    private boolean headsetHookRestActiveAtFirstClick = false;
+    private Runnable pendingHeadsetHookClickRunnable = null;
     private String lastSongId = "";
     private String lastPicUrl = "";
     private Bitmap lastBitmap = null;
@@ -151,6 +156,9 @@ public class MusicService extends Service {
         if (floatingLyricsManager != null) {
             floatingLyricsManager.setAppVisible(isForeground);
         }
+        if (!isForeground && musicPlayerManager != null) {
+            musicPlayerManager.checkpointPlaybackState();
+        }
     };
 
     private final MusicPlayerManager.OnSongChangedListener songChangedListener = new MusicPlayerManager.OnSongChangedListener() {
@@ -187,12 +195,31 @@ public class MusicService extends Service {
     private final MusicPlayerManager.OnPlaybackStateChangedListener playbackStateChangedListener = isPlaying -> {
         if (isPlaying) {
             clearPostRestPlaybackWait(true);
-            if (!hasAudioFocus && requestAudioFocus() != AudioFocusOutcome.GRANTED) {
-                musicPlayerManager.pause();
-                return;
+            if (!hasAudioFocus) {
+                AudioFocusOutcome outcome = requestAudioFocus();
+                if (outcome == AudioFocusOutcome.DELAYED) {
+                    pendingFocusGainAction = FOCUS_ACTION_RESUME_CURRENT;
+                    pausedByFocusLoss = true;
+                    resumeOnFocusGain = true;
+                    cancelPendingHeadsetHookClicks();
+                    musicPlayerManager.pause();
+                    return;
+                }
+                if (outcome != AudioFocusOutcome.GRANTED) {
+                    cancelPendingHeadsetHookClicks();
+                    musicPlayerManager.pause();
+                    return;
+                }
             }
-        } else if (!pausedByFocusLoss) {
-            abandonAudioFocus();
+        } else {
+            if (pendingHeadsetHookClickRunnable != null
+                    && isHearingProtectionRestActive()
+                    && !headsetHookRestActiveAtFirstClick) {
+                cancelPendingHeadsetHookClicks();
+            }
+            if (!pausedByFocusLoss) {
+                abandonAudioFocus();
+            }
         }
         updatePlaybackState(isPlaying);
     };
@@ -211,22 +238,26 @@ public class MusicService extends Service {
         switch (focusChange) {
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
-                if (isPlaybackActive()) {
+                if (isPlaybackActive() || musicPlayerManager.hasPendingPlaybackRequest()) {
                     pausedByFocusLoss = true;
                     resumeOnFocusGain = true;
+                    cancelPendingHeadsetHookClicks();
                     musicPlayerManager.pause();
                 }
                 break;
             case AudioManager.AUDIOFOCUS_LOSS:
-                if (isPlaybackActive()) {
+                if (isPlaybackActive() || musicPlayerManager.hasPendingPlaybackRequest()) {
                     pausedByFocusLoss = true;
+                    cancelPendingHeadsetHookClicks();
                     musicPlayerManager.pause();
                 }
                 resumeOnFocusGain = false;
                 hasAudioFocus = false;
+                audioFocusRequestActive = false;
                 break;
             case AudioManager.AUDIOFOCUS_GAIN:
                 hasAudioFocus = true;
+                audioFocusRequestActive = true;
                 if (pendingAutoContinueAfterRest) {
                     continuePlaybackAfterExpiredRest();
                 } else if (pendingFocusGainIntent != null || pendingFocusGainAction != null) {
@@ -299,7 +330,12 @@ public class MusicService extends Service {
                     && !isHearingProtectionRestActive();
             if (autoPlay) {
                 AudioFocusOutcome focusOutcome = requestAudioFocus();
-                if (focusOutcome != AudioFocusOutcome.GRANTED) {
+                if (focusOutcome == AudioFocusOutcome.DELAYED) {
+                    pendingFocusGainAction = FOCUS_ACTION_RESUME_CURRENT;
+                    pausedByFocusLoss = true;
+                    resumeOnFocusGain = true;
+                    autoPlay = false;
+                } else if (focusOutcome != AudioFocusOutcome.GRANTED) {
                     autoPlay = false;
                 }
             }
@@ -356,13 +392,7 @@ public class MusicService extends Service {
 
             @Override
             public void onStop() {
-                pendingFocusGainAction = null;
-                dropPendingFocusGainIntent();
-                pendingFocusGainIntent = null;
-                pausedByFocusLoss = false;
-                resumeOnFocusGain = false;
-                musicPlayerManager.pause();
-                abandonAudioFocus();
+                handleExternalPauseRequest();
                 stopSelf();
             }
 
@@ -401,12 +431,14 @@ public class MusicService extends Service {
     private AudioFocusOutcome requestAudioFocus() {
         if (audioManager == null) {
             hasAudioFocus = false;
+            audioFocusRequestActive = false;
             return AudioFocusOutcome.FAILED;
         }
         int result;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (audioFocusRequest == null) {
                 hasAudioFocus = false;
+                audioFocusRequestActive = false;
                 return AudioFocusOutcome.FAILED;
             }
             result = audioManager.requestAudioFocus(audioFocusRequest);
@@ -415,18 +447,21 @@ public class MusicService extends Service {
         }
         if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
             hasAudioFocus = true;
+            audioFocusRequestActive = true;
             return AudioFocusOutcome.GRANTED;
         }
         hasAudioFocus = false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 && result == AudioManager.AUDIOFOCUS_REQUEST_DELAYED) {
+            audioFocusRequestActive = true;
             return AudioFocusOutcome.DELAYED;
         }
+        audioFocusRequestActive = false;
         return AudioFocusOutcome.FAILED;
     }
 
     private void abandonAudioFocus() {
-        if (!hasAudioFocus || audioManager == null) {
+        if ((!hasAudioFocus && !audioFocusRequestActive) || audioManager == null) {
             return;
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -437,6 +472,7 @@ public class MusicService extends Service {
             audioManager.abandonAudioFocus(audioFocusChangeListener);
         }
         hasAudioFocus = false;
+        audioFocusRequestActive = false;
     }
 
     private void clearPostRestPlaybackWait(boolean resetRetryCount) {
@@ -573,7 +609,8 @@ public class MusicService extends Service {
         if (action == null) {
             return false;
         }
-        if (ACTION_TOGGLE_PLAY_PAUSE.equals(action) && isPlaybackActive()) {
+        if (ACTION_TOGGLE_PLAY_PAUSE.equals(action)
+                && (isPlaybackActive() || musicPlayerManager.hasPendingPlaybackRequest())) {
             handleExternalPauseRequest();
             return true;
         }
@@ -696,36 +733,80 @@ public class MusicService extends Service {
             return false;
         }
         KeyEvent keyEvent = intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
-        if (keyEvent == null || keyEvent.getAction() != KeyEvent.ACTION_DOWN) {
+        if (keyEvent == null) {
+            return false;
+        }
+        if (keyEvent.getAction() != KeyEvent.ACTION_DOWN || keyEvent.getRepeatCount() > 0) {
             return true;
         }
         switch (keyEvent.getKeyCode()) {
             case KeyEvent.KEYCODE_MEDIA_PLAY:
+                cancelPendingHeadsetHookClicks();
                 handleExternalPlayRequest();
                 return true;
             case KeyEvent.KEYCODE_MEDIA_PAUSE:
+                cancelPendingHeadsetHookClicks();
                 handleExternalPauseRequest();
                 return true;
             case KeyEvent.KEYCODE_HEADSETHOOK:
+                scheduleHeadsetHookClick();
+                return true;
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-                // Live headset main button: toggle. Rest mode always resumes/continues.
-                if (isHearingProtectionRestActive()) {
-                    handleExternalPlayRequest();
-                } else if (isPlaybackActive()) {
-                    handleExternalPauseRequest();
-                } else {
-                    handleExternalPlayRequest();
-                }
+                cancelPendingHeadsetHookClicks();
+                handleExternalToggleRequest();
                 return true;
             case KeyEvent.KEYCODE_MEDIA_NEXT:
+                cancelPendingHeadsetHookClicks();
                 handleExternalNextRequest();
                 return true;
             case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
+                cancelPendingHeadsetHookClicks();
                 handleExternalPreviousRequest();
                 return true;
             default:
                 return false;
         }
+    }
+
+    private void handleExternalToggleRequest() {
+        if (isPlaybackActive() || musicPlayerManager.hasPendingPlaybackRequest()) {
+            handleExternalPauseRequest();
+        } else {
+            handleExternalPlayRequest();
+        }
+    }
+
+    private void scheduleHeadsetHookClick() {
+        if (headsetHookClickCount == 0) {
+            headsetHookRestActiveAtFirstClick = isHearingProtectionRestActive();
+        }
+        headsetHookClickCount++;
+        if (pendingHeadsetHookClickRunnable != null) {
+            handler.removeCallbacks(pendingHeadsetHookClickRunnable);
+        }
+        pendingHeadsetHookClickRunnable = () -> {
+            int clickCount = headsetHookClickCount;
+            headsetHookClickCount = 0;
+            headsetHookRestActiveAtFirstClick = false;
+            pendingHeadsetHookClickRunnable = null;
+            if (clickCount == 1) {
+                handleExternalToggleRequest();
+            } else if (clickCount == 2) {
+                handleExternalNextRequest();
+            } else if (clickCount == 3) {
+                handleExternalPreviousRequest();
+            }
+        };
+        handler.postDelayed(pendingHeadsetHookClickRunnable, HEADSET_HOOK_MULTI_CLICK_WINDOW_MS);
+    }
+
+    private void cancelPendingHeadsetHookClicks() {
+        if (pendingHeadsetHookClickRunnable != null) {
+            handler.removeCallbacks(pendingHeadsetHookClickRunnable);
+            pendingHeadsetHookClickRunnable = null;
+        }
+        headsetHookClickCount = 0;
+        headsetHookRestActiveAtFirstClick = false;
     }
 
     private void handleExternalPlayRequest() {
@@ -740,6 +821,9 @@ public class MusicService extends Service {
     }
 
     private void handleExternalPauseRequest() {
+        cancelPendingHeadsetHookClicks();
+        clearPostRestPlaybackWait(true);
+        pendingAutoContinueAfterRest = false;
         pendingFocusGainAction = null;
         dropPendingFocusGainIntent();
         pendingFocusGainIntent = null;
@@ -1211,6 +1295,14 @@ public class MusicService extends Service {
         }
     }
 
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        if (musicPlayerManager != null) {
+            musicPlayerManager.checkpointPlaybackState();
+        }
+        super.onTaskRemoved(rootIntent);
+    }
+
     private void applyRuntimeSettingsUpdate(int updateMask) {
         if (updateMask == 0) {
             return;
@@ -1344,6 +1436,10 @@ public class MusicService extends Service {
 
     @Override
     public void onDestroy() {
+        if (musicPlayerManager != null) {
+            musicPlayerManager.checkpointPlaybackState();
+        }
+        cancelPendingHeadsetHookClicks();
         if (getApplication() instanceof MainApplication) {
             MainApplication app = (MainApplication) getApplication();
             app.removeAppVisibilityListener(appVisibilityListener);

@@ -689,7 +689,7 @@ public class SettingsManager {
         prefs.edit().putBoolean(KEY_HEARING_PROTECTION_BACKGROUND_PROMPT_DISMISSED, dismissed).apply();
     }
 
-    public void setPlaybackSnapshot(List<Song> songs, int currentIndex, int positionMs, boolean wasPlaying) {
+    public void setPlaybackQueueSnapshot(List<Song> songs, int currentIndex, int positionMs, boolean wasPlaying) {
         JSONArray array = new JSONArray();
         if (songs != null) {
             for (Song song : songs) {
@@ -701,20 +701,44 @@ public class SettingsManager {
         }
         String serializedQueue = array.toString();
         int safePositionMs = Math.max(0, positionMs);
-        if (serializedQueue.equals(lastPlaybackSnapshotQueue)
-                && currentIndex == lastPlaybackSnapshotIndex
+        boolean queueChanged = !serializedQueue.equals(lastPlaybackSnapshotQueue);
+        boolean stateChanged = currentIndex != lastPlaybackSnapshotIndex
+                || safePositionMs != lastPlaybackSnapshotPositionMs
+                || wasPlaying != lastPlaybackSnapshotWasPlaying
+                || !hasLastPlaybackSnapshotWasPlaying;
+        if (!queueChanged && !stateChanged) {
+            return;
+        }
+        SharedPreferences.Editor editor = prefs.edit();
+        if (queueChanged) {
+            editor.putString(KEY_PLAYBACK_SNAPSHOT_QUEUE, serializedQueue);
+        }
+        if (stateChanged) {
+            editor.putInt(KEY_PLAYBACK_SNAPSHOT_INDEX, currentIndex)
+                    .putInt(KEY_PLAYBACK_SNAPSHOT_POSITION_MS, safePositionMs)
+                    .putBoolean(KEY_PLAYBACK_SNAPSHOT_WAS_PLAYING, wasPlaying);
+        }
+        editor.apply();
+        lastPlaybackSnapshotQueue = serializedQueue;
+        lastPlaybackSnapshotIndex = currentIndex;
+        lastPlaybackSnapshotPositionMs = safePositionMs;
+        lastPlaybackSnapshotWasPlaying = wasPlaying;
+        hasLastPlaybackSnapshotWasPlaying = true;
+    }
+
+    public void setPlaybackStateSnapshot(int currentIndex, int positionMs, boolean wasPlaying) {
+        int safePositionMs = Math.max(0, positionMs);
+        if (currentIndex == lastPlaybackSnapshotIndex
                 && safePositionMs == lastPlaybackSnapshotPositionMs
                 && wasPlaying == lastPlaybackSnapshotWasPlaying
                 && hasLastPlaybackSnapshotWasPlaying) {
             return;
         }
         prefs.edit()
-                .putString(KEY_PLAYBACK_SNAPSHOT_QUEUE, serializedQueue)
                 .putInt(KEY_PLAYBACK_SNAPSHOT_INDEX, currentIndex)
                 .putInt(KEY_PLAYBACK_SNAPSHOT_POSITION_MS, safePositionMs)
                 .putBoolean(KEY_PLAYBACK_SNAPSHOT_WAS_PLAYING, wasPlaying)
                 .apply();
-        lastPlaybackSnapshotQueue = serializedQueue;
         lastPlaybackSnapshotIndex = currentIndex;
         lastPlaybackSnapshotPositionMs = safePositionMs;
         lastPlaybackSnapshotWasPlaying = wasPlaying;
