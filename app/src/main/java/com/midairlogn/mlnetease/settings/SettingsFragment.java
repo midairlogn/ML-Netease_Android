@@ -53,6 +53,7 @@ import com.midairlogn.mlnetease.download.DownloadCustomizationActivity;
 import com.midairlogn.mlnetease.BuildConfig;
 import com.midairlogn.mlnetease.download.settings.DownloadCustomizationSettings;
 import com.midairlogn.mlnetease.download.file.DownloadFileUtils;
+import com.midairlogn.mlnetease.hearing.HearingProtectionConfig;
 import com.midairlogn.mlnetease.hearing.HearingProtectionController;
 import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
 import com.midairlogn.mlnetease.playback.core.MusicService;
@@ -1078,10 +1079,10 @@ public class SettingsFragment extends Fragment {
     private void showHearingProtectionListenDurationDialog() {
         showMinuteChoiceDialog(
                 R.string.hearing_protection_listen_dialog_title,
-                new int[] {30, 45, 60, 90, 120, 150, 180},
+                HearingProtectionConfig.getListenDurationOptionsMinutes(),
                 settingsManager.getHearingProtectionListenMinutes(),
-                15,
-                240,
+                HearingProtectionConfig.MIN_LISTEN_MINUTES,
+                HearingProtectionConfig.MAX_LISTEN_MINUTES,
                 selectedMinutes -> {
                     if (selectedMinutes != settingsManager.getHearingProtectionListenMinutes()) {
                         settingsManager.setHearingProtectionListenMinutes(selectedMinutes);
@@ -1095,10 +1096,10 @@ public class SettingsFragment extends Fragment {
     private void showHearingProtectionRestDurationDialog() {
         showMinuteChoiceDialog(
                 R.string.hearing_protection_rest_dialog_title,
-                new int[] {5, 10, 15, 20, 30, 45, 60},
+                HearingProtectionConfig.getRestDurationOptionsMinutes(),
                 settingsManager.getHearingProtectionRestMinutes(),
-                5,
-                60,
+                HearingProtectionConfig.MIN_REST_MINUTES,
+                HearingProtectionConfig.MAX_REST_MINUTES,
                 selectedMinutes -> {
                     if (selectedMinutes != settingsManager.getHearingProtectionRestMinutes()) {
                         settingsManager.setHearingProtectionRestMinutes(selectedMinutes);

@@ -7,6 +7,7 @@ import android.util.Base64;
 
 import com.midairlogn.mlnetease.home.shortcut.AppShortcutController;
 import com.midairlogn.mlnetease.download.settings.DownloadCustomizationSettings;
+import com.midairlogn.mlnetease.hearing.HearingProtectionConfig;
 import com.midairlogn.mlnetease.home.model.FavouriteSong;
 import com.midairlogn.mlnetease.home.model.HomeShortcut;
 import com.midairlogn.mlnetease.home.shortcut.HomeShortcutIdParser;
@@ -90,8 +91,6 @@ public class SettingsManager {
     public static final String DEFAULT_DOWNLOAD_FILENAME_TEMPLATE = "${title}_${artist}_${album}";
     public static final String DEFAULT_DOWNLOAD_FILENAME_SEPARATOR = "_";
     public static final int DEFAULT_APP_VOLUME = 80;
-    public static final int DEFAULT_HEARING_PROTECTION_LISTEN_MINUTES = 90;
-    public static final int DEFAULT_HEARING_PROTECTION_REST_MINUTES = 15;
 
     private final Context appContext;
     private SharedPreferences prefs;
@@ -507,7 +506,7 @@ public class SettingsManager {
 
     public int getHearingProtectionListenMinutes() {
         return clampHearingProtectionListenMinutes(
-                prefs.getInt(KEY_HEARING_PROTECTION_LISTEN_MINUTES, DEFAULT_HEARING_PROTECTION_LISTEN_MINUTES)
+                prefs.getInt(KEY_HEARING_PROTECTION_LISTEN_MINUTES, HearingProtectionConfig.DEFAULT_LISTEN_MINUTES)
         );
     }
 
@@ -521,7 +520,7 @@ public class SettingsManager {
 
     public int getHearingProtectionRestMinutes() {
         return clampHearingProtectionRestMinutes(
-                prefs.getInt(KEY_HEARING_PROTECTION_REST_MINUTES, DEFAULT_HEARING_PROTECTION_REST_MINUTES)
+                prefs.getInt(KEY_HEARING_PROTECTION_REST_MINUTES, HearingProtectionConfig.DEFAULT_REST_MINUTES)
         );
     }
 
@@ -788,11 +787,11 @@ public class SettingsManager {
     }
 
     private int clampHearingProtectionListenMinutes(int minutes) {
-        return Math.max(15, Math.min(minutes, 240));
+        return HearingProtectionConfig.clampListenMinutes(minutes);
     }
 
     private int clampHearingProtectionRestMinutes(int minutes) {
-        return Math.max(5, Math.min(minutes, 60));
+        return HearingProtectionConfig.clampRestMinutes(minutes);
     }
 
     public DownloadCustomizationSettings getDownloadCustomizationSettings() {
@@ -1084,11 +1083,11 @@ public class SettingsManager {
         setHearingProtectionEnabled(json.optBoolean(KEY_HEARING_PROTECTION_ENABLED, false));
         setHearingProtectionListenMinutes(json.optInt(
                 KEY_HEARING_PROTECTION_LISTEN_MINUTES,
-                DEFAULT_HEARING_PROTECTION_LISTEN_MINUTES
+                HearingProtectionConfig.DEFAULT_LISTEN_MINUTES
         ));
         setHearingProtectionRestMinutes(json.optInt(
                 KEY_HEARING_PROTECTION_REST_MINUTES,
-                DEFAULT_HEARING_PROTECTION_REST_MINUTES
+                HearingProtectionConfig.DEFAULT_REST_MINUTES
         ));
         importHomeShortcuts(json.optJSONArray(KEY_HOME_SHORTCUTS));
         importFavouriteSongs(json.optJSONArray(KEY_FAVOURITE_SONGS));

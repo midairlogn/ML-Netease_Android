@@ -279,7 +279,7 @@ public class HearingProtectionController implements
             }
             activeIntensityMultiplier = settingsManager.getHearingProtectionActiveSessionIntensity();
             if (activeIntensityMultiplier <= 0d) {
-                activeIntensityMultiplier = getPlaybackIntensityMultiplier(settingsManager.getAppVolume());
+                activeIntensityMultiplier = HearingProtectionConfig.getPlaybackIntensityMultiplier(settingsManager.getAppVolume());
             }
             displayDoseMs = Math.max(0L, persistedDoseMs + Math.round(activeSessionElapsedMs * activeIntensityMultiplier));
         } else if (!restActive && settingsManager.isHearingProtectionEnabled()) {
@@ -303,7 +303,7 @@ public class HearingProtectionController implements
                 long pauseBaseDoseMs = settingsManager.getHearingProtectionPauseBaseDoseMs();
                 double pauseIntensityMultiplier = settingsManager.getHearingProtectionPauseIntensity();
                 if (pauseIntensityMultiplier <= 0d) {
-                    pauseIntensityMultiplier = getPlaybackIntensityMultiplier(settingsManager.getAppVolume());
+                    pauseIntensityMultiplier = HearingProtectionConfig.getPlaybackIntensityMultiplier(settingsManager.getAppVolume());
                 }
                 displayDoseMs = computeRecoveredDoseMs(
                         settingsManager,
@@ -323,7 +323,7 @@ public class HearingProtectionController implements
                 if (hasStoppedActiveSession) {
                     double activeIntensity = settingsManager.getHearingProtectionActiveSessionIntensity();
                     if (activeIntensity <= 0d) {
-                        activeIntensity = getPlaybackIntensityMultiplier(settingsManager.getAppVolume());
+                        activeIntensity = HearingProtectionConfig.getPlaybackIntensityMultiplier(settingsManager.getAppVolume());
                     }
                     long activeDurationMs = resolveDurationBetween(
                             activeStartWallClockMs,
@@ -1073,7 +1073,7 @@ public class HearingProtectionController implements
         }
 
         double ambientRecoveryMultiplier = getAmbientRecoveryMultiplier();
-        double intensityPenalty = getRecoveryIntensityPenalty(lastIntensityMultiplier);
+        double intensityPenalty = HearingProtectionConfig.getRecoveryIntensityPenalty(lastIntensityMultiplier);
         if (ambientRecoveryMultiplier <= 0d) {
             return Math.max(0L, Math.round(currentDose));
         }
@@ -1119,43 +1119,7 @@ public class HearingProtectionController implements
     }
 
     private double getPlaybackIntensityMultiplier() {
-        return getPlaybackIntensityMultiplier(settingsManager.getAppVolume());
-    }
-
-    private static double getPlaybackIntensityMultiplier(int appVolume) {
-        if (appVolume >= 95) {
-            return 1.65d;
-        }
-        if (appVolume >= 90) {
-            return 1.45d;
-        }
-        if (appVolume >= 80) {
-            return 1.2d;
-        }
-        if (appVolume >= 65) {
-            return 1.0d;
-        }
-        if (appVolume >= 45) {
-            return 0.82d;
-        }
-        return 0.68d;
-    }
-
-    private double getRecoveryIntensityPenalty() {
-        return getRecoveryIntensityPenalty(lastPlaybackIntensityMultiplier);
-    }
-
-    private static double getRecoveryIntensityPenalty(double intensityMultiplier) {
-        if (intensityMultiplier >= 1.6d) {
-            return 1.6d;
-        }
-        if (intensityMultiplier >= 1.4d) {
-            return 1.35d;
-        }
-        if (intensityMultiplier >= 1.15d) {
-            return 1.15d;
-        }
-        return 1.0d;
+        return HearingProtectionConfig.getPlaybackIntensityMultiplier(settingsManager.getAppVolume());
     }
 
     private static double getAmbientRecoveryMultiplier() {
