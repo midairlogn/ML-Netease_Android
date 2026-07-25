@@ -1,5 +1,7 @@
 package com.midairlogn.mlnetease.settings;
 
+import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -7,6 +9,7 @@ import android.database.Cursor;
 import android.graphics.Typeface;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
@@ -70,6 +73,8 @@ import javax.crypto.AEADBadTagException;
 public class SettingsFragment extends Fragment {
 
     private static final String BACKUP_FILE_EXTENSION = ".mlns";
+    private static final String ACTION_VIEW_ADVANCED_POWER_USAGE_DETAIL =
+            "android.settings.VIEW_ADVANCED_POWER_USAGE_DETAIL";
     private static final long APP_VOLUME_UPDATE_DEBOUNCE_MS = 80L;
 
     private SettingsManager settingsManager;
@@ -985,7 +990,7 @@ public class SettingsFragment extends Fragment {
                     if (dontShowAgain.isChecked()) {
                         settingsManager.setHearingProtectionBackgroundPromptDismissed(true);
                     }
-                    openAppSettings();
+                    openBackgroundManagementSettings();
                 })
                 .setNegativeButton(R.string.cancel, (dialogInterface, which) -> {
                     if (dontShowAgain.isChecked()) {
@@ -996,10 +1001,78 @@ public class SettingsFragment extends Fragment {
         showManagedDialog(dialog);
     }
 
-    private void openAppSettings() {
-        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                Uri.parse("package:" + requireContext().getPackageName()));
-        startActivity(intent);
+    private void openBackgroundManagementSettings() {
+        Context context = requireContext();
+        String manufacturer = Build.MANUFACTURER.toLowerCase(Locale.ROOT);
+
+        if (manufacturer.contains("huawei")) {
+            if (startSettingsActivity(context, new ComponentName(
+                    "com.huawei.systemmanager",
+                    "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"))
+                    || startSettingsActivity(context, new ComponentName(
+                    "com.huawei.systemmanager",
+                    "com.huawei.systemmanager.optimize.process.ProtectActivity"))) {
+                return;
+            }
+        } else if (manufacturer.contains("honor")) {
+            if (startSettingsActivity(context, new ComponentName(
+                    "com.hihonor.systemmanager",
+                    "com.hihonor.systemmanager.startupmgr.ui.StartupNormalAppListActivity"))
+                    || startSettingsActivity(context, new ComponentName(
+                    "com.hihonor.systemmanager",
+                    "com.hihonor.systemmanager.appcontrol.activity.StartupAppControlActivity"))) {
+                return;
+            }
+        } else if (manufacturer.contains("xiaomi") || manufacturer.contains("redmi")) {
+            if (startSettingsActivity(context, new ComponentName(
+                    "com.miui.securitycenter",
+                    "com.miui.permcenter.autostart.AutoStartManagementActivity"))) {
+                return;
+            }
+        } else if (manufacturer.contains("oppo") || manufacturer.contains("oneplus")
+                || manufacturer.contains("realme")) {
+            if (startSettingsActivity(context, new ComponentName(
+                    "com.oplus.safecenter",
+                    "com.oplus.safecenter.permission.startup.StartupAppListActivity"))
+                    || startSettingsActivity(context, new ComponentName(
+                    "com.coloros.safecenter",
+                    "com.coloros.safecenter.permission.startup.StartupAppListActivity"))) {
+                return;
+            }
+        } else if (manufacturer.contains("vivo") || manufacturer.contains("iqoo")) {
+            if (startSettingsActivity(context, new ComponentName(
+                    "com.vivo.permissionmanager",
+                    "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"))) {
+                return;
+            }
+        }
+
+        Intent batterySettings = new Intent(ACTION_VIEW_ADVANCED_POWER_USAGE_DETAIL,
+                Uri.parse("package:" + context.getPackageName()));
+        if (startSettingsActivity(batterySettings)) {
+            return;
+        }
+
+        Intent appSettings = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.parse("package:" + context.getPackageName()));
+        startSettingsActivity(appSettings);
+    }
+
+    private boolean startSettingsActivity(Context context, ComponentName componentName) {
+        Intent intent = new Intent();
+        intent.setComponent(componentName);
+        intent.putExtra("package_name", context.getPackageName());
+        intent.putExtra("packageName", context.getPackageName());
+        return startSettingsActivity(intent);
+    }
+
+    private boolean startSettingsActivity(Intent intent) {
+        try {
+            startActivity(intent);
+            return true;
+        } catch (ActivityNotFoundException | SecurityException exception) {
+            return false;
+        }
     }
 
     private void showHearingProtectionListenDurationDialog() {
