@@ -168,7 +168,7 @@ public class MusicService extends Service {
             // Album art and lyrics will be handled by fullInfoAvailableListener.
             updateMetadata(song);
             if (floatingLyricsManager != null) {
-                floatingLyricsManager.updateSongInfo(song);
+                floatingLyricsManager.onSongChanged(song);
             }
         }
     };

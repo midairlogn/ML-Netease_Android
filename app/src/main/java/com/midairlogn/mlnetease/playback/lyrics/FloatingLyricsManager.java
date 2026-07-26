@@ -96,9 +96,7 @@ public class FloatingLyricsManager {
     private final MusicPlayerManager.OnSeekListener seekListener = new MusicPlayerManager.OnSeekListener() {
         @Override
         public void onSeek(int msec) {
-            // While paused the update loop is stopped; nudge the overlay so it
-            // reflects the new position immediately after a seek.
-            if (floatingView != null && !musicPlayerManager.isPlaying()) {
+            if (floatingView != null) {
                 updateCurrentLyricLine();
             }
         }
@@ -367,8 +365,6 @@ public class FloatingLyricsManager {
         // Default position: Bottom area (approx 80% down)
         params.y = (int) (screenHeight * 0.8f);
 
-        // Start updates
-        startLyricUpdates();
     }
 
     private void updateTranslationButtonState() {
@@ -421,6 +417,8 @@ public class FloatingLyricsManager {
         if (floatingView != null && floatingView.getWindowToken() != null) {
             // Already showing, just update settings and return
             applySettings();
+            updateCurrentLyricLine();
+            startLyricUpdates();
             return;
         }
 
@@ -429,6 +427,8 @@ public class FloatingLyricsManager {
             windowManager.addView(floatingView, params);
         } catch (Exception e) {
             e.printStackTrace();
+            hide();
+            return;
         }
 
         // Apply settings again to ensure fresh state
@@ -437,10 +437,11 @@ public class FloatingLyricsManager {
         // Update lyrics immediately
         updateLyrics(musicPlayerManager.getCurrentLyric(), musicPlayerManager.getCurrentTLyric());
         updateSongInfo(musicPlayerManager.getCurrentSong());
+        startLyricUpdates();
     }
 
     public void hide() {
-        if (floatingView != null && floatingView.getWindowToken() != null) {
+        if (floatingView != null) {
             try {
                 windowManager.removeView(floatingView);
             } catch (Exception e) {
@@ -590,12 +591,24 @@ public class FloatingLyricsManager {
         }
 
         currentLyricIndex = -1;
+        if (floatingView != null) {
+            updateCurrentLyricLine();
+        }
+    }
+
+    public void onSongChanged(Song song) {
+        currentLyrics = null;
+        currentLyricIndex = -1;
+        updateSongInfo(song);
+        showLyricMessage(song == null ? R.string.no_music : R.string.hint_loading);
     }
 
     public void updateSongInfo(Song song) {
-        if (song != null) {
-            if (tvSongTitle != null) tvSongTitle.setText(song.name);
-            if (tvSongArtist != null) tvSongArtist.setText(song.artists);
+        if (tvSongTitle != null) {
+            tvSongTitle.setText(song == null ? context.getString(R.string.no_music) : song.name);
+        }
+        if (tvSongArtist != null) {
+            tvSongArtist.setText(song == null ? "" : song.artists);
         }
     }
 
@@ -638,36 +651,12 @@ public class FloatingLyricsManager {
 
     private void updateCurrentLyricLine() {
         if (musicPlayerManager.getCurrentSong() == null) {
-            if (tvLyricsCurrent != null) {
-                 tvLyricsCurrent.setText(R.string.no_music);
-                 tvLyricsCurrent.setScrollX(0);
-            }
-            if (tvLyricsCurrentTranslation != null) {
-                tvLyricsCurrentTranslation.setText("");
-                tvLyricsCurrentTranslation.setVisibility(View.GONE);
-            }
-            if (tvLyricsNext != null) tvLyricsNext.setText("");
-            if (tvLyricsNextTranslation != null) {
-                tvLyricsNextTranslation.setText("");
-                tvLyricsNextTranslation.setVisibility(View.GONE);
-            }
+            showLyricMessage(R.string.no_music);
             return;
         }
 
         if (currentLyrics == null || currentLyrics.isEmpty()) {
-            if (tvLyricsCurrent != null) {
-                 tvLyricsCurrent.setText(R.string.no_lyrics);
-                 tvLyricsCurrent.setScrollX(0);
-            }
-            if (tvLyricsCurrentTranslation != null) {
-                tvLyricsCurrentTranslation.setText("");
-                tvLyricsCurrentTranslation.setVisibility(View.GONE);
-            }
-            if (tvLyricsNext != null) tvLyricsNext.setText("");
-            if (tvLyricsNextTranslation != null) {
-                tvLyricsNextTranslation.setText("");
-                tvLyricsNextTranslation.setVisibility(View.GONE);
-            }
+            showLyricMessage(R.string.no_lyrics);
             return;
         }
 
@@ -759,6 +748,27 @@ public class FloatingLyricsManager {
             if (tvLyricsCurrentTranslation != null && tvLyricsCurrentTranslation.getVisibility() == View.VISIBLE) {
                 tvLyricsCurrentTranslation.setScrollX(calculateScrollX(tvLyricsCurrentTranslation, currentTranslationWidth, posInMs, startTime, duration));
             }
+        }
+    }
+
+    private void showLyricMessage(int messageResId) {
+        currentTextWidth = 0f;
+        currentTranslationWidth = 0f;
+        if (tvLyricsCurrent != null) {
+            tvLyricsCurrent.setText(messageResId);
+            tvLyricsCurrent.setScrollX(0);
+        }
+        if (tvLyricsCurrentTranslation != null) {
+            tvLyricsCurrentTranslation.setText("");
+            tvLyricsCurrentTranslation.setVisibility(View.GONE);
+            tvLyricsCurrentTranslation.setScrollX(0);
+        }
+        if (tvLyricsNext != null) {
+            tvLyricsNext.setText("");
+        }
+        if (tvLyricsNextTranslation != null) {
+            tvLyricsNextTranslation.setText("");
+            tvLyricsNextTranslation.setVisibility(View.GONE);
         }
     }
 

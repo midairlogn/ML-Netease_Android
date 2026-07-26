@@ -1270,8 +1270,8 @@ public class MusicPlayerManager {
         seekPending = true;
         if (!isSwitchingSong) {
             issuePendingMediaSeek(mediaPlayer);
-            notifySeek(target);
         }
+        notifySeek(target);
         notifyProgressUpdate(target, getDuration());
         notifyPlaybackStateChanged(isPlaying());
         persistPlaybackStateSnapshot();

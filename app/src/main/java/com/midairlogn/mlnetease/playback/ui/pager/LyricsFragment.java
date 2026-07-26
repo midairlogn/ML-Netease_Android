@@ -30,7 +30,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnPlaybackStateChangedListener, MusicPlayerManager.OnFullInfoAvailableListener {
+public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSongChangedListener,
+        MusicPlayerManager.OnPlaybackStateChangedListener,
+        MusicPlayerManager.OnFullInfoAvailableListener,
+        MusicPlayerManager.OnSeekListener {
 
     private static final long LYRIC_SYNC_INTERVAL_MS = 100L;
     private static final float LYRIC_SCROLL_MILLISECONDS_PER_INCH = 150f;
@@ -54,6 +57,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
     private Runnable hideOverlayRunnable;
     private long selectedTime = -1;
     private boolean lifecycleResumed = false;
+    private MusicPlayerManager musicPlayerManager;
     private SettingsManager settingsManager;
     private android.content.SharedPreferences.OnSharedPreferenceChangeListener preferenceChangeListener;
     private boolean hasTimestampedLyrics = false;
@@ -94,11 +98,12 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
 
         setupTimelineInteraction();
 
-        MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
+        musicPlayerManager = MusicPlayerManager.getInstance(requireContext());
         settingsManager = new SettingsManager(requireContext());
-        manager.addOnSongChangedListener(this);
-        manager.addOnFullInfoAvailableListener(this);
-        manager.addOnPlaybackStateChangedListener(this);
+        musicPlayerManager.addOnSongChangedListener(this);
+        musicPlayerManager.addOnFullInfoAvailableListener(this);
+        musicPlayerManager.addOnPlaybackStateChangedListener(this);
+        musicPlayerManager.addOnSeekListener(this);
 
         preferenceChangeListener = (sharedPreferences, key) -> {
             if (settingsManager == null) return;
@@ -108,7 +113,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
         };
         settingsManager.getPrefs().registerOnSharedPreferenceChangeListener(preferenceChangeListener);
 
-        updateLyrics(manager.getCurrentLyric(), manager.getCurrentTLyric());
+        updateLyrics(musicPlayerManager.getCurrentLyric(), musicPlayerManager.getCurrentTLyric());
 
     }
 
@@ -116,8 +121,8 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
     public void onResume() {
         super.onResume();
         lifecycleResumed = true;
-        MusicPlayerManager manager = MusicPlayerManager.getInstance(requireContext());
-        if (manager.isPlaying()) {
+        syncLyrics();
+        if (musicPlayerManager != null && musicPlayerManager.isPlaying()) {
             startUpdateTask();
         }
     }
@@ -179,11 +184,10 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
     }
 
     private void seekToLyricTime(long time, boolean clearTimelineOverlay) {
-        MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
-        if (manager == null) {
+        if (musicPlayerManager == null) {
             return;
         }
-        manager.seekTo((int) time);
+        musicPlayerManager.seekTo((int) time);
         HearingProtectionTransportController.handleSeekResumeCurrent(requireContext());
         if (clearTimelineOverlay) {
             clearTimelineOverlay();
@@ -278,22 +282,28 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
 
     @Override
     public void onDestroyView() {
-        super.onDestroyView();
         lifecycleResumed = false;
         stopUpdateTask();
         handler.removeCallbacks(hideOverlayRunnable);
+        if (musicPlayerManager != null) {
+            musicPlayerManager.removeOnSongChangedListener(this);
+            musicPlayerManager.removeOnFullInfoAvailableListener(this);
+            musicPlayerManager.removeOnPlaybackStateChangedListener(this);
+            musicPlayerManager.removeOnSeekListener(this);
+        }
+        if (settingsManager != null && preferenceChangeListener != null) {
+            settingsManager.getPrefs().unregisterOnSharedPreferenceChangeListener(preferenceChangeListener);
+        }
         if (recyclerView != null) {
             recyclerView.removeOnLayoutChangeListener(paddingLayoutListener);
             recyclerView.stopScroll();
             recyclerView.setAdapter(null);
         }
         clearViewReferences();
-        MusicPlayerManager.getInstance(getContext()).removeOnSongChangedListener(this);
-        MusicPlayerManager.getInstance(getContext()).removeOnFullInfoAvailableListener(this);
-        MusicPlayerManager.getInstance(getContext()).removeOnPlaybackStateChangedListener(this);
-        if (settingsManager != null && preferenceChangeListener != null) {
-            settingsManager.getPrefs().unregisterOnSharedPreferenceChangeListener(preferenceChangeListener);
-        }
+        musicPlayerManager = null;
+        settingsManager = null;
+        preferenceChangeListener = null;
+        super.onDestroyView();
     }
 
     private void clearViewReferences() {
@@ -313,8 +323,9 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
 
     @Override
     public void onFullInfoAvailable(Song song) {
-        MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
-        updateLyrics(manager.getCurrentLyric(), manager.getCurrentTLyric());
+        if (musicPlayerManager != null) {
+            updateLyrics(musicPlayerManager.getCurrentLyric(), musicPlayerManager.getCurrentTLyric());
+        }
     }
 
     @Override
@@ -323,6 +334,16 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
             startUpdateTask();
         } else {
             stopUpdateTask();
+            if (lifecycleResumed) {
+                syncLyrics();
+            }
+        }
+    }
+
+    @Override
+    public void onSeek(int msec) {
+        if (lifecycleResumed) {
+            syncLyrics(msec);
         }
     }
 
@@ -393,10 +414,12 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
     }
 
     private void syncLyrics() {
-        if (lyricLines.isEmpty()) return;
+        if (musicPlayerManager == null) return;
+        syncLyrics(musicPlayerManager.getCurrentPosition());
+    }
 
-        MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
-        if (manager == null) return;
+    private void syncLyrics(int position) {
+        if (lyricLines.isEmpty() || adapter == null) return;
 
         if (!hasTimestampedLyrics) {
             if (currentLineIndex != 0) {
@@ -409,8 +432,6 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
             return;
         }
 
-        int position = manager.getCurrentPosition();
-
         int newIndex = -1;
         for (int i = 0; i < lyricLines.size(); i++) {
             if (lyricLines.get(i).time > position) {
@@ -419,13 +440,11 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
             newIndex = i;
         }
 
-        if (newIndex != -1 && newIndex != currentLineIndex) {
+        if (newIndex != currentLineIndex) {
             currentLineIndex = newIndex;
-            // Always update highlight even when user is scrolling
             adapter.setActiveIndex(currentLineIndex);
-            // Only auto-scroll if user is not interacting
             if (!isUserScrolling) {
-                scrollToPosition(currentLineIndex);
+                scrollToPosition(currentLineIndex >= 0 ? currentLineIndex : 0);
             }
         }
     }
