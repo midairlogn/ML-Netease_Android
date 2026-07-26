@@ -217,9 +217,6 @@ public class MusicService extends Service {
                     && !headsetHookRestActiveAtFirstClick) {
                 cancelPendingHeadsetHookClicks();
             }
-            if (!pausedByFocusLoss) {
-                abandonAudioFocus();
-            }
         }
         updatePlaybackState(isPlaying);
     };
@@ -238,6 +235,8 @@ public class MusicService extends Service {
         switch (focusChange) {
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                hasAudioFocus = false;
+                audioFocusRequestActive = true;
                 if (isPlaybackActive() || musicPlayerManager.hasPendingPlaybackRequest()) {
                     pausedByFocusLoss = true;
                     resumeOnFocusGain = true;
@@ -246,14 +245,20 @@ public class MusicService extends Service {
                 }
                 break;
             case AudioManager.AUDIOFOCUS_LOSS:
+                hasAudioFocus = false;
+                audioFocusRequestActive = false;
                 if (isPlaybackActive() || musicPlayerManager.hasPendingPlaybackRequest()) {
                     pausedByFocusLoss = true;
                     cancelPendingHeadsetHookClicks();
                     musicPlayerManager.pause();
                 }
+                pausedByFocusLoss = false;
                 resumeOnFocusGain = false;
-                hasAudioFocus = false;
-                audioFocusRequestActive = false;
+                pendingFocusGainAction = null;
+                dropPendingFocusGainIntent();
+                pendingFocusGainIntent = null;
+                pendingAutoContinueAfterRest = false;
+                clearPostRestPlaybackWait(true);
                 break;
             case AudioManager.AUDIOFOCUS_GAIN:
                 hasAudioFocus = true;
@@ -288,6 +293,7 @@ public class MusicService extends Service {
                             .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                             .build())
                     .setAcceptsDelayedFocusGain(true)
+                    .setWillPauseWhenDucked(true)
                     .setOnAudioFocusChangeListener(audioFocusChangeListener)
                     .build();
         }
@@ -429,6 +435,12 @@ public class MusicService extends Service {
     }
 
     private AudioFocusOutcome requestAudioFocus() {
+        if (hasAudioFocus) {
+            return AudioFocusOutcome.GRANTED;
+        }
+        if (audioFocusRequestActive) {
+            return AudioFocusOutcome.DELAYED;
+        }
         if (audioManager == null) {
             hasAudioFocus = false;
             audioFocusRequestActive = false;
@@ -830,7 +842,6 @@ public class MusicService extends Service {
         pausedByFocusLoss = false;
         resumeOnFocusGain = false;
         musicPlayerManager.pause();
-        abandonAudioFocus();
     }
 
     private void handleExternalNextRequest() {
