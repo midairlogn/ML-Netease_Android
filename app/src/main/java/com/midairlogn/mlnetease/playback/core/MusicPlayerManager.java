@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import org.json.JSONObject;
 
@@ -32,6 +33,7 @@ public class MusicPlayerManager {
 
     private static MusicPlayerManager instance;
     private MediaPlayer mediaPlayer;
+    private boolean mediaPlayerNeedsRecreation = false;
     private List<Song> playlist = new ArrayList<>();
     private int currentIndex = -1;
     private boolean isPaused = false;
@@ -179,16 +181,22 @@ public class MusicPlayerManager {
         this.settingsManager = new SettingsManager(this.context);
         this.neteaseApi = new NeteaseApi(this.context, settingsManager);
         this.currentMode = settingsManager.getPlayMode();
-        mediaPlayer = new MediaPlayer();
+        mediaPlayer = createMediaPlayer();
+        setAppVolume(settingsManager.getAppVolume());
+    }
 
+    private MediaPlayer createMediaPlayer() {
+        MediaPlayer player = new MediaPlayer();
         android.media.AudioAttributes audioAttributes = new android.media.AudioAttributes.Builder()
                 .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
                 .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
                 .build();
-        mediaPlayer.setAudioAttributes(audioAttributes);
-        setAppVolume(settingsManager.getAppVolume());
+        player.setAudioAttributes(audioAttributes);
 
-        mediaPlayer.setOnSeekCompleteListener(mp -> {
+        player.setOnSeekCompleteListener(mp -> {
+            if (mp != mediaPlayer) {
+                return;
+            }
             if (!mediaSeekInFlight) {
                 return;
             }
@@ -206,7 +214,10 @@ public class MusicPlayerManager {
             persistPlaybackStateSnapshot();
         });
 
-        mediaPlayer.setOnCompletionListener(mp -> {
+        player.setOnCompletionListener(mp -> {
+            if (mp != mediaPlayer) {
+                return;
+            }
             playbackActive = false;
             if (isCompletionListenerEnabled) {
                 playWhenPrepared = false;
@@ -221,6 +232,30 @@ public class MusicPlayerManager {
                 }
             }
         });
+        return player;
+    }
+
+    private MediaPlayer resetMediaPlayerForNewSource() {
+        if (!mediaPlayerNeedsRecreation) {
+            try {
+                mediaPlayer.reset();
+                return mediaPlayer;
+            } catch (RuntimeException ignored) {
+                mediaPlayerNeedsRecreation = true;
+            }
+        }
+
+        cancelAppVolumeRamp();
+        releaseLoudnessEnhancer();
+        MediaPlayer oldPlayer = mediaPlayer;
+        mediaPlayer = createMediaPlayer();
+        mediaPlayerNeedsRecreation = false;
+        try {
+            oldPlayer.release();
+        } catch (RuntimeException ignored) {
+        }
+        applyAppVolumeScalar(volumePercentToScalar(settingsManager.getAppVolume()));
+        return mediaPlayer;
     }
 
     public static MusicPlayerManager getInstance(Context context) {
@@ -624,7 +659,11 @@ public class MusicPlayerManager {
         }
 
         boolean wasPlaying = playbackActive;
-        boolean isNewSong = (index != currentIndex);
+        int previousIndex = currentIndex;
+        Song previousSong = previousIndex >= 0 && previousIndex < playlist.size()
+                ? playlist.get(previousIndex)
+                : null;
+        boolean isNewSong = (index != previousIndex);
         currentIndex = index;
         // Mark switching before snapshot write so we persist the new index with the
         // new track position (0 / restore offset), not the previous track's offset.
@@ -655,11 +694,11 @@ public class MusicPlayerManager {
             }
             // Release large mutable data from the previous song to allow GC.
             // These fields are repopulated by getSongFullInfo or local metadata read.
-            if (index != currentIndex && currentIndex >= 0 && currentIndex < playlist.size()) {
-                Song prev = playlist.get(currentIndex);
-                prev.embeddedPicture = null;
-                prev.lyric = null;
-                prev.translatedLyric = null;
+            Song nextSong = playlist.get(index);
+            if (previousSong != null && previousSong != nextSong) {
+                previousSong.embeddedPicture = null;
+                previousSong.lyric = null;
+                previousSong.translatedLyric = null;
             }
         }
 
@@ -879,11 +918,12 @@ public class MusicPlayerManager {
             handlePlaybackFailure(expectedIndex, requestId, "Invalid media uri");
             return;
         }
+        AtomicBoolean failureReported = new AtomicBoolean(false);
         try {
             playbackActive = false;
             mediaSeekInFlight = false;
             issuedSeekPosition = 0;
-            mediaPlayer.reset();
+            MediaPlayer player = resetMediaPlayerForNewSource();
             setAppVolume(settingsManager.getAppVolume());
 
             String scheme = uri.getScheme();
@@ -892,21 +932,21 @@ public class MusicPlayerManager {
             if (isNetwork) {
                 if (headers != null && !headers.isEmpty()) {
                     try {
-                        mediaPlayer.setDataSource(context, uri, headers);
+                        player.setDataSource(context, uri, headers);
                     } catch (Exception e) {
                         android.util.Log.w("MusicPlayerManager", "setDataSource with headers failed, falling back to string path: " + e.getMessage());
-                        mediaPlayer.reset();
-                        mediaPlayer.setDataSource(uri.toString());
+                        player.reset();
+                        player.setDataSource(uri.toString());
                     }
                 } else {
-                    mediaPlayer.setDataSource(uri.toString());
+                    player.setDataSource(uri.toString());
                 }
             } else {
-                mediaPlayer.setDataSource(context, uri);
+                player.setDataSource(context, uri);
             }
 
-            mediaPlayer.setOnPreparedListener(mp -> {
-                if (requestId != activePlayRequestId || currentIndex != expectedIndex) {
+            player.setOnPreparedListener(mp -> {
+                if (mp != mediaPlayer || requestId != activePlayRequestId || currentIndex != expectedIndex) {
                     return;
                 }
 
@@ -935,15 +975,35 @@ public class MusicPlayerManager {
                     persistPlaybackStateSnapshot();
                     return;
                 }
-                mp.start();
+                try {
+                    mp.start();
+                } catch (RuntimeException e) {
+                    playbackActive = false;
+                    isSwitchingSong = false;
+                    mediaPlayerNeedsRecreation = true;
+                    if (failureReported.compareAndSet(false, true)) {
+                        handlePlaybackFailure(expectedIndex, requestId,
+                                "MediaPlayer start failure: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
+                    }
+                    return;
+                }
                 playbackActive = true;
                 isPaused = false;
                 notifyPlaybackStateChanged(true);
                 persistPlaybackStateSnapshot();
             });
 
-            mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+            player.setOnErrorListener((mp, what, extra) -> {
+                if (mp != mediaPlayer || requestId != activePlayRequestId || currentIndex != expectedIndex) {
+                    return true;
+                }
                 playbackActive = false;
+                if (what == MediaPlayer.MEDIA_ERROR_SERVER_DIED) {
+                    mediaPlayerNeedsRecreation = true;
+                }
+                if (!failureReported.compareAndSet(false, true)) {
+                    return true;
+                }
                 String errorType;
                 switch (what) {
                     case MediaPlayer.MEDIA_ERROR_UNKNOWN: errorType = "MEDIA_ERROR_UNKNOWN"; break;
@@ -962,7 +1022,7 @@ public class MusicPlayerManager {
                 return true;
             });
 
-            mediaPlayer.prepareAsync();
+            player.prepareAsync();
         } catch (Exception e) {
             playbackActive = false;
             if (requestId == activePlayRequestId) {
@@ -970,7 +1030,9 @@ public class MusicPlayerManager {
             }
             e.printStackTrace();
             android.util.Log.e("MusicPlayerManager", "playUri exception", e);
-            handlePlaybackFailure(expectedIndex, requestId, e.getMessage() == null ? "playback exception" : e.getMessage());
+            if (failureReported.compareAndSet(false, true)) {
+                handlePlaybackFailure(expectedIndex, requestId, e.getMessage() == null ? "playback exception" : e.getMessage());
+            }
         }
     }
 

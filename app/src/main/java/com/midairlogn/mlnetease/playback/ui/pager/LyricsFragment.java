@@ -53,6 +53,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
     private boolean isUserScrolling = false;
     private Runnable hideOverlayRunnable;
     private long selectedTime = -1;
+    private boolean lifecycleResumed = false;
     private SettingsManager settingsManager;
     private android.content.SharedPreferences.OnSharedPreferenceChangeListener preferenceChangeListener;
     private boolean hasTimestampedLyrics = false;
@@ -109,9 +110,23 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
 
         updateLyrics(manager.getCurrentLyric(), manager.getCurrentTLyric());
 
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        lifecycleResumed = true;
+        MusicPlayerManager manager = MusicPlayerManager.getInstance(requireContext());
         if (manager.isPlaying()) {
             startUpdateTask();
         }
+    }
+
+    @Override
+    public void onPause() {
+        lifecycleResumed = false;
+        stopUpdateTask();
+        super.onPause();
     }
 
     private void setupTimelineInteraction() {
@@ -264,6 +279,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        lifecycleResumed = false;
         stopUpdateTask();
         handler.removeCallbacks(hideOverlayRunnable);
         if (recyclerView != null) {
@@ -303,7 +319,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
 
     @Override
     public void onPlaybackStateChanged(boolean isPlaying) {
-        if (isPlaying) {
+        if (isPlaying && lifecycleResumed) {
             startUpdateTask();
         } else {
             stopUpdateTask();

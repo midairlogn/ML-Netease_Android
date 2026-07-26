@@ -31,7 +31,9 @@ public class ImageManager {
     private static final int MAX_COVER_ART_SIZE_PX = 512;
     private static final int ORIGINAL_ART_SIZE_PX = 2048;
     private static final int THUMBNAIL_SIZE_PX = 96;
-    private static final int FIXED_CACHE_SIZE_KB = 16 * 1024;
+    private static final int MIN_CACHE_SIZE_KB = 4 * 1024;
+    private static final int MAX_CACHE_SIZE_KB = 16 * 1024;
+    private static final int MAX_IMAGE_DOWNLOAD_BYTES = 16 * 1024 * 1024;
 
     private static final ConcurrentHashMap<String, byte[]> pendingImageBytes = new ConcurrentHashMap<>();
     private static ImageManager instance;
@@ -57,7 +59,9 @@ public class ImageManager {
     }
 
     private ImageManager() {
-        memoryCache = new LruCache<String, Bitmap>(FIXED_CACHE_SIZE_KB) {
+        long maxHeapKb = Runtime.getRuntime().maxMemory() / 1024L;
+        int cacheSizeKb = (int) Math.max(MIN_CACHE_SIZE_KB, Math.min(MAX_CACHE_SIZE_KB, maxHeapKb / 16L));
+        memoryCache = new LruCache<String, Bitmap>(cacheSizeKb) {
             @Override
             protected int sizeOf(String key, Bitmap bitmap) {
                 return bitmap.getByteCount() / 1024;
@@ -76,6 +80,18 @@ public class ImageManager {
             instance = new ImageManager();
         }
         return instance;
+    }
+
+    public static synchronized void trimMemoryIfInitialized(int level) {
+        if (instance != null) {
+            instance.trimMemory(level);
+        }
+    }
+
+    public static synchronized void clearMemoryCacheIfInitialized() {
+        if (instance != null) {
+            instance.clearMemoryCache();
+        }
     }
 
     public static String storePendingEmbeddedBytes(byte[] bytes) {
@@ -138,6 +154,11 @@ public class ImageManager {
                             notifyCallbacks(cacheKey, null);
                             return;
                         }
+                        long contentLength = response.body().contentLength();
+                        if (contentLength > MAX_IMAGE_DOWNLOAD_BYTES) {
+                            notifyCallbacks(cacheKey, null);
+                            return;
+                        }
 
                         InputStream is = response.body().byteStream();
                         final Bitmap bitmap = targetSizePx == ORIGINAL_ART_SIZE_PX
@@ -179,7 +200,7 @@ public class ImageManager {
 
     private Bitmap decodeOriginalFromStream(InputStream is) {
         try {
-            byte[] data = readAllBytes(is);
+            byte[] data = readAllBytes(is, MAX_IMAGE_DOWNLOAD_BYTES);
             if (data == null || data.length == 0) return null;
 
             BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
@@ -194,7 +215,6 @@ public class ImageManager {
             decodeOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
             return BitmapFactory.decodeByteArray(data, 0, data.length, decodeOptions);
         } catch (Exception e) {
-            e.printStackTrace();
             return null;
         }
     }
@@ -355,7 +375,7 @@ public class ImageManager {
 
     private Bitmap decodeSampledBitmapFromStream(InputStream is, int maxDimensionPx) {
         try {
-            byte[] data = readAllBytes(is);
+            byte[] data = readAllBytes(is, MAX_IMAGE_DOWNLOAD_BYTES);
             if (data == null || data.length == 0) return null;
 
             BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
@@ -370,19 +390,36 @@ public class ImageManager {
             decodeOptions.inPreferredConfig = Bitmap.Config.RGB_565;
             return BitmapFactory.decodeByteArray(data, 0, data.length, decodeOptions);
         } catch (Exception e) {
-            e.printStackTrace();
             return null;
         }
     }
 
-    private byte[] readAllBytes(InputStream inputStream) throws IOException {
+    private byte[] readAllBytes(InputStream inputStream, int maxBytes) throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream(8192);
         byte[] buffer = new byte[8192];
         int count;
+        int total = 0;
         while ((count = inputStream.read(buffer)) != -1) {
+            total += count;
+            if (total > maxBytes) {
+                throw new IOException("Image response exceeds size limit");
+            }
             outputStream.write(buffer, 0, count);
         }
         return outputStream.toByteArray();
+    }
+
+    public void trimMemory(int level) {
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_COMPLETE) {
+            memoryCache.evictAll();
+        } else if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW
+                || level == android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
+            memoryCache.trimToSize(memoryCache.maxSize() / 2);
+        }
+    }
+
+    public void clearMemoryCache() {
+        memoryCache.evictAll();
     }
 
     private int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
@@ -390,13 +427,11 @@ public class ImageManager {
         int width = options.outWidth;
         int inSampleSize = 1;
 
-        if (height > reqHeight || width > reqWidth) {
-            int halfHeight = height / 2;
-            int halfWidth = width / 2;
-
-            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
-                inSampleSize *= 2;
+        while ((height / inSampleSize) > reqHeight || (width / inSampleSize) > reqWidth) {
+            if (inSampleSize > Integer.MAX_VALUE / 2) {
+                break;
             }
+            inSampleSize *= 2;
         }
 
         return Math.max(1, inSampleSize);

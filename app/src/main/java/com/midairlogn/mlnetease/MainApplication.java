@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.os.Bundle;
 
 import com.midairlogn.mlnetease.download.core.DownloadTaskManager;
+import com.midairlogn.mlnetease.image.ImageManager;
 import com.midairlogn.mlnetease.sharing.ShareCacheCleaner;
 
 import java.util.ArrayList;
@@ -95,4 +96,16 @@ public class MainApplication extends Application implements Application.Activity
 
     @Override
     public void onActivityDestroyed(Activity activity) {}
+
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        ImageManager.trimMemoryIfInitialized(level);
+    }
+
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        ImageManager.clearMemoryCacheIfInitialized();
+    }
 }
