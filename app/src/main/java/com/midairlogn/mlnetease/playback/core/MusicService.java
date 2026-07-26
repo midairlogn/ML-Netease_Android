@@ -155,10 +155,14 @@ public class MusicService extends Service {
         boolean transientHold = isHearingProtectionRestActive()
                 || pendingAutoContinueAfterRest
                 || awaitingPostRestPlaybackStart
+                || pausedByFocusLoss
+                || resumeOnFocusGain
                 || pendingFocusGainAction != null
                 || pendingFocusGainIntent != null;
         if (transientHold) {
-            // A resume path is still in flight (rest, delayed focus). Try again later.
+            // A resume path is still in flight (rest, transient focus loss, delayed
+            // focus). Demoting here could force the auto-resume to re-enter foreground
+            // state from a non-exempt background context on API 31+. Try again later.
             scheduleIdleWinddown();
             return;
         }
@@ -166,7 +170,10 @@ public class MusicService extends Service {
             return;
         }
         serviceDemoted = true;
-        // Flag 0 keeps the (dismissible when paused) notification attached to the service.
+        // Flag 0 (STOP_FOREGROUND_LEGACY semantics): the notification stays shown but
+        // remains attached to the service, so it is still removed when the service is
+        // destroyed. STOP_FOREGROUND_DETACH is deliberately not used - it would leave
+        // a stale, orphaned notification behind if the process dies while demoted.
         stopForeground(0);
     }
 
