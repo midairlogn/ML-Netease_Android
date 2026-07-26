@@ -193,11 +193,12 @@ public class MusicService extends Service {
             return;
         }
         serviceDemoted = true;
-        // Flag 0 (STOP_FOREGROUND_LEGACY semantics): the notification stays shown but
-        // remains attached to the service, so it is still removed when the service is
-        // destroyed. STOP_FOREGROUND_DETACH is deliberately not used - it would leave
-        // a stale, orphaned notification behind if the process dies while demoted.
-        stopForeground(0);
+        // STOP_FOREGROUND_LEGACY (inlined 0, safe below API 33): the notification
+        // stays shown but remains attached to the service, so it is still removed
+        // when the service is destroyed. STOP_FOREGROUND_DETACH is deliberately not
+        // used - it would leave a stale, orphaned notification behind if the process
+        // dies while demoted.
+        stopForeground(STOP_FOREGROUND_LEGACY);
     }
 
     private void promoteToForeground(String reason) {
@@ -509,6 +510,9 @@ public class MusicService extends Service {
 
             @Override
             public void onSeekTo(long pos) {
+                // Rest cancellation below can resume playback; promote in this
+                // exempt session-callback context like the other transport paths.
+                repromoteIfDemoted("service:repromote-session-seek");
                 musicPlayerManager.seekTo((int) pos);
                 if (isHearingProtectionRestActive()) {
                     performRestCancellationAction(ACTION_CANCEL_REST_AND_RESUME_CURRENT);

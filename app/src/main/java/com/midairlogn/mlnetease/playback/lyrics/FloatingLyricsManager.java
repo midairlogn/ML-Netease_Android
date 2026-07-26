@@ -666,9 +666,11 @@ public class FloatingLyricsManager {
         lyricUpdateTask = new Runnable() {
             @Override
             public void run() {
-                // Defensive: if playback was paused or the screen turned off between
-                // scheduled ticks, stop here.
-                if (!musicPlayerManager.isPlaying() || !screenOn) {
+                // Defensive: if playback was paused, the screen turned off, or the
+                // keyguard engaged (power-menu Lockdown locks with the screen still
+                // on, firing neither SCREEN_OFF nor USER_PRESENT) between scheduled
+                // ticks, stop here. USER_PRESENT restarts the loop after unlock.
+                if (!musicPlayerManager.isPlaying() || !screenOn || isKeyguardShowing()) {
                     lyricUpdateTask = null;
                     return;
                 }
