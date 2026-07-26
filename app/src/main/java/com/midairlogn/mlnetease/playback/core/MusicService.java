@@ -1,5 +1,6 @@
 package com.midairlogn.mlnetease.playback.core;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -16,6 +17,7 @@ import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
@@ -132,18 +134,39 @@ public class MusicService extends Service {
     private boolean serviceDemoted = false;
     private boolean foregroundPromotionPending = false;
     private final Runnable idleWinddownRunnable = this::performIdleWinddownIfEligible;
+    private final AlarmManager.OnAlarmListener idleWinddownAlarmListener =
+            this::performIdleWinddownIfEligible;
 
     private boolean isPlaybackActive() {
         return musicPlayerManager != null && musicPlayerManager.isPlaying();
     }
 
     private void scheduleIdleWinddown() {
-        handler.removeCallbacks(idleWinddownRunnable);
-        handler.postDelayed(idleWinddownRunnable, IDLE_WINDDOWN_DELAY_MS);
+        cancelIdleWinddown();
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) {
+            handler.postDelayed(idleWinddownRunnable, IDLE_WINDDOWN_DELAY_MS);
+            return;
+        }
+        // Non-wakeup elapsed-realtime alarm instead of Handler.postDelayed: the
+        // handler runs on uptimeMillis, which freezes during deep sleep, so the
+        // "30 minutes" would stretch to hours of wall time in exactly the paused,
+        // screen-off scenario this targets. The alarm counts wall time but never
+        // wakes the device; a deadline that passes during doze fires on the next
+        // natural wakeup.
+        alarmManager.set(AlarmManager.ELAPSED_REALTIME,
+                SystemClock.elapsedRealtime() + IDLE_WINDDOWN_DELAY_MS,
+                "ml:idle-winddown",
+                idleWinddownAlarmListener,
+                handler);
     }
 
     private void cancelIdleWinddown() {
         handler.removeCallbacks(idleWinddownRunnable);
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) {
+            alarmManager.cancel(idleWinddownAlarmListener);
+        }
     }
 
     private void performIdleWinddownIfEligible() {
@@ -184,6 +207,20 @@ public class MusicService extends Service {
                     isPlaybackActive(), null, true, reason);
         } finally {
             foregroundPromotionPending = false;
+        }
+    }
+
+    private void repromoteIfDemoted(String reason) {
+        if (!serviceDemoted) {
+            return;
+        }
+        // Called from FGS-exempt contexts (onStartCommand after startForegroundService,
+        // MediaSession/media-button dispatch). Promoting here ensures a later async
+        // resume step (delayed focus gain, headset multi-click timeout) never has to
+        // re-enter foreground state from a non-exempt callback.
+        promoteToForeground(reason);
+        if (!isPlaybackActive()) {
+            scheduleIdleWinddown();
         }
     }
 
@@ -480,6 +517,9 @@ public class MusicService extends Service {
 
             @Override
             public boolean onMediaButtonEvent(Intent mediaButtonEvent) {
+                // Media-button dispatch is an FGS-exempt context; leave the demoted
+                // state before any (possibly delayed) playback handling begins.
+                repromoteIfDemoted("service:repromote-media-button");
                 // Keep app-specific key mapping (HEADSETHOOK, hearing-protection rest).
                 if (handleMediaButtonIntent(mediaButtonEvent)) {
                     return true;
@@ -890,6 +930,7 @@ public class MusicService extends Service {
     }
 
     private void handleExternalPlayRequest() {
+        repromoteIfDemoted("service:repromote-session-play");
         if (isHearingProtectionRestActive()) {
             performRestCancellationAction(ACTION_CANCEL_REST_AND_CONTINUE);
             return;
@@ -913,6 +954,7 @@ public class MusicService extends Service {
     }
 
     private void handleExternalNextRequest() {
+        repromoteIfDemoted("service:repromote-session-next");
         if (isHearingProtectionRestActive()) {
             performRestCancellationAction(ACTION_CANCEL_REST_AND_NEXT);
             return;
@@ -924,6 +966,7 @@ public class MusicService extends Service {
     }
 
     private void handleExternalPreviousRequest() {
+        repromoteIfDemoted("service:repromote-session-previous");
         if (isHearingProtectionRestActive()) {
             performRestCancellationAction(ACTION_CANCEL_REST_AND_PREVIOUS);
             return;
@@ -1368,6 +1411,12 @@ public class MusicService extends Service {
         } catch (IllegalStateException e) {
             // API 31+ background FGS-start restriction on an edge path: keep the
             // notification fresh; the next allowed context re-promotes.
+            // The service is factually not foreground now, so record that. This keeps
+            // the onStartCommand re-promotion gate armed; without it a rejected
+            // promotion would leave serviceDemoted=false and later commands delivered
+            // via startForegroundService would never call startForeground again
+            // (ForegroundServiceDidNotStartInTimeException).
+            serviceDemoted = true;
             Log.w(TAG, "startForeground rejected, posting notification only", e);
             notificationManager.notify(NOTIFICATION_ID, notification);
         }
@@ -1436,12 +1485,7 @@ public class MusicService extends Service {
         // Background callers deliver commands via startForegroundService(); when the
         // service was demoted by the idle wind-down it must promptly re-enter
         // foreground state or the system kills the app (FGS did-not-start timeout).
-        if (serviceDemoted) {
-            promoteToForeground("service:repromote-on-command");
-            if (!isPlaybackActive()) {
-                scheduleIdleWinddown();
-            }
-        }
+        repromoteIfDemoted("service:repromote-on-command");
         // MediaButtonReceiver restarts this service with ACTION_MEDIA_BUTTON after cold start.
         // Use the same key mapping as live session media buttons (hearing protection, HEADSETHOOK).
         if (handleMediaButtonIntent(intent)) {

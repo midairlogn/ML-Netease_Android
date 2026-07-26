@@ -75,6 +75,7 @@ public class FloatingLyricsManager {
     // Power optimization: the overlay is invisible while the screen is off, so the
     // 50ms polling loop must not run there. Track interactive state via broadcasts.
     private boolean screenOn = true;
+    private android.app.KeyguardManager keyguardManager;
     private final android.content.BroadcastReceiver screenStateReceiver = new android.content.BroadcastReceiver() {
         @Override
         public void onReceive(Context receiverContext, Intent intent) {
@@ -84,12 +85,23 @@ public class FloatingLyricsManager {
                 stopLyricUpdates();
             } else if (Intent.ACTION_SCREEN_ON.equals(action)) {
                 screenOn = true;
+                // A TYPE_APPLICATION_OVERLAY window cannot show above the keyguard;
+                // wait for USER_PRESENT before restarting the polling loop when the
+                // device is still locked.
+                if (floatingView != null && !isKeyguardShowing()) {
+                    startLyricUpdates();
+                }
+            } else if (Intent.ACTION_USER_PRESENT.equals(action)) {
                 if (floatingView != null) {
                     startLyricUpdates();
                 }
             }
         }
     };
+
+    private boolean isKeyguardShowing() {
+        return keyguardManager != null && keyguardManager.isKeyguardLocked();
+    }
 
     private final MusicPlayerManager.OnPlaybackStateChangedListener playbackStateListener = new MusicPlayerManager.OnPlaybackStateChangedListener() {
         @Override
@@ -131,9 +143,11 @@ public class FloatingLyricsManager {
         android.os.PowerManager powerManager =
                 (android.os.PowerManager) context.getSystemService(Context.POWER_SERVICE);
         screenOn = powerManager == null || powerManager.isInteractive();
+        keyguardManager = (android.app.KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
         android.content.IntentFilter screenFilter = new android.content.IntentFilter();
         screenFilter.addAction(Intent.ACTION_SCREEN_ON);
         screenFilter.addAction(Intent.ACTION_SCREEN_OFF);
+        screenFilter.addAction(Intent.ACTION_USER_PRESENT);
         context.registerReceiver(screenStateReceiver, screenFilter);
 
         // Register listener
@@ -641,10 +655,11 @@ public class FloatingLyricsManager {
 
     private void startLyricUpdates() {
         if (lyricUpdateTask != null) return;
-        // Power optimization: do not run the 50ms polling loop while paused or while
-        // the screen is off (the overlay is invisible then anyway).
+        // Power optimization: do not run the 50ms polling loop while paused, while
+        // the screen is off, or behind the keyguard (the overlay is invisible in all
+        // three states). USER_PRESENT restarts the loop after unlock.
         // Still paint the current line once so the overlay reflects the latest state.
-        if (!musicPlayerManager.isPlaying() || !screenOn) {
+        if (!musicPlayerManager.isPlaying() || !screenOn || isKeyguardShowing()) {
             updateCurrentLyricLine();
             return;
         }
