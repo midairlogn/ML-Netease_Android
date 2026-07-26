@@ -125,8 +125,59 @@ public class MusicService extends Service {
 
     private android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
 
+    // Idle wind-down: after a long continuous pause, drop foreground-service state
+    // (keep the notification and active MediaSession) so OEM power managers can
+    // treat the process as idle instead of accruing 24/7 background running time.
+    private static final long IDLE_WINDDOWN_DELAY_MS = 30L * 60L * 1000L;
+    private boolean serviceDemoted = false;
+    private boolean foregroundPromotionPending = false;
+    private final Runnable idleWinddownRunnable = this::performIdleWinddownIfEligible;
+
     private boolean isPlaybackActive() {
         return musicPlayerManager != null && musicPlayerManager.isPlaying();
+    }
+
+    private void scheduleIdleWinddown() {
+        handler.removeCallbacks(idleWinddownRunnable);
+        handler.postDelayed(idleWinddownRunnable, IDLE_WINDDOWN_DELAY_MS);
+    }
+
+    private void cancelIdleWinddown() {
+        handler.removeCallbacks(idleWinddownRunnable);
+    }
+
+    private void performIdleWinddownIfEligible() {
+        if (isPlaybackActive()
+                || (musicPlayerManager != null && musicPlayerManager.hasPendingPlaybackRequest())) {
+            // Playing again; the next pause transition reschedules.
+            return;
+        }
+        boolean transientHold = isHearingProtectionRestActive()
+                || pendingAutoContinueAfterRest
+                || awaitingPostRestPlaybackStart
+                || pendingFocusGainAction != null
+                || pendingFocusGainIntent != null;
+        if (transientHold) {
+            // A resume path is still in flight (rest, delayed focus). Try again later.
+            scheduleIdleWinddown();
+            return;
+        }
+        if (serviceDemoted) {
+            return;
+        }
+        serviceDemoted = true;
+        // Flag 0 keeps the (dismissible when paused) notification attached to the service.
+        stopForeground(0);
+    }
+
+    private void promoteToForeground(String reason) {
+        foregroundPromotionPending = true;
+        try {
+            showNotification(musicPlayerManager != null ? musicPlayerManager.getCurrentSong() : null,
+                    isPlaybackActive(), null, true, reason);
+        } finally {
+            foregroundPromotionPending = false;
+        }
     }
 
     private final Runnable postRestPlaybackStartTimeoutRunnable = () -> {
@@ -194,6 +245,7 @@ public class MusicService extends Service {
 
     private final MusicPlayerManager.OnPlaybackStateChangedListener playbackStateChangedListener = isPlaying -> {
         if (isPlaying) {
+            cancelIdleWinddown();
             clearPostRestPlaybackWait(true);
             if (!hasAudioFocus) {
                 AudioFocusOutcome outcome = requestAudioFocus();
@@ -217,6 +269,7 @@ public class MusicService extends Service {
                     && !headsetHookRestActiveAtFirstClick) {
                 cancelPendingHeadsetHookClicks();
             }
+            scheduleIdleWinddown();
         }
         updatePlaybackState(isPlaying);
     };
@@ -259,6 +312,8 @@ public class MusicService extends Service {
                 pendingFocusGainIntent = null;
                 pendingAutoContinueAfterRest = false;
                 clearPostRestPlaybackWait(true);
+                // Another app owns audio now; allow this service to go idle.
+                scheduleIdleWinddown();
                 break;
             case AudioManager.AUDIOFOCUS_GAIN:
                 hasAudioFocus = true;
@@ -346,6 +401,12 @@ public class MusicService extends Service {
                 }
             }
             musicPlayerManager.prepareRestoredMediaIfNeeded(autoPlay);
+        }
+
+        // If the service starts into a paused/idle state (e.g. app launch without
+        // playback), arm the idle wind-down so it does not stay foreground forever.
+        if (!isPlaybackActive()) {
+            scheduleIdleWinddown();
         }
     }
 
@@ -1284,7 +1345,25 @@ public class MusicService extends Service {
                 .setOngoing(isPlaying)
                 .build();
 
-        startForeground(NOTIFICATION_ID, notification);
+        deliverNotification(notification, isPlaying);
+    }
+
+    private void deliverNotification(Notification notification, boolean isPlaying) {
+        if (!isPlaying && serviceDemoted && !foregroundPromotionPending) {
+            // Idle (long-paused, demoted) state: refresh the notification without
+            // re-entering foreground-service state.
+            notificationManager.notify(NOTIFICATION_ID, notification);
+            return;
+        }
+        try {
+            startForeground(NOTIFICATION_ID, notification);
+            serviceDemoted = false;
+        } catch (IllegalStateException e) {
+            // API 31+ background FGS-start restriction on an edge path: keep the
+            // notification fresh; the next allowed context re-promotes.
+            Log.w(TAG, "startForeground rejected, posting notification only", e);
+            notificationManager.notify(NOTIFICATION_ID, notification);
+        }
     }
 
     private void createNotificationChannel() {
@@ -1347,6 +1426,15 @@ public class MusicService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // Background callers deliver commands via startForegroundService(); when the
+        // service was demoted by the idle wind-down it must promptly re-enter
+        // foreground state or the system kills the app (FGS did-not-start timeout).
+        if (serviceDemoted) {
+            promoteToForeground("service:repromote-on-command");
+            if (!isPlaybackActive()) {
+                scheduleIdleWinddown();
+            }
+        }
         // MediaButtonReceiver restarts this service with ACTION_MEDIA_BUTTON after cold start.
         // Use the same key mapping as live session media buttons (hearing protection, HEADSETHOOK).
         if (handleMediaButtonIntent(intent)) {
@@ -1451,6 +1539,7 @@ public class MusicService extends Service {
             musicPlayerManager.checkpointPlaybackState();
         }
         cancelPendingHeadsetHookClicks();
+        cancelIdleWinddown();
         if (getApplication() instanceof MainApplication) {
             MainApplication app = (MainApplication) getApplication();
             app.removeAppVisibilityListener(appVisibilityListener);

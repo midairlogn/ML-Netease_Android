@@ -72,6 +72,25 @@ public class FloatingLyricsManager {
     private Runnable autoCollapseTask = this::collapse;
     private static final long AUTO_COLLAPSE_DELAY = 5000;
 
+    // Power optimization: the overlay is invisible while the screen is off, so the
+    // 50ms polling loop must not run there. Track interactive state via broadcasts.
+    private boolean screenOn = true;
+    private final android.content.BroadcastReceiver screenStateReceiver = new android.content.BroadcastReceiver() {
+        @Override
+        public void onReceive(Context receiverContext, Intent intent) {
+            String action = intent.getAction();
+            if (Intent.ACTION_SCREEN_OFF.equals(action)) {
+                screenOn = false;
+                stopLyricUpdates();
+            } else if (Intent.ACTION_SCREEN_ON.equals(action)) {
+                screenOn = true;
+                if (floatingView != null) {
+                    startLyricUpdates();
+                }
+            }
+        }
+    };
+
     private final MusicPlayerManager.OnPlaybackStateChangedListener playbackStateListener = new MusicPlayerManager.OnPlaybackStateChangedListener() {
         @Override
         public void onPlaybackStateChanged(boolean isPlaying) {
@@ -108,6 +127,14 @@ public class FloatingLyricsManager {
         this.musicPlayerManager = MusicPlayerManager.getInstance(context);
         this.windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         updateScreenSize();
+
+        android.os.PowerManager powerManager =
+                (android.os.PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        screenOn = powerManager == null || powerManager.isInteractive();
+        android.content.IntentFilter screenFilter = new android.content.IntentFilter();
+        screenFilter.addAction(Intent.ACTION_SCREEN_ON);
+        screenFilter.addAction(Intent.ACTION_SCREEN_OFF);
+        context.registerReceiver(screenStateReceiver, screenFilter);
 
         // Register listener
         musicPlayerManager.addOnPlaybackStateChangedListener(playbackStateListener);
@@ -614,17 +641,19 @@ public class FloatingLyricsManager {
 
     private void startLyricUpdates() {
         if (lyricUpdateTask != null) return;
-        // Power optimization: do not run the 50ms polling loop while paused.
+        // Power optimization: do not run the 50ms polling loop while paused or while
+        // the screen is off (the overlay is invisible then anyway).
         // Still paint the current line once so the overlay reflects the latest state.
-        if (!musicPlayerManager.isPlaying()) {
+        if (!musicPlayerManager.isPlaying() || !screenOn) {
             updateCurrentLyricLine();
             return;
         }
         lyricUpdateTask = new Runnable() {
             @Override
             public void run() {
-                // Defensive: if playback was paused between scheduled ticks, stop here.
-                if (!musicPlayerManager.isPlaying()) {
+                // Defensive: if playback was paused or the screen turned off between
+                // scheduled ticks, stop here.
+                if (!musicPlayerManager.isPlaying() || !screenOn) {
                     lyricUpdateTask = null;
                     return;
                 }
@@ -859,6 +888,11 @@ public class FloatingLyricsManager {
 
     public void release() {
         hide();
+        try {
+            context.unregisterReceiver(screenStateReceiver);
+        } catch (IllegalArgumentException ignored) {
+            // Receiver already unregistered.
+        }
         musicPlayerManager.removeOnPlaybackStateChangedListener(playbackStateListener);
         musicPlayerManager.removeOnSeekListener(seekListener);
     }
