@@ -95,6 +95,7 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
         currentEmbeddedCacheKey = null;
         String urlString = song.picUrl;
         if (urlString == null || urlString.isEmpty()) {
+            albumCover.setTag(null);
             albumCover.setImageResource(R.drawable.ic_ml_app_logo_foreground);
             currentUrl = null;
             isPlaceholder = true;
