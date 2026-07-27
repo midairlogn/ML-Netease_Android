@@ -69,19 +69,7 @@ public class ImageDetailActivity extends AppCompatActivity {
                     .replace(":large", "")
                     .replace(":small", "")
                     .replace(":original", "");
-            Bitmap cached = ImageManager.getInstance().getOriginalEmbeddedBitmap(baseCacheKey, null);
-            if (cached != null && !cached.isRecycled()) {
-                currentBitmap = cached;
-                imageView.setImageBitmap(cached);
-                return;
-            }
-            if (imageBytes != null && imageBytes.length > 0) {
-                currentBitmap = ImageManager.getInstance().getOriginalEmbeddedBitmap(baseCacheKey, imageBytes);
-                if (currentBitmap != null) {
-                    imageView.setImageBitmap(currentBitmap);
-                    return;
-                }
-            }
+            loadEmbeddedImage(baseCacheKey, imageBytes);
         } else if (imageUrl != null && !imageUrl.isEmpty()) {
             imageUrl = ImageUtils.originalImageUrl(imageUrl);
             loadImage(imageUrl);
@@ -97,6 +85,19 @@ public class ImageDetailActivity extends AppCompatActivity {
         final int requestVersion = imageRequestVersion;
         ImageManager.getInstance().fetchOriginalBitmap(urlString, bitmap -> {
             if (requestVersion != imageRequestVersion || !urlString.equals(imageUrl)) {
+                return;
+            }
+            if (bitmap != null && !bitmap.isRecycled()) {
+                currentBitmap = bitmap;
+                imageView.setImageBitmap(bitmap);
+            }
+        });
+    }
+
+    private void loadEmbeddedImage(String cacheKey, byte[] imageBytes) {
+        final int requestVersion = imageRequestVersion;
+        ImageManager.getInstance().fetchOriginalEmbeddedBitmap(cacheKey, imageBytes, bitmap -> {
+            if (requestVersion != imageRequestVersion) {
                 return;
             }
             if (bitmap != null && !bitmap.isRecycled()) {

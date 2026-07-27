@@ -45,6 +45,7 @@ public class ImageManager {
     private final ConcurrentHashMap<String, Boolean> activeFetches = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, List<FetchCallback>> pendingCallbacks = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Call> activeCalls = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, String> activeImageIdentities = new ConcurrentHashMap<>();
 
     private static String remoteCacheKey(String url, int maxDimensionPx) {
         return ImageUtils.normalizeUrl(url) + ":remote:" + Math.max(1, maxDimensionPx);
@@ -134,7 +135,9 @@ public class ImageManager {
         }
 
         if (activeFetches.putIfAbsent(cacheKey, Boolean.TRUE) == null) {
-            cancelStaleFetches(cacheKey);
+            String imageIdentity = ImageUtils.normalizeUrl(ImageUtils.originalImageUrl(url));
+            activeImageIdentities.put(cacheKey, imageIdentity);
+            cancelStaleFetches(cacheKey, imageIdentity);
 
             final String fetchUrl = url;
             executorService.submit(() -> {
@@ -175,8 +178,6 @@ public class ImageManager {
                     }
                 } catch (Exception e) {
                     notifyCallbacks(cacheKey, null);
-                } finally {
-                    activeCalls.remove(cacheKey);
                 }
             });
         }
@@ -220,6 +221,8 @@ public class ImageManager {
     }
 
     private void notifyCallbacks(String cacheKey, Bitmap bitmap) {
+        activeCalls.remove(cacheKey);
+        activeImageIdentities.remove(cacheKey);
         mainHandler.post(() -> {
             activeFetches.remove(cacheKey);
             List<FetchCallback> callbacks = pendingCallbacks.remove(cacheKey);
@@ -236,9 +239,10 @@ public class ImageManager {
      * This immediately terminates the OkHttp call, freeing the thread, connection,
      * and response body bytes — instead of waiting for a 5-second timeout.
      */
-    private void cancelStaleFetches(String currentCacheKey) {
+    private void cancelStaleFetches(String currentCacheKey, String currentImageIdentity) {
         for (String key : activeCalls.keySet()) {
-            if (!key.equals(currentCacheKey)) {
+            String activeImageIdentity = activeImageIdentities.get(key);
+            if (!key.equals(currentCacheKey) && !currentImageIdentity.equals(activeImageIdentity)) {
                 Call staleCall = activeCalls.remove(key);
                 if (staleCall != null) {
                     staleCall.cancel();
@@ -396,6 +400,34 @@ public class ImageManager {
         return bitmap;
     }
 
+    public void fetchOriginalEmbeddedBitmap(String cacheKey, byte[] imageData, FetchCallback callback) {
+        if (cacheKey == null || cacheKey.isEmpty()) {
+            if (callback != null) callback.onResult(null);
+            return;
+        }
+
+        String originalKey = cacheKey + ":original";
+        Bitmap cachedBitmap = memoryCache.get(originalKey);
+        if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
+            if (callback != null) callback.onResult(cachedBitmap);
+            return;
+        }
+
+        if (callback != null) {
+            pendingCallbacks.computeIfAbsent(originalKey, k -> new ArrayList<>()).add(callback);
+        }
+        if (activeFetches.putIfAbsent(originalKey, Boolean.TRUE) == null) {
+            if (imageData == null || imageData.length == 0) {
+                notifyCallbacks(originalKey, null);
+                return;
+            }
+            executorService.submit(() -> {
+                Bitmap bitmap = getOriginalEmbeddedBitmap(cacheKey, imageData);
+                notifyCallbacks(originalKey, bitmap);
+            });
+        }
+    }
+
     public void loadEmbedded(String cacheKey, byte[] imageData, ImageView imageView, int placeholderResId, boolean large) {
         if (imageData == null || imageData.length == 0) {
             imageView.setImageResource(placeholderResId);
@@ -467,12 +499,12 @@ public class ImageManager {
 
         String originalKey = cacheKey + ":original";
         imageView.setTag(originalKey);
-        Bitmap bitmap = getOriginalEmbeddedBitmap(cacheKey, imageData);
-        if (bitmap != null && !bitmap.isRecycled()) {
-            imageView.setImageBitmap(bitmap);
-        } else {
-            imageView.setImageResource(placeholderResId);
-        }
+        imageView.setImageResource(placeholderResId);
+        fetchOriginalEmbeddedBitmap(cacheKey, imageData, bitmap -> {
+            if (originalKey.equals(imageView.getTag()) && bitmap != null && !bitmap.isRecycled()) {
+                imageView.setImageBitmap(bitmap);
+            }
+        });
     }
 
     public void clearMemoryCache() {
