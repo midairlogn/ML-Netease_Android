@@ -34,6 +34,7 @@ public class MusicPlayerManager {
     private static MusicPlayerManager instance;
     private MediaPlayer mediaPlayer;
     private boolean mediaPlayerNeedsRecreation = false;
+    private volatile boolean mediaPlayerPrepared = false;
     private List<Song> playlist = new ArrayList<>();
     private int currentIndex = -1;
     private boolean isPaused = false;
@@ -236,6 +237,7 @@ public class MusicPlayerManager {
     }
 
     private MediaPlayer resetMediaPlayerForNewSource() {
+        mediaPlayerPrepared = false;
         if (!mediaPlayerNeedsRecreation) {
             try {
                 mediaPlayer.reset();
@@ -381,15 +383,11 @@ public class MusicPlayerManager {
         if (isSwitchingSong || seekPending) {
             return Math.max(0, resumePosition);
         }
-        try {
-            return Math.max(0, mediaPlayer.getCurrentPosition());
-        } catch (Exception ignored) {
-            return Math.max(0, resumePosition);
-        }
+        return getCurrentPosition();
     }
 
     private boolean issuePendingMediaSeek(MediaPlayer player) {
-        if (!seekPending || mediaSeekInFlight) {
+        if (!seekPending || mediaSeekInFlight || !mediaPlayerPrepared || player != mediaPlayer) {
             return false;
         }
         issuedSeekPosition = Math.max(0, resumePosition);
@@ -687,9 +685,11 @@ public class MusicPlayerManager {
                     mediaPlayer.stop();
                 }
                 playbackActive = false;
+                mediaPlayerPrepared = false;
                 mediaPlayer.reset();
             } catch (Exception e) {
                 playbackActive = false;
+                mediaPlayerPrepared = false;
                 e.printStackTrace();
             }
             // Release large mutable data from the previous song to allow GC.
@@ -950,6 +950,7 @@ public class MusicPlayerManager {
                     return;
                 }
 
+                mediaPlayerPrepared = true;
                 isAutoSkipping = false;
                 continuousSkipCount = 0;
                 isSwitchingSong = false;
@@ -979,6 +980,7 @@ public class MusicPlayerManager {
                     mp.start();
                 } catch (RuntimeException e) {
                     playbackActive = false;
+                    mediaPlayerPrepared = false;
                     isSwitchingSong = false;
                     mediaPlayerNeedsRecreation = true;
                     if (failureReported.compareAndSet(false, true)) {
@@ -998,6 +1000,7 @@ public class MusicPlayerManager {
                     return true;
                 }
                 playbackActive = false;
+                mediaPlayerPrepared = false;
                 if (what == MediaPlayer.MEDIA_ERROR_SERVER_DIED) {
                     mediaPlayerNeedsRecreation = true;
                 }
@@ -1025,6 +1028,7 @@ public class MusicPlayerManager {
             player.prepareAsync();
         } catch (Exception e) {
             playbackActive = false;
+            mediaPlayerPrepared = false;
             if (requestId == activePlayRequestId) {
                 isSwitchingSong = false;
             }
@@ -1097,16 +1101,22 @@ public class MusicPlayerManager {
             return;
         }
         if (isPaused && !playbackActive) {
-            try {
-                mediaPlayer.start();
-                playbackActive = true;
-                isPaused = false;
-                if (!seekPending) {
-                    resumePosition = 0;
+            boolean reloadMedia = !mediaPlayerPrepared;
+            if (!reloadMedia) {
+                try {
+                    mediaPlayer.start();
+                    playbackActive = true;
+                    isPaused = false;
+                    if (!seekPending) {
+                        resumePosition = 0;
+                    }
+                    notifyPlaybackStateChanged(true);
+                } catch (IllegalStateException ignored) {
+                    mediaPlayerPrepared = false;
+                    reloadMedia = true;
                 }
-                notifyPlaybackStateChanged(true);
-            } catch (IllegalStateException ignored) {
-                // Media not prepared after process death — reload from saved position.
+            }
+            if (reloadMedia) {
                 if (currentIndex >= 0 && currentIndex < playlist.size()) {
                     keepResumePositionForNextPrepare = true;
                     seekPending = resumePosition > 0;
@@ -1278,7 +1288,7 @@ public class MusicPlayerManager {
     }
 
     public int getCurrentPosition() {
-        if (isSwitchingSong || seekPending) {
+        if (isSwitchingSong || seekPending || !mediaPlayerPrepared) {
             return Math.max(0, resumePosition);
         }
         try {
@@ -1289,7 +1299,7 @@ public class MusicPlayerManager {
     }
 
     public int getDuration() {
-        if (isSwitchingSong) {
+        if (isSwitchingSong || !mediaPlayerPrepared) {
             Song song = getCurrentSong();
             return song != null && song.durationMs > 0 ? (int) song.durationMs : 0;
         }
@@ -1736,6 +1746,7 @@ public class MusicPlayerManager {
         stopProgressDispatcher();
         cancelAppVolumeRamp();
         clearLoudnessNormalization();
+        mediaPlayerPrepared = false;
         try {
             mediaPlayer.release();
         } catch (Exception ignored) {
