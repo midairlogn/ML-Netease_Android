@@ -1621,7 +1621,6 @@ public class MusicService extends Service {
         musicPlayerManager.removeOnPlaybackModeChangedListener(playbackModeChangedListener);
         musicPlayerManager.removeOnSeekListener(seekListener);
         cancelActiveArtworkTask();
-        ImageManager.getInstance().onPlaybackArtworkChanged(null);
         // Don't recycle lastBitmap - it may be in ImageManager's cache
         lastBitmap = null;
         // Don't recycle logoPlaceholder - it's a static resource
