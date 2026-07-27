@@ -1020,16 +1020,20 @@ public class MusicService extends Service {
 
         boolean isNewSong = !song.id.equals(lastSongId);
         lastSongId = song.id;
-        String remoteArtworkUrl = song.embeddedPicture == null || song.embeddedPicture.length == 0
-                ? song.picUrl
-                : null;
-        ImageManager.getInstance().onPlaybackArtworkChanged(remoteArtworkUrl);
 
         if (isNewSong) {
             cancelActiveArtworkTask();
             lastBitmap = null;
             lastPicUrl = "";
         }
+
+        String remoteArtworkUrl = song.embeddedPicture == null || song.embeddedPicture.length == 0
+                ? song.picUrl
+                : null;
+        if (fetchingPicUrl != null && !ImageUtils.isSameImage(remoteArtworkUrl, fetchingPicUrl)) {
+            cancelActiveArtworkTask();
+        }
+        ImageManager.getInstance().onPlaybackArtworkChanged(remoteArtworkUrl);
 
         if (song.embeddedPicture != null && song.embeddedPicture.length > 0) {
             Bitmap embeddedBitmap = ImageManager.getInstance().getEmbeddedBitmap("embedded:" + song.id, song.embeddedPicture, true);
@@ -1087,11 +1091,12 @@ public class MusicService extends Service {
 
         // Fetch album art async
         final String targetSongId = song.id;
+        final String targetPicUrl = song.picUrl;
         final long artworkRequestId = artworkRequestIdGenerator.incrementAndGet();
         activeArtworkRequestId = artworkRequestId;
-        fetchingPicUrl = song.picUrl;
+        fetchingPicUrl = targetPicUrl;
 
-        ImageManager.getInstance().fetchPlaybackBitmap(song.picUrl, albumArt -> {
+        ImageManager.getInstance().fetchPlaybackBitmap(targetPicUrl, albumArt -> {
             if (artworkRequestId != activeArtworkRequestId) {
                 return;
             }
@@ -1102,7 +1107,7 @@ public class MusicService extends Service {
             final Bitmap finalAlbumArt = albumArt;
 
             // Callback is already on main thread (via ImageManager.mainHandler)
-            if (song.picUrl != null && ImageUtils.isSameImage(song.picUrl, fetchingPicUrl)) {
+            if (ImageUtils.isSameImage(targetPicUrl, fetchingPicUrl)) {
                 fetchingPicUrl = null;
             }
 
@@ -1112,7 +1117,7 @@ public class MusicService extends Service {
 
             // Don't recycle - bitmap is in ImageManager's LRU cache
             lastBitmap = finalAlbumArt;
-            lastPicUrl = song.picUrl;
+            lastPicUrl = targetPicUrl;
 
             updateMediaSessionMetadata(song, finalAlbumArt);
             showNotification(song, isPlaybackActive(), finalAlbumArt, true, "metadata:art-ready");
@@ -1616,6 +1621,7 @@ public class MusicService extends Service {
         musicPlayerManager.removeOnPlaybackModeChangedListener(playbackModeChangedListener);
         musicPlayerManager.removeOnSeekListener(seekListener);
         cancelActiveArtworkTask();
+        ImageManager.getInstance().onPlaybackArtworkChanged(null);
         // Don't recycle lastBitmap - it may be in ImageManager's cache
         lastBitmap = null;
         // Don't recycle logoPlaceholder - it's a static resource

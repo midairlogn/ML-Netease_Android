@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -252,12 +253,18 @@ public class ImageManager {
         }
         Object generation = new Object();
         if (activeEncodedGenerations.putIfAbsent(identity, generation) == null) {
-            Request request = new Request.Builder()
-                    .url(url)
-                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-                    .header("Referer", "https://music.163.com/")
-                    .build();
-            Call call = httpClient.newCall(request);
+            final Call call;
+            try {
+                Request request = new Request.Builder()
+                        .url(url)
+                        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+                        .header("Referer", "https://music.163.com/")
+                        .build();
+                call = httpClient.newCall(request);
+            } catch (RuntimeException e) {
+                notifyEncodedCallbacks(identity, generation, null);
+                return;
+            }
             ActiveEncodedCall activeCall = new ActiveEncodedCall(generation, call, playbackRequest);
             activeEncodedCalls.put(identity, activeCall);
             ExecutorService networkExecutor = playbackRequest
@@ -278,9 +285,24 @@ public class ImageManager {
                 } catch (Exception ignored) {
                     imageData = null;
                 }
+                if (!hasDecodableImageBounds(imageData)) {
+                    imageData = null;
+                }
 
                 notifyEncodedCallbacks(identity, generation, imageData);
             });
+        }
+    }
+
+    private boolean hasDecodableImageBounds(byte[] imageData) {
+        if (imageData == null || imageData.length == 0) return false;
+        try {
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
+            return options.outWidth > 0 && options.outHeight > 0;
+        } catch (RuntimeException e) {
+            return false;
         }
     }
 
@@ -457,7 +479,7 @@ public class ImageManager {
     }
 
     private synchronized void markPlaybackRequested(String identity) {
-        if (!identity.equals(latestPlaybackIdentity)) {
+        if (!Objects.equals(identity, latestPlaybackIdentity)) {
             latestPlaybackIdentity = identity;
             retainedPlaybackEncodedIdentity = null;
             retainedPlaybackEncodedData = null;
@@ -489,7 +511,12 @@ public class ImageManager {
     }
 
     private synchronized void markOriginalRequested(String url) {
-        latestOriginalRequestIdentity = ImageUtils.normalizeUrl(ImageUtils.originalImageUrl(url));
+        String identity = ImageUtils.normalizeUrl(ImageUtils.originalImageUrl(url));
+        if (!Objects.equals(identity, latestOriginalRequestIdentity)) {
+            latestOriginalRequestIdentity = identity;
+            retainedOriginalIdentity = null;
+            retainedOriginalBitmap = null;
+        }
     }
 
     private synchronized void retainOriginalBitmapIfLatest(String url, Bitmap bitmap) {
