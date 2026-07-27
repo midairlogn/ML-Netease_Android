@@ -46,6 +46,10 @@ public class ImageManager {
     private final ConcurrentHashMap<String, List<FetchCallback>> pendingCallbacks = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Call> activeCalls = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, String> activeImageIdentities = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Integer> activeTargetSizes = new ConcurrentHashMap<>();
+    private String latestOriginalRequestIdentity;
+    private String retainedOriginalIdentity;
+    private Bitmap retainedOriginalBitmap;
 
     private static String remoteCacheKey(String url, int maxDimensionPx) {
         return ImageUtils.normalizeUrl(url) + ":remote:" + Math.max(1, maxDimensionPx);
@@ -124,6 +128,15 @@ public class ImageManager {
                 ? originalRemoteCacheKey(url)
                 : remoteCacheKey(url, targetSizePx);
 
+        if (targetSizePx == ORIGINAL_ART_SIZE_PX) {
+            markOriginalRequested(url);
+            Bitmap retained = getRetainedOriginalBitmap(url);
+            if (retained != null) {
+                if (callback != null) callback.onResult(retained);
+                return;
+            }
+        }
+
         Bitmap cached = memoryCache.get(cacheKey);
         if (cached != null && !cached.isRecycled()) {
             if (callback != null) callback.onResult(cached);
@@ -137,7 +150,8 @@ public class ImageManager {
         if (activeFetches.putIfAbsent(cacheKey, Boolean.TRUE) == null) {
             String imageIdentity = ImageUtils.normalizeUrl(ImageUtils.originalImageUrl(url));
             activeImageIdentities.put(cacheKey, imageIdentity);
-            cancelStaleFetches(cacheKey, imageIdentity);
+            activeTargetSizes.put(cacheKey, targetSizePx);
+            cancelStaleFetches(cacheKey, imageIdentity, targetSizePx);
 
             final String fetchUrl = url;
             executorService.submit(() -> {
@@ -171,6 +185,9 @@ public class ImageManager {
 
                         if (bitmap != null) {
                             memoryCache.put(cacheKey, bitmap);
+                            if (targetSizePx == ORIGINAL_ART_SIZE_PX) {
+                                retainOriginalBitmapIfLatest(url, bitmap);
+                            }
                         }
                         notifyCallbacks(cacheKey, bitmap);
                     } finally {
@@ -223,6 +240,7 @@ public class ImageManager {
     private void notifyCallbacks(String cacheKey, Bitmap bitmap) {
         activeCalls.remove(cacheKey);
         activeImageIdentities.remove(cacheKey);
+        activeTargetSizes.remove(cacheKey);
         mainHandler.post(() -> {
             activeFetches.remove(cacheKey);
             List<FetchCallback> callbacks = pendingCallbacks.remove(cacheKey);
@@ -239,10 +257,14 @@ public class ImageManager {
      * This immediately terminates the OkHttp call, freeing the thread, connection,
      * and response body bytes — instead of waiting for a 5-second timeout.
      */
-    private void cancelStaleFetches(String currentCacheKey, String currentImageIdentity) {
+    private void cancelStaleFetches(String currentCacheKey, String currentImageIdentity, int currentTargetSize) {
         for (String key : activeCalls.keySet()) {
             String activeImageIdentity = activeImageIdentities.get(key);
-            if (!key.equals(currentCacheKey) && !currentImageIdentity.equals(activeImageIdentity)) {
+            Integer activeTargetSize = activeTargetSizes.get(key);
+            if (!key.equals(currentCacheKey)
+                    && activeTargetSize != null
+                    && currentTargetSize == activeTargetSize
+                    && !currentImageIdentity.equals(activeImageIdentity)) {
                 Call staleCall = activeCalls.remove(key);
                 if (staleCall != null) {
                     staleCall.cancel();
@@ -301,6 +323,42 @@ public class ImageManager {
             return cached;
         }
         return null;
+    }
+
+    public Bitmap getCachedOriginalBitmap(String url) {
+        if (url == null || url.isEmpty()) return null;
+        Bitmap retained = getRetainedOriginalBitmap(url);
+        if (retained != null) {
+            return retained;
+        }
+        String cacheKey = originalRemoteCacheKey(ImageUtils.originalImageUrl(url));
+        Bitmap cached = memoryCache.get(cacheKey);
+        if (cached != null && !cached.isRecycled()) {
+            return cached;
+        }
+        return null;
+    }
+
+    private synchronized Bitmap getRetainedOriginalBitmap(String url) {
+        String identity = ImageUtils.normalizeUrl(ImageUtils.originalImageUrl(url));
+        if (identity.equals(retainedOriginalIdentity)
+                && retainedOriginalBitmap != null
+                && !retainedOriginalBitmap.isRecycled()) {
+            return retainedOriginalBitmap;
+        }
+        return null;
+    }
+
+    private synchronized void markOriginalRequested(String url) {
+        latestOriginalRequestIdentity = ImageUtils.normalizeUrl(ImageUtils.originalImageUrl(url));
+    }
+
+    private synchronized void retainOriginalBitmapIfLatest(String url, Bitmap bitmap) {
+        String identity = ImageUtils.normalizeUrl(ImageUtils.originalImageUrl(url));
+        if (identity.equals(latestOriginalRequestIdentity)) {
+            retainedOriginalIdentity = identity;
+            retainedOriginalBitmap = bitmap;
+        }
     }
 
     /**
@@ -484,9 +542,12 @@ public class ImageManager {
     public void trimMemory(int level) {
         if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_COMPLETE) {
             memoryCache.evictAll();
-        } else if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW
-                || level == android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
+            clearRetainedOriginalBitmap();
+        } else if (level == android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
             memoryCache.trimToSize(memoryCache.maxSize() / 2);
+        } else if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+            memoryCache.trimToSize(memoryCache.maxSize() / 2);
+            clearRetainedOriginalBitmap();
         }
     }
 
@@ -509,6 +570,12 @@ public class ImageManager {
 
     public void clearMemoryCache() {
         memoryCache.evictAll();
+        clearRetainedOriginalBitmap();
+    }
+
+    private synchronized void clearRetainedOriginalBitmap() {
+        retainedOriginalIdentity = null;
+        retainedOriginalBitmap = null;
     }
 
     private int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
