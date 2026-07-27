@@ -12,6 +12,7 @@ import androidx.fragment.app.Fragment;
 
 import com.midairlogn.mlnetease.image.ImageDetailActivity;
 import com.midairlogn.mlnetease.image.ImageManager;
+import com.midairlogn.mlnetease.image.ImageUtils;
 import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
 import com.midairlogn.mlnetease.shared.model.Song;
@@ -85,7 +86,7 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
     private void updateCover(Song song) {
         if (song.embeddedPicture != null && song.embeddedPicture.length > 0) {
             currentEmbeddedCacheKey = "embedded:" + song.id;
-            ImageManager.getInstance().loadEmbedded(currentEmbeddedCacheKey, song.embeddedPicture, albumCover, R.drawable.ic_ml_app_logo_foreground, true);
+            ImageManager.getInstance().loadOriginalEmbedded(currentEmbeddedCacheKey, song.embeddedPicture, albumCover, R.drawable.ic_ml_app_logo_foreground);
             currentUrl = null;
             isPlaceholder = false;
             return;
@@ -100,9 +101,9 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
             return;
         }
 
-        currentUrl = urlString;
+        currentUrl = ImageUtils.originalImageUrl(urlString);
         isPlaceholder = false;
 
-        ImageManager.getInstance().load(urlString, albumCover, R.drawable.ic_ml_app_logo_foreground);
+        ImageManager.getInstance().loadOriginal(currentUrl, albumCover, R.drawable.ic_ml_app_logo_foreground);
     }
 }

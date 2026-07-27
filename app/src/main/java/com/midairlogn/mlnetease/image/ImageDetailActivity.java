@@ -65,23 +65,26 @@ public class ImageDetailActivity extends AppCompatActivity {
         imageView.setImageResource(R.drawable.ic_ml_app_logo_foreground);
 
         if (embeddedCacheKey != null && !embeddedCacheKey.isEmpty()) {
+            String baseCacheKey = embeddedCacheKey
+                    .replace(":large", "")
+                    .replace(":small", "")
+                    .replace(":original", "");
+            Bitmap cached = ImageManager.getInstance().getOriginalEmbeddedBitmap(baseCacheKey, null);
+            if (cached != null && !cached.isRecycled()) {
+                currentBitmap = cached;
+                imageView.setImageBitmap(cached);
+                return;
+            }
             if (imageBytes != null && imageBytes.length > 0) {
-                currentBitmap = ImageManager.getInstance().decodeOriginalFromBytes(imageBytes);
+                currentBitmap = ImageManager.getInstance().getOriginalEmbeddedBitmap(baseCacheKey, imageBytes);
                 if (currentBitmap != null) {
                     imageView.setImageBitmap(currentBitmap);
                     return;
                 }
             }
-            Bitmap cached = ImageManager.getInstance().getEmbeddedBitmap(
-                    embeddedCacheKey.replace(":large", "").replace(":small", ""),
-                    null, true);
-            if (cached != null && !cached.isRecycled()) {
-                currentBitmap = cached;
-                imageView.setImageBitmap(cached);
-            }
         } else if (imageUrl != null && !imageUrl.isEmpty()) {
-            String originalUrl = imageUrl.replaceAll("\\?param=[^&]*", "");
-            loadImage(originalUrl);
+            imageUrl = ImageUtils.originalImageUrl(imageUrl);
+            loadImage(imageUrl);
         } else if (imageBytes != null && imageBytes.length > 0) {
             currentBitmap = android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
             if (currentBitmap != null) {

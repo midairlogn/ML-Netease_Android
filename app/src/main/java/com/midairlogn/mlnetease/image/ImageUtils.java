@@ -14,6 +14,14 @@ public class ImageUtils {
         return url.replaceAll("https?://p\\d\\.music\\.126\\.net/", "https://music.126.net/");
     }
 
+    public static String originalImageUrl(String url) {
+        if (url == null || url.isEmpty()) return url;
+
+        String result = url.replaceAll("([?&])param=[^&#]*&?", "$1");
+        result = result.replace("?&", "?");
+        return result.replaceAll("[?&]$", "");
+    }
+
     /**
      * Compares two Netease music image URLs for equality after normalization.
      */

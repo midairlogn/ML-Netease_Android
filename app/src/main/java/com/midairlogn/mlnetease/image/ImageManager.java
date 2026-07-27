@@ -110,7 +110,7 @@ public class ImageManager {
     }
 
     public void fetchOriginalBitmap(String url, FetchCallback callback) {
-        fetchBitmap(url, ORIGINAL_ART_SIZE_PX, callback);
+        fetchBitmap(ImageUtils.originalImageUrl(url), ORIGINAL_ART_SIZE_PX, callback);
     }
 
     private void fetchBitmap(String url, int targetSizePx, FetchCallback callback) {
@@ -270,6 +270,25 @@ public class ImageManager {
         });
     }
 
+    public void loadOriginal(final String url, final ImageView imageView, int placeholderResId) {
+        String originalUrl = ImageUtils.originalImageUrl(url);
+        if (originalUrl == null || originalUrl.isEmpty()) {
+            imageView.setImageResource(placeholderResId);
+            imageView.setTag(null);
+            return;
+        }
+
+        String normalizedUrl = ImageUtils.normalizeUrl(originalUrl);
+        imageView.setTag(normalizedUrl);
+        imageView.setImageResource(placeholderResId);
+
+        fetchOriginalBitmap(originalUrl, bitmap -> {
+            if (normalizedUrl.equals(imageView.getTag()) && bitmap != null && !bitmap.isRecycled()) {
+                imageView.setImageBitmap(bitmap);
+            }
+        });
+    }
+
     public Bitmap getCachedBitmap(String url) {
         if (url == null || url.isEmpty()) return null;
         String cacheKey = remoteCacheKey(url, MAX_COVER_ART_SIZE_PX);
@@ -356,6 +375,27 @@ public class ImageManager {
         return bitmap;
     }
 
+    public Bitmap getOriginalEmbeddedBitmap(String cacheKey, byte[] imageData) {
+        if (cacheKey == null || cacheKey.isEmpty()) {
+            return null;
+        }
+
+        String originalKey = cacheKey + ":original";
+        Bitmap cachedBitmap = memoryCache.get(originalKey);
+        if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
+            return cachedBitmap;
+        }
+        if (imageData == null || imageData.length == 0) {
+            return null;
+        }
+
+        Bitmap bitmap = decodeOriginalFromBytes(imageData);
+        if (bitmap != null) {
+            memoryCache.put(originalKey, bitmap);
+        }
+        return bitmap;
+    }
+
     public void loadEmbedded(String cacheKey, byte[] imageData, ImageView imageView, int placeholderResId, boolean large) {
         if (imageData == null || imageData.length == 0) {
             imageView.setImageResource(placeholderResId);
@@ -415,6 +455,23 @@ public class ImageManager {
         } else if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW
                 || level == android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
             memoryCache.trimToSize(memoryCache.maxSize() / 2);
+        }
+    }
+
+    public void loadOriginalEmbedded(String cacheKey, byte[] imageData, ImageView imageView, int placeholderResId) {
+        if (imageData == null || imageData.length == 0) {
+            imageView.setImageResource(placeholderResId);
+            imageView.setTag(null);
+            return;
+        }
+
+        String originalKey = cacheKey + ":original";
+        imageView.setTag(originalKey);
+        Bitmap bitmap = getOriginalEmbeddedBitmap(cacheKey, imageData);
+        if (bitmap != null && !bitmap.isRecycled()) {
+            imageView.setImageBitmap(bitmap);
+        } else {
+            imageView.setImageResource(placeholderResId);
         }
     }
 
