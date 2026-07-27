@@ -495,7 +495,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         if (song.embeddedPicture != null && song.embeddedPicture.length > 0) {
             ImageManager.getInstance().loadEmbedded("embedded:" + song.id, song.embeddedPicture, miniPlayerThumb, R.drawable.ic_ml_app_logo_foreground, false);
         } else if (song.picUrl != null && !song.picUrl.isEmpty()) {
-            ImageManager.getInstance().loadOriginal(song.picUrl, miniPlayerThumb, R.drawable.ic_ml_app_logo_foreground);
+            ImageManager.getInstance().loadPlayback(song.picUrl, miniPlayerThumb, R.drawable.ic_ml_app_logo_foreground);
         } else {
             miniPlayerThumb.setImageResource(R.drawable.ic_ml_app_logo_foreground);
             miniPlayerThumb.setTag(null);

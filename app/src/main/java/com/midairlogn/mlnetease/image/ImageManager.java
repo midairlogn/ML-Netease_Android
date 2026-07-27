@@ -27,6 +27,30 @@ public class ImageManager {
         void onResult(Bitmap bitmap);
     }
 
+    private interface EncodedFetchCallback {
+        void onResult(byte[] imageData);
+    }
+
+    private static final class EncodedRequest {
+        final EncodedFetchCallback callback;
+
+        EncodedRequest(EncodedFetchCallback callback) {
+            this.callback = callback;
+        }
+    }
+
+    private static final class ActiveEncodedCall {
+        final Object generation;
+        final Call call;
+        final boolean playbackOwned;
+
+        ActiveEncodedCall(Object generation, Call call, boolean playbackOwned) {
+            this.generation = generation;
+            this.call = call;
+            this.playbackOwned = playbackOwned;
+        }
+    }
+
     private static final int MAX_MINI_ART_SIZE_PX = 192;
     private static final int MAX_COVER_ART_SIZE_PX = 512;
     private static final int ORIGINAL_ART_SIZE_PX = 2048;
@@ -38,15 +62,22 @@ public class ImageManager {
     private static final ConcurrentHashMap<String, byte[]> pendingImageBytes = new ConcurrentHashMap<>();
     private static ImageManager instance;
     private final LruCache<String, Bitmap> memoryCache;
+    private final LruCache<String, byte[]> encodedMemoryCache;
     private final ExecutorService executorService;
+    private final ExecutorService networkExecutorService;
+    private final ExecutorService playbackNetworkExecutorService;
     private final Handler mainHandler;
     private final OkHttpClient httpClient;
 
     private final ConcurrentHashMap<String, Boolean> activeFetches = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, List<FetchCallback>> pendingCallbacks = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Call> activeCalls = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, String> activeImageIdentities = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Integer> activeTargetSizes = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Object> activeEncodedGenerations = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, List<EncodedRequest>> pendingEncodedCallbacks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ActiveEncodedCall> activeEncodedCalls = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Boolean> protectedEncodedFetches = new ConcurrentHashMap<>();
+    private String latestPlaybackIdentity;
+    private String retainedPlaybackEncodedIdentity;
+    private byte[] retainedPlaybackEncodedData;
     private String latestOriginalRequestIdentity;
     private String retainedOriginalIdentity;
     private Bitmap retainedOriginalBitmap;
@@ -66,13 +97,23 @@ public class ImageManager {
     private ImageManager() {
         long maxHeapKb = Runtime.getRuntime().maxMemory() / 1024L;
         int cacheSizeKb = (int) Math.max(MIN_CACHE_SIZE_KB, Math.min(MAX_CACHE_SIZE_KB, maxHeapKb / 16L));
-        memoryCache = new LruCache<String, Bitmap>(cacheSizeKb) {
+        int bitmapCacheSizeKb = Math.max(1, cacheSizeKb / 2);
+        int encodedCacheSizeKb = Math.max(1, cacheSizeKb - bitmapCacheSizeKb);
+        memoryCache = new LruCache<String, Bitmap>(bitmapCacheSizeKb) {
             @Override
             protected int sizeOf(String key, Bitmap bitmap) {
                 return bitmap.getByteCount() / 1024;
             }
         };
+        encodedMemoryCache = new LruCache<String, byte[]>(encodedCacheSizeKb) {
+            @Override
+            protected int sizeOf(String key, byte[] imageData) {
+                return Math.max(1, imageData.length / 1024);
+            }
+        };
         executorService = Executors.newFixedThreadPool(2);
+        networkExecutorService = Executors.newFixedThreadPool(2);
+        playbackNetworkExecutorService = Executors.newFixedThreadPool(2);
         mainHandler = new Handler(Looper.getMainLooper());
         httpClient = new OkHttpClient.Builder()
                 .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
@@ -111,22 +152,37 @@ public class ImageManager {
     }
 
     public void fetchWithCallback(String url, FetchCallback callback) {
-        fetchBitmap(url, MAX_COVER_ART_SIZE_PX, callback);
+        fetchBitmap(url, MAX_COVER_ART_SIZE_PX, false, false, callback);
+    }
+
+    public void fetchPlaybackBitmap(String url, FetchCallback callback) {
+        fetchBitmap(url, MAX_COVER_ART_SIZE_PX, true, true, callback);
     }
 
     public void fetchOriginalBitmap(String url, FetchCallback callback) {
-        fetchBitmap(ImageUtils.originalImageUrl(url), ORIGINAL_ART_SIZE_PX, callback);
+        fetchBitmap(url, ORIGINAL_ART_SIZE_PX, true, false, callback);
     }
 
-    private void fetchBitmap(String url, int targetSizePx, FetchCallback callback) {
+    public void fetchPlaybackOriginalBitmap(String url, FetchCallback callback) {
+        fetchBitmap(url, ORIGINAL_ART_SIZE_PX, true, true, callback);
+    }
+
+    private void fetchBitmap(String url, int targetSizePx, boolean useOriginalSource,
+                             boolean playbackRequest, FetchCallback callback) {
         if (url == null || url.isEmpty()) {
             if (callback != null) callback.onResult(null);
             return;
         }
 
+        String sourceUrl = useOriginalSource ? ImageUtils.originalImageUrl(url) : url;
+        String sourceIdentity = ImageUtils.normalizeUrl(sourceUrl);
+        if (playbackRequest) {
+            markPlaybackRequested(sourceIdentity);
+            cancelStalePlaybackFetches(sourceIdentity);
+        }
         String cacheKey = targetSizePx == ORIGINAL_ART_SIZE_PX
-                ? originalRemoteCacheKey(url)
-                : remoteCacheKey(url, targetSizePx);
+                ? originalRemoteCacheKey(sourceUrl)
+                : remoteCacheKey(sourceUrl, targetSizePx);
 
         if (targetSizePx == ORIGINAL_ART_SIZE_PX) {
             markOriginalRequested(url);
@@ -139,6 +195,9 @@ public class ImageManager {
 
         Bitmap cached = memoryCache.get(cacheKey);
         if (cached != null && !cached.isRecycled()) {
+            if (targetSizePx == ORIGINAL_ART_SIZE_PX) {
+                retainOriginalBitmapIfLatest(url, cached);
+            }
             if (callback != null) callback.onResult(cached);
             return;
         }
@@ -146,56 +205,81 @@ public class ImageManager {
         if (callback != null) {
             pendingCallbacks.computeIfAbsent(cacheKey, k -> new ArrayList<>()).add(callback);
         }
+        if (!playbackRequest && activeEncodedGenerations.containsKey(sourceIdentity)) {
+            protectedEncodedFetches.put(sourceIdentity, Boolean.TRUE);
+        }
 
         if (activeFetches.putIfAbsent(cacheKey, Boolean.TRUE) == null) {
-            String imageIdentity = ImageUtils.normalizeUrl(ImageUtils.originalImageUrl(url));
-            activeImageIdentities.put(cacheKey, imageIdentity);
-            activeTargetSizes.put(cacheKey, targetSizePx);
-            cancelStaleFetches(cacheKey, imageIdentity, targetSizePx);
+            fetchEncodedImage(sourceUrl, playbackRequest, imageData -> {
+                if (imageData == null || imageData.length == 0) {
+                    notifyCallbacks(cacheKey, null);
+                    return;
+                }
+                executorService.submit(() -> {
+                Bitmap bitmap = targetSizePx == ORIGINAL_ART_SIZE_PX
+                        ? decodeOriginalFromBytes(imageData)
+                        : decodeSampledBitmapFromBytes(imageData, targetSizePx);
+                if (bitmap != null) {
+                    memoryCache.put(cacheKey, bitmap);
+                    if (targetSizePx == ORIGINAL_ART_SIZE_PX) {
+                        retainOriginalBitmapIfLatest(url, bitmap);
+                        releaseRetainedPlaybackEncoded(sourceIdentity);
+                    }
+                }
+                notifyCallbacks(cacheKey, bitmap);
+                });
+            });
+        }
+    }
 
-            final String fetchUrl = url;
-            executorService.submit(() -> {
-                Call call = null;
+    private void fetchEncodedImage(String url, boolean playbackRequest, EncodedFetchCallback callback) {
+        String identity = ImageUtils.normalizeUrl(url);
+        byte[] retained = getRetainedPlaybackEncoded(identity);
+        if (retained != null) {
+            callback.onResult(retained);
+            return;
+        }
+        byte[] cached = encodedMemoryCache.get(identity);
+        if (cached != null && cached.length > 0) {
+            callback.onResult(cached);
+            return;
+        }
+
+        pendingEncodedCallbacks.computeIfAbsent(identity, key -> new ArrayList<>())
+                .add(new EncodedRequest(callback));
+        if (!playbackRequest) {
+            protectedEncodedFetches.put(identity, Boolean.TRUE);
+        }
+        Object generation = new Object();
+        if (activeEncodedGenerations.putIfAbsent(identity, generation) == null) {
+            Request request = new Request.Builder()
+                    .url(url)
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+                    .header("Referer", "https://music.163.com/")
+                    .build();
+            Call call = httpClient.newCall(request);
+            ActiveEncodedCall activeCall = new ActiveEncodedCall(generation, call, playbackRequest);
+            activeEncodedCalls.put(identity, activeCall);
+            ExecutorService networkExecutor = playbackRequest
+                    ? playbackNetworkExecutorService
+                    : networkExecutorService;
+            networkExecutor.submit(() -> {
+                byte[] imageData = null;
                 try {
-                    Request request = new Request.Builder()
-                            .url(fetchUrl)
-                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-                            .header("Referer", "https://music.163.com/")
-                            .build();
-                    call = httpClient.newCall(request);
-                    activeCalls.put(cacheKey, call);
-
                     Response response = call.execute();
                     try {
-                        if (!response.isSuccessful() || response.body() == null) {
-                            notifyCallbacks(cacheKey, null);
-                            return;
+                        if (response.isSuccessful() && response.body() != null
+                                && response.body().contentLength() <= MAX_IMAGE_DOWNLOAD_BYTES) {
+                            imageData = readAllBytes(response.body().byteStream(), MAX_IMAGE_DOWNLOAD_BYTES);
                         }
-                        long contentLength = response.body().contentLength();
-                        if (contentLength > MAX_IMAGE_DOWNLOAD_BYTES) {
-                            notifyCallbacks(cacheKey, null);
-                            return;
-                        }
-
-                        InputStream is = response.body().byteStream();
-                        final Bitmap bitmap = targetSizePx == ORIGINAL_ART_SIZE_PX
-                                ? decodeOriginalFromStream(is)
-                                : decodeSampledBitmapFromStream(is, targetSizePx);
-                        is.close();
-
-                        if (bitmap != null) {
-                            memoryCache.put(cacheKey, bitmap);
-                            if (targetSizePx == ORIGINAL_ART_SIZE_PX) {
-                                retainOriginalBitmapIfLatest(url, bitmap);
-                            }
-                        }
-                        notifyCallbacks(cacheKey, bitmap);
                     } finally {
                         response.close();
                     }
-                } catch (Exception e) {
-                    notifyCallbacks(cacheKey, null);
+                } catch (Exception ignored) {
+                    imageData = null;
                 }
+
+                notifyEncodedCallbacks(identity, generation, imageData);
             });
         }
     }
@@ -216,32 +300,8 @@ public class ImageManager {
         return BitmapFactory.decodeByteArray(imageData, 0, imageData.length, decodeOptions);
     }
 
-    private Bitmap decodeOriginalFromStream(InputStream is) {
-        try {
-            byte[] data = readAllBytes(is, MAX_IMAGE_DOWNLOAD_BYTES);
-            if (data == null || data.length == 0) return null;
-
-            BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
-            boundsOptions.inJustDecodeBounds = true;
-            BitmapFactory.decodeByteArray(data, 0, data.length, boundsOptions);
-            if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
-                return null;
-            }
-
-            BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
-            decodeOptions.inSampleSize = calculateInSampleSize(boundsOptions, ORIGINAL_ART_SIZE_PX, ORIGINAL_ART_SIZE_PX);
-            decodeOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
-            return BitmapFactory.decodeByteArray(data, 0, data.length, decodeOptions);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
     private void notifyCallbacks(String cacheKey, Bitmap bitmap) {
-        activeCalls.remove(cacheKey);
-        activeImageIdentities.remove(cacheKey);
-        activeTargetSizes.remove(cacheKey);
-        mainHandler.post(() -> {
+        Runnable notify = () -> {
             activeFetches.remove(cacheKey);
             List<FetchCallback> callbacks = pendingCallbacks.remove(cacheKey);
             if (callbacks != null) {
@@ -249,33 +309,66 @@ public class ImageManager {
                     cb.onResult(bitmap);
                 }
             }
+        };
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            notify.run();
+        } else {
+            mainHandler.post(notify);
+        }
+    }
+
+    private void notifyEncodedCallbacks(String identity, Object generation, byte[] imageData) {
+        mainHandler.post(() -> {
+            if (!activeEncodedGenerations.remove(identity, generation)) {
+                return;
+            }
+            ActiveEncodedCall activeCall = activeEncodedCalls.get(identity);
+            if (activeCall != null && activeCall.generation == generation) {
+                activeEncodedCalls.remove(identity, activeCall);
+            }
+            if (imageData != null && imageData.length > 0) {
+                encodedMemoryCache.put(identity, imageData);
+                retainPlaybackEncodedIfLatest(identity, imageData);
+            }
+            protectedEncodedFetches.remove(identity);
+            List<EncodedRequest> requests = pendingEncodedCallbacks.remove(identity);
+            dispatchEncodedRequests(requests, imageData);
         });
     }
 
-    /**
-     * Cancel HTTP fetches for stale cache keys (old URLs no longer being requested).
-     * This immediately terminates the OkHttp call, freeing the thread, connection,
-     * and response body bytes — instead of waiting for a 5-second timeout.
-     */
-    private void cancelStaleFetches(String currentCacheKey, String currentImageIdentity, int currentTargetSize) {
-        for (String key : activeCalls.keySet()) {
-            String activeImageIdentity = activeImageIdentities.get(key);
-            Integer activeTargetSize = activeTargetSizes.get(key);
-            if (!key.equals(currentCacheKey)
-                    && activeTargetSize != null
-                    && currentTargetSize == activeTargetSize
-                    && !currentImageIdentity.equals(activeImageIdentity)) {
-                Call staleCall = activeCalls.remove(key);
-                if (staleCall != null) {
-                    staleCall.cancel();
-                }
-                // Also remove pending callbacks for the stale key
-                List<FetchCallback> staleCallbacks = pendingCallbacks.remove(key);
-                if (staleCallbacks != null) {
-                    staleCallbacks.clear();
-                }
+    private void cancelStalePlaybackFetches(String currentIdentity) {
+        for (java.util.Map.Entry<String, ActiveEncodedCall> entry : activeEncodedCalls.entrySet()) {
+            String identity = entry.getKey();
+            ActiveEncodedCall activeCall = entry.getValue();
+            if ((currentIdentity != null && identity.equals(currentIdentity))
+                    || !activeCall.playbackOwned
+                    || protectedEncodedFetches.containsKey(identity)) {
+                continue;
+            }
+            if (activeEncodedGenerations.remove(identity, activeCall.generation)) {
+                activeEncodedCalls.remove(identity, activeCall);
+                protectedEncodedFetches.remove(identity);
+                List<EncodedRequest> requests = pendingEncodedCallbacks.remove(identity);
+                activeCall.call.cancel();
+                dispatchEncodedRequests(requests, null);
             }
         }
+    }
+
+    private void dispatchEncodedRequests(List<EncodedRequest> requests, byte[] imageData) {
+        if (requests != null) {
+            for (EncodedRequest request : requests) {
+                request.callback.onResult(imageData);
+            }
+        }
+    }
+
+    public void onPlaybackArtworkChanged(String url) {
+        String identity = url == null || url.isEmpty()
+                ? null
+                : ImageUtils.normalizeUrl(ImageUtils.originalImageUrl(url));
+        markPlaybackRequested(identity);
+        cancelStalePlaybackFetches(identity);
     }
 
     public void load(final String url, final ImageView imageView, int placeholderResId) {
@@ -296,6 +389,24 @@ public class ImageManager {
         });
     }
 
+    public void loadPlayback(final String url, final ImageView imageView, int placeholderResId) {
+        if (url == null || url.isEmpty()) {
+            imageView.setImageResource(placeholderResId);
+            imageView.setTag(null);
+            return;
+        }
+
+        String normalizedUrl = ImageUtils.normalizeUrl(url);
+        imageView.setTag(normalizedUrl);
+        imageView.setImageResource(placeholderResId);
+
+        fetchPlaybackBitmap(url, bitmap -> {
+            if (normalizedUrl.equals(imageView.getTag()) && bitmap != null && !bitmap.isRecycled()) {
+                imageView.setImageBitmap(bitmap);
+            }
+        });
+    }
+
     public void loadOriginal(final String url, final ImageView imageView, int placeholderResId) {
         String originalUrl = ImageUtils.originalImageUrl(url);
         if (originalUrl == null || originalUrl.isEmpty()) {
@@ -308,7 +419,7 @@ public class ImageManager {
         imageView.setTag(normalizedUrl);
         imageView.setImageResource(placeholderResId);
 
-        fetchOriginalBitmap(originalUrl, bitmap -> {
+        fetchPlaybackOriginalBitmap(originalUrl, bitmap -> {
             if (normalizedUrl.equals(imageView.getTag()) && bitmap != null && !bitmap.isRecycled()) {
                 imageView.setImageBitmap(bitmap);
             }
@@ -325,13 +436,9 @@ public class ImageManager {
         return null;
     }
 
-    public Bitmap getCachedOriginalBitmap(String url) {
+    public Bitmap getCachedPlaybackBitmap(String url) {
         if (url == null || url.isEmpty()) return null;
-        Bitmap retained = getRetainedOriginalBitmap(url);
-        if (retained != null) {
-            return retained;
-        }
-        String cacheKey = originalRemoteCacheKey(ImageUtils.originalImageUrl(url));
+        String cacheKey = remoteCacheKey(ImageUtils.originalImageUrl(url), MAX_COVER_ART_SIZE_PX);
         Bitmap cached = memoryCache.get(cacheKey);
         if (cached != null && !cached.isRecycled()) {
             return cached;
@@ -347,6 +454,38 @@ public class ImageManager {
             return retainedOriginalBitmap;
         }
         return null;
+    }
+
+    private synchronized void markPlaybackRequested(String identity) {
+        if (!identity.equals(latestPlaybackIdentity)) {
+            latestPlaybackIdentity = identity;
+            retainedPlaybackEncodedIdentity = null;
+            retainedPlaybackEncodedData = null;
+            latestOriginalRequestIdentity = identity;
+            retainedOriginalIdentity = null;
+            retainedOriginalBitmap = null;
+        }
+    }
+
+    private synchronized byte[] getRetainedPlaybackEncoded(String identity) {
+        if (identity.equals(retainedPlaybackEncodedIdentity)) {
+            return retainedPlaybackEncodedData;
+        }
+        return null;
+    }
+
+    private synchronized void retainPlaybackEncodedIfLatest(String identity, byte[] imageData) {
+        if (identity.equals(latestPlaybackIdentity)) {
+            retainedPlaybackEncodedIdentity = identity;
+            retainedPlaybackEncodedData = imageData;
+        }
+    }
+
+    private synchronized void releaseRetainedPlaybackEncoded(String identity) {
+        if (identity.equals(retainedPlaybackEncodedIdentity)) {
+            retainedPlaybackEncodedIdentity = null;
+            retainedPlaybackEncodedData = null;
+        }
     }
 
     private synchronized void markOriginalRequested(String url) {
@@ -503,9 +642,8 @@ public class ImageManager {
         }
     }
 
-    private Bitmap decodeSampledBitmapFromStream(InputStream is, int maxDimensionPx) {
+    private Bitmap decodeSampledBitmapFromBytes(byte[] data, int maxDimensionPx) {
         try {
-            byte[] data = readAllBytes(is, MAX_IMAGE_DOWNLOAD_BYTES);
             if (data == null || data.length == 0) return null;
 
             BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
@@ -542,12 +680,17 @@ public class ImageManager {
     public void trimMemory(int level) {
         if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_COMPLETE) {
             memoryCache.evictAll();
+            encodedMemoryCache.evictAll();
             clearRetainedOriginalBitmap();
+            clearRetainedPlaybackEncoded();
         } else if (level == android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
             memoryCache.trimToSize(memoryCache.maxSize() / 2);
+            encodedMemoryCache.trimToSize(encodedMemoryCache.maxSize() / 2);
         } else if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
             memoryCache.trimToSize(memoryCache.maxSize() / 2);
+            encodedMemoryCache.trimToSize(encodedMemoryCache.maxSize() / 2);
             clearRetainedOriginalBitmap();
+            clearRetainedPlaybackEncoded();
         }
     }
 
@@ -570,12 +713,19 @@ public class ImageManager {
 
     public void clearMemoryCache() {
         memoryCache.evictAll();
+        encodedMemoryCache.evictAll();
         clearRetainedOriginalBitmap();
+        clearRetainedPlaybackEncoded();
     }
 
     private synchronized void clearRetainedOriginalBitmap() {
         retainedOriginalIdentity = null;
         retainedOriginalBitmap = null;
+    }
+
+    private synchronized void clearRetainedPlaybackEncoded() {
+        retainedPlaybackEncodedIdentity = null;
+        retainedPlaybackEncodedData = null;
     }
 
     private int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {

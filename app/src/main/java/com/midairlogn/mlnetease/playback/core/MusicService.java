@@ -1007,6 +1007,7 @@ public class MusicService extends Service {
     private void updateMetadata(Song song) {
         if (song == null) {
             cancelActiveArtworkTask();
+            ImageManager.getInstance().onPlaybackArtworkChanged(null);
             lastSongId = "";
             lastPicUrl = "";
             // Don't recycle - bitmap may be in ImageManager's LRU cache
@@ -1019,6 +1020,10 @@ public class MusicService extends Service {
 
         boolean isNewSong = !song.id.equals(lastSongId);
         lastSongId = song.id;
+        String remoteArtworkUrl = song.embeddedPicture == null || song.embeddedPicture.length == 0
+                ? song.picUrl
+                : null;
+        ImageManager.getInstance().onPlaybackArtworkChanged(remoteArtworkUrl);
 
         if (isNewSong) {
             cancelActiveArtworkTask();
@@ -1039,9 +1044,9 @@ public class MusicService extends Service {
             }
         }
 
-        // 1. Share the original artwork cache with the full player cover.
+        // 1. Check ImageManager cache first.
         if (song.picUrl != null && !song.picUrl.isEmpty()) {
-            Bitmap cached = ImageManager.getInstance().getCachedOriginalBitmap(song.picUrl);
+            Bitmap cached = ImageManager.getInstance().getCachedPlaybackBitmap(song.picUrl);
             if (cached != null) {
                 // Don't recycle - bitmap is in ImageManager's LRU cache
                 lastBitmap = cached;
@@ -1086,7 +1091,7 @@ public class MusicService extends Service {
         activeArtworkRequestId = artworkRequestId;
         fetchingPicUrl = song.picUrl;
 
-        ImageManager.getInstance().fetchOriginalBitmap(song.picUrl, albumArt -> {
+        ImageManager.getInstance().fetchPlaybackBitmap(song.picUrl, albumArt -> {
             if (artworkRequestId != activeArtworkRequestId) {
                 return;
             }
