@@ -319,6 +319,9 @@ public class MusicService extends Service {
         updatePlaybackState(isPlaying);
     };
 
+    private final MusicPlayerManager.OnPlaybackBufferingListener playbackBufferingListener =
+            this::updatePlaybackStateBuffering;
+
     private final MusicPlayerManager.OnSeekListener seekListener = msec -> {
         // Ensure PlaybackState is updated with new position in MediaSession
         updatePlaybackState(isPlaybackActive());
@@ -415,6 +418,7 @@ public class MusicService extends Service {
         musicPlayerManager.addOnSongChangedListener(songChangedListener);
         musicPlayerManager.addOnFullInfoAvailableListener(fullInfoAvailableListener);
         musicPlayerManager.addOnPlaybackStateChangedListener(playbackStateChangedListener);
+        musicPlayerManager.addOnPlaybackBufferingListener(playbackBufferingListener);
         musicPlayerManager.addOnPlaybackModeChangedListener(playbackModeChangedListener);
         musicPlayerManager.addOnSeekListener(seekListener);
 
@@ -524,6 +528,7 @@ public class MusicService extends Service {
                 // Media-button dispatch is an FGS-exempt context; leave the demoted
                 // state before any (possibly delayed) playback handling begins.
                 repromoteIfDemoted("service:repromote-media-button");
+                logMediaButtonIntent("session", mediaButtonEvent);
                 // Keep app-specific key mapping (HEADSETHOOK, hearing-protection rest).
                 if (handleMediaButtonIntent(mediaButtonEvent)) {
                     return true;
@@ -860,6 +865,9 @@ public class MusicService extends Service {
         if (keyEvent == null) {
             return false;
         }
+        Log.d(TAG, "handleMediaButtonIntent action=" + keyEvent.getAction()
+                + " keyCode=" + keyEvent.getKeyCode()
+                + " repeat=" + keyEvent.getRepeatCount());
         if (keyEvent.getAction() != KeyEvent.ACTION_DOWN || keyEvent.getRepeatCount() > 0) {
             return true;
         }
@@ -942,7 +950,28 @@ public class MusicService extends Service {
         if (!requestAudioFocusForAction(FOCUS_ACTION_RESUME_CURRENT)) {
             return;
         }
+        if (!isPlaybackActive() && musicPlayerManager.getCurrentSong() != null) {
+            updatePlaybackStateBuffering();
+        }
         executeActionWithAudioFocus(FOCUS_ACTION_RESUME_CURRENT);
+    }
+
+    private void updatePlaybackStateForCurrentWork(boolean forceNotification) {
+        if (musicPlayerManager.isMediaPrepareInFlight()) {
+            updatePlaybackStateBuffering();
+        } else {
+            updatePlaybackState(isPlaybackActive(), forceNotification);
+        }
+    }
+
+    private void logMediaButtonIntent(String source, Intent intent) {
+        KeyEvent keyEvent = intent == null
+                ? null
+                : intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
+        Log.d(TAG, source + " media button intent action="
+                + (intent == null ? "null" : intent.getAction())
+                + " keyCode=" + (keyEvent == null ? "null" : keyEvent.getKeyCode())
+                + " keyAction=" + (keyEvent == null ? "null" : keyEvent.getAction()));
     }
 
     private void handleExternalPauseRequest() {
@@ -1211,8 +1240,23 @@ public class MusicService extends Service {
     }
 
     private void updatePlaybackState(boolean isPlaying, boolean forceNotification) {
-        // 1. Determine the actual functional state
-        int state = isPlaying ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED;
+        updatePlaybackStateState(
+                isPlaying ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED,
+                isPlaying,
+                forceNotification
+        );
+    }
+
+    private void updatePlaybackStateBuffering() {
+        if (mediaSession == null || musicPlayerManager == null) {
+            return;
+        }
+        updatePlaybackStateState(PlaybackStateCompat.STATE_BUFFERING, false, false);
+    }
+
+    private void updatePlaybackStateState(int state, boolean isPlaying, boolean forceNotification) {
+        // Keep notification semantics based on actual playback while exposing buffering
+        // to MediaSession clients during network and MediaPlayer preparation.
 
         // 2. Optimization: Check for buffering/transient jitter.
         Song currentSong = musicPlayerManager.getCurrentSong();
@@ -1241,7 +1285,7 @@ public class MusicService extends Service {
             }
         }
 
-        float playbackSpeed = isPlaying ? 1.0f : 0.0f;
+        float playbackSpeed = state == PlaybackStateCompat.STATE_PLAYING ? 1.0f : 0.0f;
         PlaybackStateCompat.Builder builder = new PlaybackStateCompat.Builder()
                 .setActions(actions)
                 .setState(state, musicPlayerManager.getCurrentPosition(), playbackSpeed);
@@ -1502,8 +1546,11 @@ public class MusicService extends Service {
         repromoteIfDemoted("service:repromote-on-command");
         // MediaButtonReceiver restarts this service with ACTION_MEDIA_BUTTON after cold start.
         // Use the same key mapping as live session media buttons (hearing protection, HEADSETHOOK).
+        if (intent != null && Intent.ACTION_MEDIA_BUTTON.equals(intent.getAction())) {
+            logMediaButtonIntent("service", intent);
+        }
         if (handleMediaButtonIntent(intent)) {
-            updatePlaybackState(isPlaybackActive(), true);
+            updatePlaybackStateForCurrentWork(true);
             return START_STICKY;
         }
         if (intent != null && intent.getAction() != null) {
@@ -1572,7 +1619,7 @@ public class MusicService extends Service {
                 return START_STICKY;
             } else if (ACTION_NOTIFICATION_PLAY.equals(action)) {
                 handleNotificationPlay();
-                updatePlaybackState(isPlaybackActive(), true);
+                updatePlaybackStateForCurrentWork(true);
                 return START_STICKY;
             } else if (ACTION_NOTIFICATION_PAUSE.equals(action)) {
                 handleNotificationPause();
@@ -1618,6 +1665,7 @@ public class MusicService extends Service {
         musicPlayerManager.removeOnSongChangedListener(songChangedListener);
         musicPlayerManager.removeOnFullInfoAvailableListener(fullInfoAvailableListener);
         musicPlayerManager.removeOnPlaybackStateChangedListener(playbackStateChangedListener);
+        musicPlayerManager.removeOnPlaybackBufferingListener(playbackBufferingListener);
         musicPlayerManager.removeOnPlaybackModeChangedListener(playbackModeChangedListener);
         musicPlayerManager.removeOnSeekListener(seekListener);
         cancelActiveArtworkTask();
@@ -1631,7 +1679,10 @@ public class MusicService extends Service {
         if (floatingLyricsManager != null) {
             floatingLyricsManager.release();
         }
-        mediaSession.release();
+        if (mediaSession != null) {
+            mediaSession.setActive(false);
+            mediaSession.release();
+        }
         super.onDestroy();
     }
 }

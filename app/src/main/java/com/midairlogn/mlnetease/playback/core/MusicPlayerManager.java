@@ -106,6 +106,7 @@ public class MusicPlayerManager {
     // Callbacks
     private List<OnSongChangedListener> songChangedListeners = new ArrayList<>();
     private List<OnPlaybackStateChangedListener> playbackStateChangedListeners = new ArrayList<>();
+    private List<OnPlaybackBufferingListener> playbackBufferingListeners = new ArrayList<>();
     private List<OnPlaylistChangedListener> playlistChangedListeners = new ArrayList<>();
     private List<OnPlaybackModeChangedListener> playbackModeChangedListeners = new ArrayList<>();
     private List<OnFullInfoAvailableListener> fullInfoAvailableListeners = new ArrayList<>();
@@ -141,6 +142,10 @@ public class MusicPlayerManager {
 
     public interface OnPlaybackStateChangedListener {
         void onPlaybackStateChanged(boolean isPlaying);
+    }
+
+    public interface OnPlaybackBufferingListener {
+        void onPlaybackBuffering();
     }
 
     public interface OnPlaylistChangedListener {
@@ -640,6 +645,7 @@ public class MusicPlayerManager {
 
         final long requestId = playRequestIdGenerator.incrementAndGet();
         activePlayRequestId = requestId;
+        notifyPlaybackBuffering();
         cancelActiveFullInfoRequest();
         forceNextPlaybackStateDispatch = true;
 
@@ -1406,6 +1412,16 @@ public class MusicPlayerManager {
         playbackStateChangedListeners.remove(listener);
     }
 
+    public void addOnPlaybackBufferingListener(OnPlaybackBufferingListener listener) {
+        if (!playbackBufferingListeners.contains(listener)) {
+            playbackBufferingListeners.add(listener);
+        }
+    }
+
+    public void removeOnPlaybackBufferingListener(OnPlaybackBufferingListener listener) {
+        playbackBufferingListeners.remove(listener);
+    }
+
     public void addOnPlaybackModeChangedListener(OnPlaybackModeChangedListener listener) {
         if (!playbackModeChangedListeners.contains(listener)) {
             playbackModeChangedListeners.add(listener);
@@ -1818,6 +1834,14 @@ public class MusicPlayerManager {
             }
         });
         updateProgressDispatcherState();
+    }
+
+    private void notifyPlaybackBuffering() {
+        runOnMainThread(() -> {
+            for (OnPlaybackBufferingListener listener : playbackBufferingListeners) {
+                listener.onPlaybackBuffering();
+            }
+        });
     }
 
     private boolean shouldRunProgressDispatcher() {
