@@ -26,8 +26,6 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
-import androidx.media.session.MediaButtonReceiver;
-
 import com.midairlogn.mlnetease.hearing.HearingProtectionController;
 import com.midairlogn.mlnetease.playback.lyrics.FloatingLyricsManager;
 import com.midairlogn.mlnetease.image.ImageManager;
@@ -81,6 +79,7 @@ public class MusicService extends Service {
     public static final String ACTION_ADD_PLAYLIST_AND_PLAY_FIRST_NEW = "com.midairlogn.mlnetease.action.ADD_PLAYLIST_AND_PLAY_FIRST_NEW";
     public static final String ACTION_REPLACE_PLAYLIST_AND_PLAY = "com.midairlogn.mlnetease.action.REPLACE_PLAYLIST_AND_PLAY";
     public static final String ACTION_RESUME_CURRENT = "com.midairlogn.mlnetease.action.RESUME_CURRENT";
+    public static final String ACTION_PAUSE_CURRENT = "com.midairlogn.mlnetease.action.PAUSE_CURRENT";
     public static final String ACTION_TOGGLE_PLAY_PAUSE = "com.midairlogn.mlnetease.action.TOGGLE_PLAY_PAUSE";
     public static final String ACTION_PLAY_NEXT = "com.midairlogn.mlnetease.action.PLAY_NEXT";
     public static final String ACTION_PLAY_PREVIOUS = "com.midairlogn.mlnetease.action.PLAY_PREVIOUS";
@@ -460,11 +459,7 @@ public class MusicService extends Service {
     }
 
     private void initMediaSession() {
-        mediaSession = new MediaSessionCompat(this, TAG);
-        mediaSession.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS |
-                MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
-
-        mediaSession.setCallback(new MediaSessionCompat.Callback() {
+        MediaSessionCompat.Callback serviceCallback = new MediaSessionCompat.Callback() {
             @Override
             public void onCustomAction(String action, Bundle extras) {
                 if ("ACTION_TOGGLE_MODE".equals(action)) {
@@ -488,6 +483,11 @@ public class MusicService extends Service {
 
             @Override
             public void onPlay() {
+                handleExternalPlayRequest();
+            }
+
+            @Override
+            public void onPlayFromMediaId(String mediaId, Bundle extras) {
                 handleExternalPlayRequest();
             }
 
@@ -535,20 +535,11 @@ public class MusicService extends Service {
                 }
                 return super.onMediaButtonEvent(mediaButtonEvent);
             }
-        });
+        };
 
-        // BLE/cold-start wake: system can restart this service via MediaButtonReceiver
-        // when no other media app owns the buttons (notification may already be gone).
-        Intent mediaButtonIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-        mediaButtonIntent.setClass(this, MediaButtonReceiver.class);
-        int mediaButtonFlags = PendingIntent.FLAG_UPDATE_CURRENT;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            mediaButtonFlags |= PendingIntent.FLAG_MUTABLE;
-        }
-        mediaSession.setMediaButtonReceiver(
-                PendingIntent.getBroadcast(this, 0, mediaButtonIntent, mediaButtonFlags));
-
-        mediaSession.setActive(true);
+        PlaybackSessionAnchor sessionAnchor = PlaybackSessionAnchor.getInstance(this);
+        sessionAnchor.ensureResumableSession(musicPlayerManager);
+        mediaSession = sessionAnchor.attachServiceCallback(serviceCallback);
     }
 
     private AudioFocusOutcome requestAudioFocus() {
@@ -740,6 +731,10 @@ public class MusicService extends Service {
         }
         if (ACTION_TOGGLE_PLAY_PAUSE.equals(action)
                 && (isPlaybackActive() || musicPlayerManager.hasPendingPlaybackRequest())) {
+            handleExternalPauseRequest();
+            return true;
+        }
+        if (ACTION_PAUSE_CURRENT.equals(action)) {
             handleExternalPauseRequest();
             return true;
         }
@@ -1612,6 +1607,7 @@ public class MusicService extends Service {
                     || ACTION_ADD_PLAYLIST_AND_PLAY_FIRST_NEW.equals(action)
                     || ACTION_REPLACE_PLAYLIST_AND_PLAY.equals(action)
                     || ACTION_RESUME_CURRENT.equals(action)
+                    || ACTION_PAUSE_CURRENT.equals(action)
                     || ACTION_TOGGLE_PLAY_PAUSE.equals(action)
                     || ACTION_PLAY_NEXT.equals(action)
                     || ACTION_PLAY_PREVIOUS.equals(action)) {
@@ -1679,10 +1675,10 @@ public class MusicService extends Service {
         if (floatingLyricsManager != null) {
             floatingLyricsManager.release();
         }
-        if (mediaSession != null) {
-            mediaSession.setActive(false);
-            mediaSession.release();
+        if (musicPlayerManager != null) {
+            PlaybackSessionAnchor.getInstance(this).detachFromService(musicPlayerManager);
         }
+        mediaSession = null;
         super.onDestroy();
     }
 }
