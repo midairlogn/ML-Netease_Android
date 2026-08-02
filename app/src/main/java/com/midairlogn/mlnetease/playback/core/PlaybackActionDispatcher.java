@@ -94,6 +94,10 @@ public final class PlaybackActionDispatcher {
         startService(context, serviceIntent(context, MusicService.ACTION_RESUME_CURRENT));
     }
 
+    public static void pause(Context context) {
+        startService(context, serviceIntent(context, MusicService.ACTION_PAUSE_CURRENT));
+    }
+
     public static void togglePlayPause(Context context) {
         startService(context, serviceIntent(context, MusicService.ACTION_TOGGLE_PLAY_PAUSE));
     }
@@ -104,6 +108,15 @@ public final class PlaybackActionDispatcher {
 
     public static void playPrevious(Context context) {
         startService(context, serviceIntent(context, MusicService.ACTION_PLAY_PREVIOUS));
+    }
+
+    public static void dispatchMediaButtonIntent(Context context, Intent mediaButtonIntent) {
+        if (mediaButtonIntent == null) {
+            return;
+        }
+        Intent intent = new Intent(mediaButtonIntent);
+        intent.setClass(context.getApplicationContext(), MusicService.class);
+        startService(context, intent);
     }
 
     private static Intent serviceIntent(Context context, String action) {

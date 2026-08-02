@@ -84,9 +84,14 @@
             android:attributionTags="media_playback"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="mediaPlayback">
+            android:foregroundServiceType="mediaPlayback" />
+
+        <service
+            android:name=".playback.core.PlaybackBrowserService"
+            android:enabled="true"
+            android:exported="true">
             <intent-filter>
-                <action android:name="android.intent.action.MEDIA_BUTTON" />
+                <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
 
@@ -96,7 +101,7 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
-        <receiver android:name="androidx.media.session.MediaButtonReceiver"
+        <receiver android:name=".playback.core.PlaybackMediaButtonReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
