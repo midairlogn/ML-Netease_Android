@@ -28,6 +28,10 @@ public final class PlaybackSessionAnchor {
 
         @Override
         public void onPlayFromMediaId(String mediaId, Bundle extras) {
+            if (!PlaybackBrowserService.RECENT_MEDIA_ID.equals(mediaId)) {
+                Log.w(TAG, "Ignoring unexpected media id: " + mediaId);
+                return;
+            }
             PlaybackActionDispatcher.resume(appContext);
         }
 
