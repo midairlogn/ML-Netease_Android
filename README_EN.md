@@ -58,7 +58,7 @@ An Android music player application that integrates with Netease Cloud Music.<br
 <details>
 <summary>View architecture diagram</summary>
 
-![Architecture diagram](images/Architecture_illustration.svg)
+![Architecture diagram](images/Architecture_illustration.png)
 
 </details>
 

@@ -58,7 +58,7 @@
 <details>
 <summary>查看应用架构图</summary>
 
-![应用架构图](images/Architecture_illustration.svg)
+![应用架构图](images/Architecture_illustration.png)
 
 </details>
 
