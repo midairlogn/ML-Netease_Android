@@ -5,6 +5,10 @@ An Android music player application that integrates with Netease Cloud Music.<br
 **English** | [**中文简体**](README.md)
 </div>
 
+## 📷 Interface Preview
+
+![App interface preview](images/collection_screenshot.jpg)
+
 ## ✨ Features
 
 ### 🎵 Netease Cloud Music Integration
@@ -50,6 +54,13 @@ An Android music player application that integrates with Netease Cloud Music.<br
 - **Networking**: OkHttp 3
 - **UI Components**: AndroidX AppCompat, Material Design, ConstraintLayout
 - **Architecture**: MVVM-like structure driven by Managers and Services.
+
+<details>
+<summary>View architecture diagram</summary>
+
+![Architecture diagram](images/Architecture_illustration.svg)
+
+</details>
 
 ## 🚀 Setup & Installation
 

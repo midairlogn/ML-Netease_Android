@@ -5,6 +5,10 @@
 **中文简体** | [**English**](README_EN.md)
 </div>
 
+## 📷 界面预览
+
+![应用界面预览](images/collection_screenshot.jpg)
+
 ## ✨ 主要功能
 
 ### 🎵 网易云音乐集成
@@ -50,6 +54,13 @@
 -   **网络**: OkHttp 3
 -   **UI 组件**: AndroidX AppCompat, Material Design, ConstraintLayout
 -   **架构**: 采用类 MVVM 结构，包含 Manager (管理器) 和 Service (服务)。
+
+<details>
+<summary>查看应用架构图</summary>
+
+![应用架构图](images/Architecture_illustration.svg)
+
+</details>
 
 ## 设置与安装
 
