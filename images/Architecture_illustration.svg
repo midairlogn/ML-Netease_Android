@@ -137,19 +137,23 @@
         letter-spacing: -.01em;
       }
 
+      .cls-53 {
+        fill: #fff;
+      }
+
       .cls-19 {
         stroke: #2f2f2f;
       }
 
-      .cls-53 {
+      .cls-54 {
         letter-spacing: 0em;
       }
 
-      .cls-54 {
+      .cls-55 {
         letter-spacing: -.05em;
       }
 
-      .cls-55 {
+      .cls-56 {
         letter-spacing: -.46em;
       }
 
@@ -162,7 +166,7 @@
         font-size: 30px;
       }
 
-      .cls-56 {
+      .cls-57 {
         letter-spacing: 0em;
       }
 
@@ -172,12 +176,8 @@
         stroke-width: 3px;
       }
 
-      .cls-57 {
-        letter-spacing: -.01em;
-      }
-
       .cls-58 {
-        letter-spacing: -.02em;
+        letter-spacing: -.01em;
       }
 
       .cls-59 {
@@ -185,30 +185,34 @@
       }
 
       .cls-60 {
-        letter-spacing: -.06em;
-      }
-
-      .cls-61 {
-        letter-spacing: .03em;
-      }
-
-      .cls-62 {
-        letter-spacing: -.49em;
-      }
-
-      .cls-63 {
         letter-spacing: -.02em;
       }
 
+      .cls-61 {
+        letter-spacing: -.06em;
+      }
+
+      .cls-62 {
+        letter-spacing: .03em;
+      }
+
+      .cls-63 {
+        letter-spacing: -.49em;
+      }
+
       .cls-64 {
-        letter-spacing: -.03em;
+        letter-spacing: -.02em;
       }
 
       .cls-65 {
-        fill: #2f2f2f;
+        letter-spacing: -.03em;
       }
 
       .cls-66 {
+        fill: #2f2f2f;
+      }
+
+      .cls-67 {
         letter-spacing: -.04em;
       }
 
@@ -220,12 +224,8 @@
         stroke: #b28a45;
       }
 
-      .cls-67 {
-        letter-spacing: -.02em;
-      }
-
       .cls-68 {
-        letter-spacing: -.03em;
+        letter-spacing: -.02em;
       }
 
       .cls-69 {
@@ -233,6 +233,10 @@
       }
 
       .cls-70 {
+        letter-spacing: -.03em;
+      }
+
+      .cls-71 {
         letter-spacing: .02em;
       }
 
@@ -248,11 +252,11 @@
         stroke: #333;
       }
 
-      .cls-71 {
+      .cls-72 {
         letter-spacing: 0em;
       }
 
-      .cls-72 {
+      .cls-73 {
         letter-spacing: 0em;
       }
 
@@ -260,15 +264,15 @@
         fill: #d7e6f9;
       }
 
-      .cls-73 {
+      .cls-74 {
         letter-spacing: -.03em;
       }
 
-      .cls-6, .cls-74 {
+      .cls-6, .cls-75 {
         letter-spacing: -.04em;
       }
 
-      .cls-75 {
+      .cls-76 {
         letter-spacing: -.46em;
       }
 
@@ -276,11 +280,11 @@
         font-size: 32px;
       }
 
-      .cls-76 {
+      .cls-77 {
         letter-spacing: 0em;
       }
 
-      .cls-77 {
+      .cls-78 {
         letter-spacing: -.02em;
       }
 
@@ -288,23 +292,23 @@
         stroke: #2a8e3a;
       }
 
-      .cls-8, .cls-78 {
+      .cls-8, .cls-79 {
         letter-spacing: -.46em;
       }
 
-      .cls-79 {
+      .cls-80 {
         letter-spacing: -.04em;
       }
 
-      .cls-80 {
+      .cls-81 {
         letter-spacing: -.01em;
       }
 
-      .cls-81 {
+      .cls-82 {
         fill: #333;
       }
 
-      .cls-82 {
+      .cls-83 {
         letter-spacing: 0em;
       }
 
@@ -313,11 +317,11 @@
         font-variation-settings: 'wght' 400;
       }
 
-      .cls-83 {
+      .cls-84 {
         letter-spacing: -.02em;
       }
 
-      .cls-84 {
+      .cls-85 {
         letter-spacing: .01em;
       }
 
@@ -326,7 +330,7 @@
         stroke: #231815;
       }
 
-      .cls-85 {
+      .cls-86 {
         letter-spacing: 0em;
       }
 
@@ -334,7 +338,7 @@
         fill: #d1e9d1;
       }
 
-      .cls-86 {
+      .cls-87 {
         letter-spacing: 0em;
       }
 
@@ -344,35 +348,35 @@
         stroke-width: 4px;
       }
 
-      .cls-87 {
+      .cls-88 {
         letter-spacing: 0em;
       }
 
-      .cls-88 {
-        letter-spacing: .02em;
-      }
-
       .cls-89 {
-        letter-spacing: -.01em;
+        letter-spacing: .02em;
       }
 
       .cls-90 {
-        letter-spacing: -.02em;
-      }
-
-      .cls-91 {
         letter-spacing: -.01em;
       }
 
-      .cls-92 {
-        letter-spacing: .02em;
-      }
-
-      .cls-93 {
+      .cls-91 {
         letter-spacing: -.02em;
       }
 
+      .cls-92 {
+        letter-spacing: -.01em;
+      }
+
+      .cls-93 {
+        letter-spacing: .02em;
+      }
+
       .cls-94 {
+        letter-spacing: -.02em;
+      }
+
+      .cls-95 {
         letter-spacing: 0em;
       }
 
@@ -380,20 +384,16 @@
         fill: #e8e6e7;
       }
 
-      .cls-95 {
-        letter-spacing: -.04em;
-      }
-
       .cls-96 {
-        letter-spacing: -.08em;
+        letter-spacing: -.04em;
       }
 
       .cls-97 {
-        letter-spacing: -.04em;
+        letter-spacing: -.08em;
       }
 
       .cls-98 {
-        letter-spacing: -.03em;
+        letter-spacing: -.04em;
       }
 
       .cls-99 {
@@ -401,18 +401,25 @@
       }
 
       .cls-100 {
-        letter-spacing: -.05em;
+        letter-spacing: -.03em;
       }
 
       .cls-101 {
-        letter-spacing: -.49em;
+        letter-spacing: -.05em;
       }
 
       .cls-102 {
+        letter-spacing: -.49em;
+      }
+
+      .cls-103 {
         letter-spacing: -.04em;
       }
     </style>
   </defs>
+  <g id="Layer_37" data-name="Layer 37">
+    <rect class="cls-53" x="-567" y="-432" width="3798" height="2097"/>
+  </g>
   <g id="Divide_line" data-name="Divide line">
     <line class="cls-30" x1="981" y1="36" x2="981" y2="1197"/>
   </g>
@@ -422,12 +429,12 @@
       <g id="SettingProtextionController">
         <rect class="cls-31" x="2133" y="954" width="450" height="108" rx="12" ry="12"/>
         <text class="cls-12" transform="translate(2227.0001 1041.6396)"><tspan x="0" y="0">听力保护设置交互界面</tspan></text>
-        <text class="cls-5" transform="translate(2167.9225 998.3999)"><tspan x="0" y="0">S</tspan><tspan class="cls-1" x="18.24" y="0">e</tspan><tspan class="cls-68" x="34.77" y="0">t</tspan><tspan x="45.87" y="0">tingP</tspan><tspan class="cls-1" x="121.89" y="0">r</tspan><tspan class="cls-73" x="133.71" y="0">o</tspan><tspan class="cls-63" x="151.35" y="0">t</tspan><tspan x="162.6" y="0">e</tspan><tspan class="cls-1" x="179.58" y="0">c</tspan><tspan x="194.64" y="0">tionCont</tspan><tspan class="cls-89" x="320.76" y="0">r</tspan><tspan x="332.58" y="0">oller</tspan></text>
+        <text class="cls-5" transform="translate(2167.9225 998.3999)"><tspan x="0" y="0">S</tspan><tspan class="cls-1" x="18.24" y="0">e</tspan><tspan class="cls-69" x="34.77" y="0">t</tspan><tspan x="45.87" y="0">tingP</tspan><tspan class="cls-1" x="121.89" y="0">r</tspan><tspan class="cls-74" x="133.71" y="0">o</tspan><tspan class="cls-64" x="151.35" y="0">t</tspan><tspan x="162.6" y="0">e</tspan><tspan class="cls-1" x="179.58" y="0">c</tspan><tspan x="194.64" y="0">tionCont</tspan><tspan class="cls-90" x="320.76" y="0">r</tspan><tspan x="332.58" y="0">oller</tspan></text>
       </g>
       <g id="HearingProtextion">
         <rect class="cls-31" x="2133" y="819" width="450" height="108" rx="12" ry="12"/>
         <text class="cls-12" transform="translate(2255.0001 903.3802)"><tspan x="0" y="0">听力保护逻辑引擎</tspan></text>
-        <text class="cls-5" transform="translate(2153.7321 863.3999)"><tspan x="0" y="0">H</tspan><tspan class="cls-93" x="22.23" y="0">e</tspan><tspan x="38.61" y="0">aringP</tspan><tspan class="cls-1" x="132.27" y="0">r</tspan><tspan class="cls-73" x="144.09" y="0">o</tspan><tspan class="cls-63" x="161.73" y="0">t</tspan><tspan x="172.98" y="0">e</tspan><tspan class="cls-1" x="189.96" y="0">c</tspan><tspan x="205.02" y="0">tionCont</tspan><tspan class="cls-89" x="331.14" y="0">r</tspan><tspan x="342.96" y="0">oller</tspan></text>
+        <text class="cls-5" transform="translate(2153.7321 863.3999)"><tspan x="0" y="0">H</tspan><tspan class="cls-94" x="22.23" y="0">e</tspan><tspan x="38.61" y="0">aringP</tspan><tspan class="cls-1" x="132.27" y="0">r</tspan><tspan class="cls-74" x="144.09" y="0">o</tspan><tspan class="cls-64" x="161.73" y="0">t</tspan><tspan x="172.98" y="0">e</tspan><tspan class="cls-1" x="189.96" y="0">c</tspan><tspan x="205.02" y="0">tionCont</tspan><tspan class="cls-90" x="331.14" y="0">r</tspan><tspan x="342.96" y="0">oller</tspan></text>
       </g>
       <text class="cls-7" transform="translate(2262 793.1602)"><tspan x="0" y="0">听力保护系统</tspan></text>
     </g>
@@ -436,53 +443,53 @@
       <g id="SongDownloadService">
         <rect class="cls-17" x="1089" y="828" width="360" height="99" rx="12" ry="12"/>
         <text class="cls-12" transform="translate(1157.0001 912.3802)"><tspan x="0" y="0">核心下载管理服务</tspan></text>
-        <text class="cls-5" transform="translate(1107.4972 872.3999)"><tspan x="0" y="0">SongD</tspan><tspan class="cls-82" x="93.72" y="0">o</tspan><tspan x="111.87" y="0">wnl</tspan><tspan class="cls-93" x="164.4" y="0">o</tspan><tspan x="182.25" y="0">adSe</tspan><tspan class="cls-70" x="253.62" y="0">r</tspan><tspan x="266.43" y="0">vi</tspan><tspan class="cls-33" x="291.42" y="0">c</tspan><tspan x="306.03" y="0">e</tspan></text>
+        <text class="cls-5" transform="translate(1107.4972 872.3999)"><tspan x="0" y="0">SongD</tspan><tspan class="cls-83" x="93.72" y="0">o</tspan><tspan x="111.87" y="0">wnl</tspan><tspan class="cls-94" x="164.4" y="0">o</tspan><tspan x="182.25" y="0">adSe</tspan><tspan class="cls-71" x="253.62" y="0">r</tspan><tspan x="266.43" y="0">vi</tspan><tspan class="cls-33" x="291.42" y="0">c</tspan><tspan x="306.03" y="0">e</tspan></text>
       </g>
       <g id="DownloadFileUtils">
         <rect class="cls-17" x="1089" y="954" width="360" height="108" rx="12" ry="12"/>
-        <text class="cls-12" transform="translate(1145.0001 1041.6402)"><tspan x="0" y="0">文件构</tspan><tspan class="cls-47" x="84" y="0">建</tspan><tspan class="cls-62" x="111.75" y="0">、</tspan><tspan x="126" y="0">元数据写入</tspan></text>
-        <text class="cls-5" transform="translate(1146.4821 998.3999)"><tspan x="0" y="0">D</tspan><tspan class="cls-82" x="20.97" y="0">o</tspan><tspan x="39.12" y="0">wnl</tspan><tspan class="cls-93" x="91.65" y="0">o</tspan><tspan x="109.5" y="0">adFileUtils</tspan></text>
+        <text class="cls-12" transform="translate(1145.0001 1041.6402)"><tspan x="0" y="0">文件构</tspan><tspan class="cls-47" x="84" y="0">建</tspan><tspan class="cls-63" x="111.75" y="0">、</tspan><tspan x="126" y="0">元数据写入</tspan></text>
+        <text class="cls-5" transform="translate(1146.4821 998.3999)"><tspan x="0" y="0">D</tspan><tspan class="cls-83" x="20.97" y="0">o</tspan><tspan x="39.12" y="0">wnl</tspan><tspan class="cls-94" x="91.65" y="0">o</tspan><tspan x="109.5" y="0">adFileUtils</tspan></text>
       </g>
       <text class="cls-7" transform="translate(1189 802.1602)"><tspan x="0" y="0">下载子系统</tspan></text>
     </g>
     <g id="FloatingLyricsmanager">
       <rect class="cls-25" x="1575" y="972" width="468" height="108" rx="12" ry="12"/>
       <text class="cls-12" transform="translate(1655.0001 1059.6403)"><tspan x="0" y="0">独立的悬浮窗歌词子系统</tspan></text>
-      <text class="cls-7" transform="translate(1636.5059 1018.1602)"><tspan x="0" y="0">Fl</tspan><tspan class="cls-90" x="27.65" y="0">o</tspan><tspan class="cls-63" x="46.69" y="0">a</tspan><tspan x="64.42" y="0">ting</tspan><tspan class="cls-100" x="124.77" y="0">L</tspan><tspan x="141.02" y="0">yricsMana</tspan><tspan class="cls-63" x="295.97" y="0">g</tspan><tspan x="313.79" y="0">er</tspan></text>
+      <text class="cls-7" transform="translate(1636.5059 1018.1602)"><tspan x="0" y="0">Fl</tspan><tspan class="cls-91" x="27.65" y="0">o</tspan><tspan class="cls-64" x="46.69" y="0">a</tspan><tspan x="64.42" y="0">ting</tspan><tspan class="cls-101" x="124.77" y="0">L</tspan><tspan x="141.02" y="0">yricsMana</tspan><tspan class="cls-64" x="295.97" y="0">g</tspan><tspan x="313.79" y="0">er</tspan></text>
     </g>
     <g id="Processing">
       <rect class="cls-25" x="1575" y="648" width="342" height="297" rx="12" ry="12"/>
-      <text class="cls-5" transform="translate(1641.9612 759.8999)"><tspan x="0" y="0">Ima</tspan><tspan class="cls-63" x="54.81" y="0">g</tspan><tspan x="71.52" y="0">eMana</tspan><tspan class="cls-63" x="166.62" y="0">g</tspan><tspan x="183.33" y="0">er</tspan></text>
+      <text class="cls-5" transform="translate(1641.9612 759.8999)"><tspan x="0" y="0">Ima</tspan><tspan class="cls-64" x="54.81" y="0">g</tspan><tspan x="71.52" y="0">eMana</tspan><tspan class="cls-64" x="166.62" y="0">g</tspan><tspan x="183.33" y="0">er</tspan></text>
       <text class="cls-12" transform="translate(1606.0002 792.51)"><tspan x="0" y="0">智能图片压缩处理服务</tspan></text>
       <rect class="cls-29" x="1593" y="720" width="306" height="90" rx="12" ry="12"/>
-      <text class="cls-5" transform="translate(1673.011 872.3999)"><tspan class="cls-54" x="0" y="0">L</tspan><tspan x="15.24" y="0">yricsUtils</tspan></text>
+      <text class="cls-5" transform="translate(1673.011 872.3999)"><tspan class="cls-55" x="0" y="0">L</tspan><tspan x="15.24" y="0">yricsUtils</tspan></text>
       <rect class="cls-29" x="1593" y="837" width="306" height="90" rx="12" ry="12"/>
       <text class="cls-12" transform="translate(1634.0002 911.1403)"><tspan x="0" y="0">歌词智能处理服务</tspan></text>
       <text class="cls-7" transform="translate(1663.5 694.1602)"><tspan x="0" y="0">公共处理服务</tspan></text>
     </g>
     <g id="NeteaseApi">
       <rect class="cls-25" x="1071" y="513" width="324" height="144" rx="12" ry="12"/>
-      <text class="cls-12" transform="translate(1135.0001 600.6402)"><tspan x="0" y="0">网易云请求模块</tspan><tspan class="cls-74" x="-40.99" y="33.6">（</tspan><tspan x="-14" y="33.6">音</tspan><tspan class="cls-47" x="14" y="33.6">频</tspan><tspan class="cls-62" x="41.75" y="33.6">、</tspan><tspan x="56" y="33.6">封</tspan><tspan class="cls-47" x="84" y="33.6">面</tspan><tspan class="cls-62" x="111.75" y="33.6">、</tspan><tspan x="126" y="33.6">歌词</tspan><tspan class="cls-102" x="182" y="33.6">等</tspan><tspan class="cls-44" x="208.99" y="33.6">）</tspan></text>
-      <text class="cls-7" transform="translate(1147.1289 559.1602)"><tspan x="0" y="0">N</tspan><tspan class="cls-91" x="23.49" y="0">e</tspan><tspan class="cls-63" x="41.12" y="0">t</tspan><tspan class="cls-90" x="53.12" y="0">e</tspan><tspan x="70.59" y="0">aseApi</tspan></text>
+      <text class="cls-12" transform="translate(1135.0001 600.6402)"><tspan x="0" y="0">网易云请求模块</tspan><tspan class="cls-75" x="-40.99" y="33.6">（</tspan><tspan x="-14" y="33.6">音</tspan><tspan class="cls-47" x="14" y="33.6">频</tspan><tspan class="cls-63" x="41.75" y="33.6">、</tspan><tspan x="56" y="33.6">封</tspan><tspan class="cls-47" x="84" y="33.6">面</tspan><tspan class="cls-63" x="111.75" y="33.6">、</tspan><tspan x="126" y="33.6">歌词</tspan><tspan class="cls-103" x="182" y="33.6">等</tspan><tspan class="cls-44" x="208.99" y="33.6">）</tspan></text>
+      <text class="cls-7" transform="translate(1147.1289 559.1602)"><tspan x="0" y="0">N</tspan><tspan class="cls-92" x="23.49" y="0">e</tspan><tspan class="cls-64" x="41.12" y="0">t</tspan><tspan class="cls-91" x="53.12" y="0">e</tspan><tspan x="70.59" y="0">aseApi</tspan></text>
     </g>
     <g id="LocalAudio">
       <rect class="cls-25" x="1071" y="333" width="324" height="144" rx="12" ry="12"/>
-      <text class="cls-12" transform="translate(1121.0001 420.6402)"><tspan x="0" y="0">本地音频扫描模块</tspan><tspan class="cls-74" x="-47.99" y="33.6">（</tspan><tspan x="-21" y="33.6">识别音</tspan><tspan class="cls-47" x="63" y="33.6">频</tspan><tspan class="cls-62" x="90.75" y="33.6">、</tspan><tspan x="105" y="33.6">处理元数</tspan><tspan class="cls-102" x="217" y="33.6">据</tspan><tspan class="cls-44" x="243.99" y="33.6">）</tspan></text>
-      <text class="cls-7" transform="translate(1157.2646 379.1602)"><tspan class="cls-83" x="0" y="0">L</tspan><tspan x="17.28" y="0">o</tspan><tspan class="cls-91" x="36.96" y="0">c</tspan><tspan x="53.02" y="0">al</tspan><tspan class="cls-76" x="80.96" y="0">A</tspan><tspan x="100.58" y="0">udio</tspan></text>
+      <text class="cls-12" transform="translate(1121.0001 420.6402)"><tspan x="0" y="0">本地音频扫描模块</tspan><tspan class="cls-75" x="-47.99" y="33.6">（</tspan><tspan x="-21" y="33.6">识别音</tspan><tspan class="cls-47" x="63" y="33.6">频</tspan><tspan class="cls-63" x="90.75" y="33.6">、</tspan><tspan x="105" y="33.6">处理元数</tspan><tspan class="cls-103" x="217" y="33.6">据</tspan><tspan class="cls-44" x="243.99" y="33.6">）</tspan></text>
+      <text class="cls-7" transform="translate(1157.2646 379.1602)"><tspan class="cls-84" x="0" y="0">L</tspan><tspan x="17.28" y="0">o</tspan><tspan class="cls-92" x="36.96" y="0">c</tspan><tspan x="53.02" y="0">al</tspan><tspan class="cls-77" x="80.96" y="0">A</tspan><tspan x="100.58" y="0">udio</tspan></text>
     </g>
     <g id="MusicPlayerManger">
       <rect class="cls-18" x="1575" y="432" width="468" height="144" rx="12" ry="12"/>
-      <text class="cls-12" transform="translate(1711 522.1214)"><tspan x="0" y="0">中心节</tspan><tspan class="cls-78" x="84" y="0">点</tspan><tspan class="cls-74" x="99.01" y="0">（</tspan><tspan x="126" y="0">单</tspan><tspan class="cls-102" x="154" y="0">例</tspan><tspan class="cls-44" x="180.99" y="0">）</tspan><tspan x="-105" y="33.6">持有全局播放状</tspan><tspan class="cls-47" x="91" y="33.6">态</tspan><tspan class="cls-62" x="118.75" y="33.6">、</tspan><tspan x="133" y="33.6">定义监听接口</tspan></text>
-      <text class="cls-7" transform="translate(1650.5859 478.1602)"><tspan x="0" y="0">MusicPla</tspan><tspan class="cls-15" x="136.19" y="0">y</tspan><tspan x="153.28" y="0">erMana</tspan><tspan class="cls-63" x="267.81" y="0">g</tspan><tspan x="285.63" y="0">er</tspan></text>
+      <text class="cls-12" transform="translate(1711 522.1214)"><tspan x="0" y="0">中心节</tspan><tspan class="cls-79" x="84" y="0">点</tspan><tspan class="cls-75" x="99.01" y="0">（</tspan><tspan x="126" y="0">单</tspan><tspan class="cls-103" x="154" y="0">例</tspan><tspan class="cls-44" x="180.99" y="0">）</tspan><tspan x="-105" y="33.6">持有全局播放状</tspan><tspan class="cls-47" x="91" y="33.6">态</tspan><tspan class="cls-63" x="118.75" y="33.6">、</tspan><tspan x="133" y="33.6">定义监听接口</tspan></text>
+      <text class="cls-7" transform="translate(1650.5859 478.1602)"><tspan x="0" y="0">MusicPla</tspan><tspan class="cls-15" x="136.19" y="0">y</tspan><tspan x="153.28" y="0">erMana</tspan><tspan class="cls-64" x="267.81" y="0">g</tspan><tspan x="285.63" y="0">er</tspan></text>
     </g>
     <g id="MusicService">
       <rect class="cls-25" x="2250" y="432" width="342" height="144" rx="12" ry="12"/>
       <text class="cls-12" transform="translate(2267 524.1401)"><tspan x="0" y="0">系统媒体会话和通知中枢</tspan><tspan x="70" y="33.6">后台进程守护</tspan></text>
-      <text class="cls-7" transform="translate(2330.4492 478.1602)"><tspan x="0" y="0">MusicSe</tspan><tspan class="cls-92" x="125.09" y="0">r</tspan><tspan x="138.75" y="0">vi</tspan><tspan class="cls-99" x="165.41" y="0">c</tspan><tspan x="180.99" y="0">e</tspan></text>
+      <text class="cls-7" transform="translate(2330.4492 478.1602)"><tspan x="0" y="0">MusicSe</tspan><tspan class="cls-93" x="125.09" y="0">r</tspan><tspan x="138.75" y="0">vi</tspan><tspan class="cls-100" x="165.41" y="0">c</tspan><tspan x="180.99" y="0">e</tspan></text>
     </g>
     <g id="Settings">
       <rect class="cls-28" x="2394" y="198" width="216" height="108" rx="12" ry="12"/>
-      <text class="cls-7" transform="translate(2439.6807 244.1602)"><tspan x="0" y="0">S</tspan><tspan class="cls-91" x="19.46" y="0">e</tspan><tspan class="cls-69" x="37.09" y="0">t</tspan><tspan x="48.93" y="0">tings</tspan></text>
+      <text class="cls-7" transform="translate(2439.6807 244.1602)"><tspan x="0" y="0">S</tspan><tspan class="cls-92" x="19.46" y="0">e</tspan><tspan class="cls-70" x="37.09" y="0">t</tspan><tspan x="48.93" y="0">tings</tspan></text>
       <text class="cls-12" transform="translate(2418 285.6402)"><tspan x="0" y="0">用户偏好设置</tspan></text>
     </g>
     <g id="Dynamic_Volume" data-name="Dynamic Volume">
@@ -493,28 +500,28 @@
     <g id="UI">
       <rect class="cls-25" x="1629" y="216" width="405" height="99" rx="12" ry="12"/>
       <text class="cls-13" transform="translate(1710.7627 253.0151)"><tspan class="cls-9" x="0" y="0">UI 界</tspan><tspan class="cls-8" x="63.48" y="0">面</tspan><tspan class="cls-6" x="78.48" y="0">（</tspan><tspan class="cls-41" x="105.47" y="0">响应式布局</tspan><tspan class="cls-4" x="244.47" y="0">）</tspan></text>
-      <text class="cls-12" transform="translate(1656.5001 294.6402)"><tspan x="0" y="0">实时动态渲</tspan><tspan class="cls-60" x="140" y="0">染</tspan><tspan class="cls-48" x="166.21" y="0">，</tspan><tspan x="182" y="0">适配各种设备</tspan></text>
+      <text class="cls-12" transform="translate(1656.5001 294.6402)"><tspan x="0" y="0">实时动态渲</tspan><tspan class="cls-61" x="140" y="0">染</tspan><tspan class="cls-48" x="166.21" y="0">，</tspan><tspan x="182" y="0">适配各种设备</tspan></text>
     </g>
     <g id="arrows">
       <g>
         <line class="cls-19" x1="1563.06" y1="495" x2="1458" y2="495"/>
-        <polygon class="cls-65" points="1557.44 487.59 1560.59 495 1557.44 502.41 1575 495 1557.44 487.59"/>
+        <polygon class="cls-66" points="1557.44 487.59 1560.59 495 1557.44 502.41 1575 495 1557.44 487.59"/>
       </g>
       <g>
         <line class="cls-19" x1="2054.94" y1="495" x2="2250" y2="495"/>
-        <polygon class="cls-65" points="2060.56 502.41 2057.41 495 2060.56 487.59 2043 495 2060.56 502.41"/>
+        <polygon class="cls-66" points="2060.56 502.41 2057.41 495 2060.56 487.59 2043 495 2060.56 502.41"/>
       </g>
       <g>
         <line class="cls-19" x1="1800" y1="420.06" x2="1800" y2="315"/>
-        <polygon class="cls-65" points="1807.41 414.44 1800 417.59 1792.59 414.44 1800 432 1807.41 414.44"/>
+        <polygon class="cls-66" points="1807.41 414.44 1800 417.59 1792.59 414.44 1800 432 1807.41 414.44"/>
       </g>
       <g>
         <line class="cls-19" x1="1836" y1="326.94" x2="1836" y2="432"/>
-        <polygon class="cls-65" points="1828.59 332.56 1836 329.41 1843.41 332.56 1836 315 1828.59 332.56"/>
+        <polygon class="cls-66" points="1828.59 332.56 1836 329.41 1843.41 332.56 1836 315 1828.59 332.56"/>
       </g>
       <g>
         <line class="cls-19" x1="2238.06" y1="522" x2="2043" y2="522"/>
-        <polygon class="cls-65" points="2232.44 514.59 2235.59 522 2232.44 529.41 2250 522 2232.44 514.59"/>
+        <polygon class="cls-66" points="2232.44 514.59 2235.59 522 2232.44 529.41 2250 522 2232.44 514.59"/>
       </g>
       <path class="cls-19" d="M1467,495h-9s-27,0-27-27v-36s0-27-27-27h-9"/>
       <path class="cls-19" d="M1395,585h9c27,0,27-27,27-27v-36c0-27,27-27,27-27h9"/>
@@ -534,7 +541,7 @@
       </g>
       <g>
         <line class="cls-19" x1="1332" y1="735.06" x2="1332" y2="657"/>
-        <polygon class="cls-65" points="1339.41 729.44 1332 732.59 1324.59 729.44 1332 747 1339.41 729.44"/>
+        <polygon class="cls-66" points="1339.41 729.44 1332 732.59 1324.59 729.44 1332 747 1339.41 729.44"/>
       </g>
       <g>
         <path class="cls-22" d="M1494,495h9c27,0,27,27,27,27v171c0,27,27,27,27,27h3.88"/>
@@ -550,8 +557,8 @@
       </g>
       <g>
         <line class="cls-24" x1="2379.88" y1="252" x2="2084.12" y2="252"/>
-        <polygon class="cls-81" points="2394 252 2374.1 243.87 2378.82 252 2374.1 260.13 2394 252"/>
-        <polygon class="cls-81" points="2070 252 2089.9 243.87 2085.18 252 2089.9 260.13 2070 252"/>
+        <polygon class="cls-82" points="2394 252 2374.1 243.87 2378.82 252 2374.1 260.13 2394 252"/>
+        <polygon class="cls-82" points="2070 252 2089.9 243.87 2085.18 252 2089.9 260.13 2070 252"/>
       </g>
       <g>
         <path class="cls-22" d="M1409.12,252h165.88c27,0,27,27,27,27v138.88"/>
@@ -561,8 +568,8 @@
     </g>
     <g id="text">
       <text class="cls-11" transform="translate(1456 471.2651)"><tspan x="0" y="0">音频数据</tspan></text>
-      <text class="cls-11" transform="translate(1697.7502 366.6403)"><tspan x="0" y="0">控制</tspan><tspan class="cls-74" x="-54.99" y="33.6">（</tspan><tspan x="-28" y="33.6">状态同</tspan><tspan class="cls-102" x="56" y="33.6">步</tspan><tspan class="cls-44" x="82.99" y="33.6">）</tspan></text>
-      <text class="cls-11" transform="translate(1889.0001 366.6403)"><tspan x="0" y="0">数据</tspan><tspan class="cls-74" x="-54.99" y="33.6">（</tspan><tspan x="-28" y="33.6">数据同</tspan><tspan class="cls-102" x="56" y="33.6">步</tspan><tspan class="cls-44" x="82.99" y="33.6">）</tspan></text>
+      <text class="cls-11" transform="translate(1697.7502 366.6403)"><tspan x="0" y="0">控制</tspan><tspan class="cls-75" x="-54.99" y="33.6">（</tspan><tspan x="-28" y="33.6">状态同</tspan><tspan class="cls-103" x="56" y="33.6">步</tspan><tspan class="cls-44" x="82.99" y="33.6">）</tspan></text>
+      <text class="cls-11" transform="translate(1889.0001 366.6403)"><tspan x="0" y="0">数据</tspan><tspan class="cls-75" x="-54.99" y="33.6">（</tspan><tspan x="-28" y="33.6">数据同</tspan><tspan class="cls-103" x="56" y="33.6">步</tspan><tspan class="cls-44" x="82.99" y="33.6">）</tspan></text>
       <text class="cls-11" transform="translate(2062.5001 474.6403)"><tspan x="0" y="0">监听状态变化</tspan></text>
       <text class="cls-11" transform="translate(2062.5001 560.1403)"><tspan x="0" y="0">实现系统交互</tspan></text>
       <text class="cls-11" transform="translate(1599.7501 623.1403)"><tspan x="0" y="0">数据智能规范化处理</tspan></text>
@@ -585,89 +592,89 @@
     <g id="Model">
       <rect class="cls-32" x="36" y="1044" width="882" height="135" rx="12" ry="12"/>
       <g id="POJO_class" data-name="POJO class">
-        <text class="cls-40" transform="translate(317.3071 1092.1201)"><tspan x="0" y="0">Song, </tspan><tspan class="cls-97" x="68.35" y="0">L</tspan><tspan x="80.3" y="0">yricLine, Homeshor</tspan><tspan class="cls-50" x="295.27" y="0">t</tspan><tspan x="303.74" y="0">cu</tspan><tspan class="cls-87" x="330.33" y="0">t</tspan><tspan x="339.4" y="0">, </tspan><tspan class="cls-97" x="351.21" y="0">F</tspan><tspan x="363.38" y="0">a</tspan><tspan class="cls-85" x="376.77" y="0">v</tspan><tspan x="388.89" y="0">ouri</tspan><tspan class="cls-59" x="433.34" y="0">t</tspan><tspan class="cls-49" x="441.81" y="0">e</tspan><tspan x="454.39" y="0">Song, </tspan><tspan x="66.54" y="28.8">D</tspan><tspan class="cls-85" x="82.93" y="28.8">o</tspan><tspan x="97.23" y="28.8">wnl</tspan><tspan class="cls-14" x="137.46" y="28.8">o</tspan><tspan class="cls-37" x="151.45" y="28.8">ad</tspan><tspan class="cls-57" x="179.6" y="28.8">R</tspan><tspan x="194.31" y="28.8">eque</tspan><tspan class="cls-49" x="249.87" y="28.8">s</tspan><tspan class="cls-87" x="260.38" y="28.8">t</tspan><tspan x="269.46" y="28.8">, D</tspan><tspan class="cls-2" x="297.66" y="28.8">o</tspan><tspan x="311.96" y="28.8">wnl</tspan><tspan class="cls-14" x="352.18" y="28.8">o</tspan><tspan x="366.18" y="28.8">ad</tspan><tspan class="cls-16" x="394.33" y="28.8">T</tspan><tspan x="406.54" y="28.8">as</tspan><tspan class="cls-84" x="431.05" y="28.8">k</tspan><tspan x="444.39" y="28.8">, </tspan><tspan x="-42.16" y="57.6">H</tspan><tspan class="cls-14" x="-24.83" y="57.6">e</tspan><tspan x="-12.11" y="57.6">aringP</tspan><tspan class="cls-57" x="59.77" y="57.6">r</tspan><tspan class="cls-42" x="68.53" y="57.6">o</tspan><tspan class="cls-59" x="82.5" y="57.6">t</tspan><tspan x="90.97" y="57.6">e</tspan><tspan class="cls-57" x="104.15" y="57.6">c</tspan><tspan x="115.95" y="57.6">tionSna</tspan><tspan class="cls-72" x="202.35" y="57.6">p</tspan><tspan x="217.02" y="57.6">sh</tspan><tspan class="cls-42" x="242.58" y="57.6">o</tspan><tspan x="256.54" y="57.6">t 等 P</tspan><tspan class="cls-66" x="315.15" y="57.6">O</tspan><tspan x="331.78" y="57.6">JO </tspan><tspan class="cls-78" x="367.54" y="57.6">类</tspan><tspan class="cls-74" x="380.41" y="57.6">（</tspan><tspan x="403.54" y="57.6">定义数据结</tspan><tspan class="cls-74" x="523.54" y="57.6">构</tspan><tspan class="cls-55" x="546.68" y="57.6">）</tspan></text>
+        <text class="cls-40" transform="translate(317.3071 1092.1201)"><tspan x="0" y="0">Song, </tspan><tspan class="cls-98" x="68.35" y="0">L</tspan><tspan x="80.3" y="0">yricLine, Homeshor</tspan><tspan class="cls-50" x="295.27" y="0">t</tspan><tspan x="303.74" y="0">cu</tspan><tspan class="cls-88" x="330.33" y="0">t</tspan><tspan x="339.4" y="0">, </tspan><tspan class="cls-98" x="351.21" y="0">F</tspan><tspan x="363.38" y="0">a</tspan><tspan class="cls-86" x="376.77" y="0">v</tspan><tspan x="388.89" y="0">ouri</tspan><tspan class="cls-60" x="433.34" y="0">t</tspan><tspan class="cls-49" x="441.81" y="0">e</tspan><tspan x="454.39" y="0">Song, </tspan><tspan x="66.54" y="28.8">D</tspan><tspan class="cls-86" x="82.93" y="28.8">o</tspan><tspan x="97.23" y="28.8">wnl</tspan><tspan class="cls-14" x="137.46" y="28.8">o</tspan><tspan class="cls-37" x="151.45" y="28.8">ad</tspan><tspan class="cls-58" x="179.6" y="28.8">R</tspan><tspan x="194.31" y="28.8">eque</tspan><tspan class="cls-49" x="249.87" y="28.8">s</tspan><tspan class="cls-88" x="260.38" y="28.8">t</tspan><tspan x="269.46" y="28.8">, D</tspan><tspan class="cls-2" x="297.66" y="28.8">o</tspan><tspan x="311.96" y="28.8">wnl</tspan><tspan class="cls-14" x="352.18" y="28.8">o</tspan><tspan x="366.18" y="28.8">ad</tspan><tspan class="cls-16" x="394.33" y="28.8">T</tspan><tspan x="406.54" y="28.8">as</tspan><tspan class="cls-85" x="431.05" y="28.8">k</tspan><tspan x="444.39" y="28.8">, </tspan><tspan x="-42.16" y="57.6">H</tspan><tspan class="cls-14" x="-24.83" y="57.6">e</tspan><tspan x="-12.11" y="57.6">aringP</tspan><tspan class="cls-58" x="59.77" y="57.6">r</tspan><tspan class="cls-42" x="68.53" y="57.6">o</tspan><tspan class="cls-60" x="82.5" y="57.6">t</tspan><tspan x="90.97" y="57.6">e</tspan><tspan class="cls-58" x="104.15" y="57.6">c</tspan><tspan x="115.95" y="57.6">tionSna</tspan><tspan class="cls-73" x="202.35" y="57.6">p</tspan><tspan x="217.02" y="57.6">sh</tspan><tspan class="cls-42" x="242.58" y="57.6">o</tspan><tspan x="256.54" y="57.6">t 等 P</tspan><tspan class="cls-67" x="315.15" y="57.6">O</tspan><tspan x="331.78" y="57.6">JO </tspan><tspan class="cls-79" x="367.54" y="57.6">类</tspan><tspan class="cls-75" x="380.41" y="57.6">（</tspan><tspan x="403.54" y="57.6">定义数据结</tspan><tspan class="cls-75" x="523.54" y="57.6">构</tspan><tspan class="cls-56" x="546.68" y="57.6">）</tspan></text>
         <rect class="cls-17" x="243" y="1062" width="648" height="99" rx="12" ry="12"/>
         <text/>
       </g>
-      <text class="cls-3" transform="translate(76.7051 1104.6401)"><tspan x="0" y="0">Model 层</tspan><tspan class="cls-74" x="-38.7" y="33.6">（</tspan><tspan x="-11.71" y="33.6">数据模型</tspan><tspan class="cls-102" x="100.29" y="33.6">层</tspan><tspan class="cls-44" x="127.29" y="33.6">）</tspan></text>
+      <text class="cls-3" transform="translate(76.7051 1104.6401)"><tspan x="0" y="0">Model 层</tspan><tspan class="cls-75" x="-38.7" y="33.6">（</tspan><tspan x="-11.71" y="33.6">数据模型</tspan><tspan class="cls-103" x="100.29" y="33.6">层</tspan><tspan class="cls-44" x="127.29" y="33.6">）</tspan></text>
     </g>
     <g id="Repository">
       <rect class="cls-28" x="36" y="657" width="882" height="369" rx="12" ry="12"/>
       <g id="DownloadTaskStore">
-        <text class="cls-10" transform="translate(616.65 938.14)"><tspan x="0" y="0">D</tspan><tspan class="cls-71" x="19.26" y="0">o</tspan><tspan x="36.04" y="0">wnl</tspan><tspan class="cls-38" x="83.52" y="0">o</tspan><tspan x="99.96" y="0">ad</tspan><tspan class="cls-96" x="133.08" y="0">T</tspan><tspan x="147.5" y="0">ask</tspan><tspan class="cls-64" x="191.82" y="0">S</tspan><tspan class="cls-58" x="207.7" y="0">t</tspan><tspan x="217.75" y="0">o</tspan><tspan class="cls-80" x="234.72" y="0">r</tspan><tspan x="245.19" y="0">e</tspan><tspan class="cls-74" x="5.36" y="33.6">（</tspan><tspan x="32.35" y="33.6">下载任务持久</tspan><tspan class="cls-102" x="200.35" y="33.6">化</tspan><tspan class="cls-44" x="227.34" y="33.6">）</tspan></text>
+        <text class="cls-10" transform="translate(616.65 938.14)"><tspan x="0" y="0">D</tspan><tspan class="cls-72" x="19.26" y="0">o</tspan><tspan x="36.04" y="0">wnl</tspan><tspan class="cls-38" x="83.52" y="0">o</tspan><tspan x="99.96" y="0">ad</tspan><tspan class="cls-97" x="133.08" y="0">T</tspan><tspan x="147.5" y="0">ask</tspan><tspan class="cls-65" x="191.82" y="0">S</tspan><tspan class="cls-59" x="207.7" y="0">t</tspan><tspan x="217.75" y="0">o</tspan><tspan class="cls-81" x="234.72" y="0">r</tspan><tspan x="245.19" y="0">e</tspan><tspan class="cls-75" x="5.36" y="33.6">（</tspan><tspan x="32.35" y="33.6">下载任务持久</tspan><tspan class="cls-103" x="200.35" y="33.6">化</tspan><tspan class="cls-44" x="227.34" y="33.6">）</tspan></text>
         <rect class="cls-26" x="603" y="891" width="288" height="99" rx="12" ry="12"/>
       </g>
       <g id="NeteaseApi-2" data-name="NeteaseApi">
         <rect class="cls-26" x="603" y="702" width="288" height="99" rx="12" ry="12"/>
-        <text class="cls-10" transform="translate(673.57 744.64)"><tspan x="0" y="0">N</tspan><tspan class="cls-52" x="20.24" y="0">e</tspan><tspan class="cls-35" x="35.36" y="0">t</tspan><tspan class="cls-38" x="45.42" y="0">e</tspan><tspan x="60.4" y="0">aseApi</tspan><tspan class="cls-74" x="-37.56" y="33.6">（</tspan><tspan x="-10.57" y="33.6">网络请求模</tspan><tspan class="cls-102" x="129.43" y="33.6">块</tspan><tspan class="cls-44" x="156.42" y="33.6">）</tspan></text>
+        <text class="cls-10" transform="translate(673.57 744.64)"><tspan x="0" y="0">N</tspan><tspan class="cls-52" x="20.24" y="0">e</tspan><tspan class="cls-35" x="35.36" y="0">t</tspan><tspan class="cls-38" x="45.42" y="0">e</tspan><tspan x="60.4" y="0">aseApi</tspan><tspan class="cls-75" x="-37.56" y="33.6">（</tspan><tspan x="-10.57" y="33.6">网络请求模</tspan><tspan class="cls-103" x="129.43" y="33.6">块</tspan><tspan class="cls-44" x="156.42" y="33.6">）</tspan></text>
       </g>
       <g id="LocalAudioRepository">
-        <text class="cls-10" transform="translate(261.89 962.89)"><tspan class="cls-67" x="0" y="0">L</tspan><tspan x="14.76" y="0">o</tspan><tspan class="cls-52" x="31.72" y="0">c</tspan><tspan x="45.61" y="0">al</tspan><tspan class="cls-53" x="69.33" y="0">A</tspan><tspan x="86.1" y="0">udio</tspan><tspan class="cls-52" x="145.12" y="0">R</tspan><tspan x="162.51" y="0">ep</tspan><tspan class="cls-56" x="195.38" y="0">o</tspan><tspan x="212.21" y="0">si</tspan><tspan class="cls-35" x="233.01" y="0">t</tspan><tspan x="243.07" y="0">o</tspan><tspan class="cls-61" x="260.03" y="0">r</tspan><tspan x="271.62" y="0">y</tspan><tspan x="35.64" y="33.6">(系统媒体库扫描)</tspan></text>
+        <text class="cls-10" transform="translate(261.89 962.89)"><tspan class="cls-68" x="0" y="0">L</tspan><tspan x="14.76" y="0">o</tspan><tspan class="cls-52" x="31.72" y="0">c</tspan><tspan x="45.61" y="0">al</tspan><tspan class="cls-54" x="69.33" y="0">A</tspan><tspan x="86.1" y="0">udio</tspan><tspan class="cls-52" x="145.12" y="0">R</tspan><tspan x="162.51" y="0">ep</tspan><tspan class="cls-57" x="195.38" y="0">o</tspan><tspan x="212.21" y="0">si</tspan><tspan class="cls-35" x="233.01" y="0">t</tspan><tspan x="243.07" y="0">o</tspan><tspan class="cls-62" x="260.03" y="0">r</tspan><tspan x="271.62" y="0">y</tspan><tspan x="35.64" y="33.6">(系统媒体库扫描)</tspan></text>
         <rect class="cls-26" x="252" y="927" width="306" height="81" rx="12" ry="12"/>
       </g>
       <g id="SettingsManager">
         <rect class="cls-26" x="252" y="675" width="306" height="207" rx="12" ry="12"/>
-        <text class="cls-39" transform="translate(282 783.87)"><tspan class="cls-36" x="0" y="0">•</tspan><tspan x="18" y="0" xml:space="preserve"> 用户身份凭证配置</tspan><tspan class="cls-36" x="0" y="28.8">•</tspan><tspan x="18" y="28.8" xml:space="preserve"> 音质选</tspan><tspan class="cls-86" x="95.3" y="28.8">择</tspan><tspan class="cls-101" x="119.09" y="28.8">、</tspan><tspan x="131.3" y="28.8">音量设置</tspan><tspan class="cls-36" x="0" y="57.6">•</tspan><tspan x="18" y="57.6" xml:space="preserve"> 下</tspan><tspan class="cls-86" x="47.3" y="57.6">载</tspan><tspan class="cls-101" x="71.09" y="57.6">、</tspan><tspan x="83.3" y="57.6">悬浮歌词设置</tspan><tspan class="cls-36" x="0" y="86.4">•</tspan><tspan x="18" y="86.4" xml:space="preserve"> 听力保护设置</tspan></text>
-        <text class="cls-10" transform="translate(295.55 715.39)"><tspan x="0" y="0">S</tspan><tspan class="cls-52" x="16.69" y="0">e</tspan><tspan class="cls-98" x="31.81" y="0">t</tspan><tspan x="41.66" y="0">tingsMana</tspan><tspan class="cls-58" x="177.24" y="0">g</tspan><tspan x="192.53" y="0">er</tspan><tspan class="cls-74" x="26.46" y="33.6">（</tspan><tspan x="53.45" y="33.6">配置中</tspan><tspan class="cls-102" x="137.45" y="33.6">心</tspan><tspan class="cls-44" x="164.44" y="33.6">）</tspan></text>
+        <text class="cls-39" transform="translate(282 783.87)"><tspan class="cls-36" x="0" y="0">•</tspan><tspan x="18" y="0" xml:space="preserve"> 用户身份凭证配置</tspan><tspan class="cls-36" x="0" y="28.8">•</tspan><tspan x="18" y="28.8" xml:space="preserve"> 音质选</tspan><tspan class="cls-87" x="95.3" y="28.8">择</tspan><tspan class="cls-102" x="119.09" y="28.8">、</tspan><tspan x="131.3" y="28.8">音量设置</tspan><tspan class="cls-36" x="0" y="57.6">•</tspan><tspan x="18" y="57.6" xml:space="preserve"> 下</tspan><tspan class="cls-87" x="47.3" y="57.6">载</tspan><tspan class="cls-102" x="71.09" y="57.6">、</tspan><tspan x="83.3" y="57.6">悬浮歌词设置</tspan><tspan class="cls-36" x="0" y="86.4">•</tspan><tspan x="18" y="86.4" xml:space="preserve"> 听力保护设置</tspan></text>
+        <text class="cls-10" transform="translate(295.55 715.39)"><tspan x="0" y="0">S</tspan><tspan class="cls-52" x="16.69" y="0">e</tspan><tspan class="cls-99" x="31.81" y="0">t</tspan><tspan x="41.66" y="0">tingsMana</tspan><tspan class="cls-59" x="177.24" y="0">g</tspan><tspan x="192.53" y="0">er</tspan><tspan class="cls-75" x="26.46" y="33.6">（</tspan><tspan x="53.45" y="33.6">配置中</tspan><tspan class="cls-103" x="137.45" y="33.6">心</tspan><tspan class="cls-44" x="164.44" y="33.6">）</tspan></text>
       </g>
-      <text class="cls-3" transform="translate(54.42 834.64)"><tspan class="cls-46" x="0" y="0">R</tspan><tspan x="17.95" y="0">ep</tspan><tspan class="cls-71" x="51.44" y="0">o</tspan><tspan x="68.46" y="0">si</tspan><tspan class="cls-63" x="89.96" y="0">t</tspan><tspan x="100.46" y="0">o</tspan><tspan class="cls-88" x="117.68" y="0">r</tspan><tspan x="129.64" y="0">y 层</tspan><tspan class="cls-74" x="6.59" y="33.6">（</tspan><tspan x="33.58" y="33.6">数据仓</tspan><tspan class="cls-102" x="117.58" y="33.6">库</tspan><tspan class="cls-44" x="144.58" y="33.6">）</tspan></text>
+      <text class="cls-3" transform="translate(54.42 834.64)"><tspan class="cls-46" x="0" y="0">R</tspan><tspan x="17.95" y="0">ep</tspan><tspan class="cls-72" x="51.44" y="0">o</tspan><tspan x="68.46" y="0">si</tspan><tspan class="cls-64" x="89.96" y="0">t</tspan><tspan x="100.46" y="0">o</tspan><tspan class="cls-89" x="117.68" y="0">r</tspan><tspan x="129.64" y="0">y 层</tspan><tspan class="cls-75" x="6.59" y="33.6">（</tspan><tspan x="33.58" y="33.6">数据仓</tspan><tspan class="cls-103" x="117.58" y="33.6">库</tspan><tspan class="cls-44" x="144.58" y="33.6">）</tspan></text>
     </g>
     <g id="ViewModel">
       <rect class="cls-21" x="36" y="441" width="882" height="162" rx="12" ry="12"/>
-      <text class="cls-11" transform="translate(336.67 587.14)"><tspan x="0" y="0">不仅仅是页面级 V</tspan><tspan class="cls-60" x="218.15" y="0">M</tspan><tspan class="cls-48" x="238.87" y="0">，</tspan><tspan x="254.66" y="0">更是核心状态中心</tspan></text>
+      <text class="cls-11" transform="translate(336.67 587.14)"><tspan x="0" y="0">不仅仅是页面级 V</tspan><tspan class="cls-61" x="218.15" y="0">M</tspan><tspan class="cls-48" x="238.87" y="0">，</tspan><tspan x="254.66" y="0">更是核心状态中心</tspan></text>
       <g id="MusicPlayerManager">
         <rect class="cls-31" x="261" y="459" width="630" height="90" rx="12" ry="12"/>
-        <text class="cls-10" transform="translate(418.39 492.64)"><tspan x="0" y="0">MusicPla</tspan><tspan class="cls-71" x="116.25" y="0">y</tspan><tspan x="130.65" y="0">erMana</tspan><tspan class="cls-58" x="228.36" y="0">g</tspan><tspan x="243.65" y="0">er (单例)</tspan></text>
+        <text class="cls-10" transform="translate(418.39 492.64)"><tspan x="0" y="0">MusicPla</tspan><tspan class="cls-72" x="116.25" y="0">y</tspan><tspan x="130.65" y="0">erMana</tspan><tspan class="cls-59" x="228.36" y="0">g</tspan><tspan x="243.65" y="0">er (单例)</tspan></text>
         <text/>
-        <text class="cls-39" transform="translate(345 529.62)"><tspan x="0" y="0">核心逻辑中</tspan><tspan class="cls-78" x="120" y="0">心</tspan><tspan class="cls-74" x="132.86" y="0">（</tspan><tspan x="156" y="0">业务逻</tspan><tspan class="cls-86" x="228" y="0">辑</tspan><tspan class="cls-101" x="251.78" y="0">、</tspan><tspan x="264" y="0">状态变</tspan><tspan class="cls-86" x="336" y="0">更</tspan><tspan class="cls-101" x="359.78" y="0">、</tspan><tspan x="372" y="0">事件派</tspan><tspan class="cls-95" x="444" y="0">发</tspan><tspan class="cls-34" x="467.14" y="0">）</tspan></text>
+        <text class="cls-39" transform="translate(345 529.62)"><tspan x="0" y="0">核心逻辑中</tspan><tspan class="cls-79" x="120" y="0">心</tspan><tspan class="cls-75" x="132.86" y="0">（</tspan><tspan x="156" y="0">业务逻</tspan><tspan class="cls-87" x="228" y="0">辑</tspan><tspan class="cls-102" x="251.78" y="0">、</tspan><tspan x="264" y="0">状态变</tspan><tspan class="cls-87" x="336" y="0">更</tspan><tspan class="cls-102" x="359.78" y="0">、</tspan><tspan x="372" y="0">事件派</tspan><tspan class="cls-96" x="444" y="0">发</tspan><tspan class="cls-34" x="467.14" y="0">）</tspan></text>
       </g>
-      <text class="cls-3" transform="translate(58.35 515.14)"><tspan x="0" y="0">Vi</tspan><tspan class="cls-94" x="24.7" y="0">e</tspan><tspan x="40.49" y="0">wModel 层</tspan><tspan class="cls-74" x="7.15" y="33.6">（</tspan><tspan x="34.15" y="33.6">逻辑管</tspan><tspan class="cls-102" x="118.15" y="33.6">理</tspan><tspan class="cls-44" x="145.14" y="33.6">）</tspan></text>
+      <text class="cls-3" transform="translate(58.35 515.14)"><tspan x="0" y="0">Vi</tspan><tspan class="cls-95" x="24.7" y="0">e</tspan><tspan x="40.49" y="0">wModel 层</tspan><tspan class="cls-75" x="7.15" y="33.6">（</tspan><tspan x="34.15" y="33.6">逻辑管</tspan><tspan class="cls-103" x="118.15" y="33.6">理</tspan><tspan class="cls-44" x="145.14" y="33.6">）</tspan></text>
     </g>
     <g id="View">
       <rect class="cls-23" x="36" y="117" width="882" height="243" rx="12" ry="12"/>
       <g id="Fragments">
         <rect class="cls-29" x="450" y="135" width="441" height="207" rx="12" ry="12"/>
-        <text class="cls-10" transform="translate(546.79 168.64)"><tspan class="cls-77" x="0" y="0">F</tspan><tspan class="cls-64" x="14.76" y="0">r</tspan><tspan x="24.81" y="0">agmen</tspan><tspan class="cls-52" x="114.88" y="0">t</tspan><tspan x="125.05" y="0">s</tspan><tspan class="cls-78" x="138.15" y="0"> </tspan><tspan class="cls-74" x="131.43" y="0">（</tspan><tspan x="158.42" y="0">子界</tspan><tspan class="cls-102" x="214.42" y="0">面</tspan><tspan class="cls-44" x="241.41" y="0">）</tspan></text>
-        <text class="cls-39" transform="translate(507 210.12)"><tspan class="cls-36" x="0" y="0">•</tspan><tspan x="18" y="0" xml:space="preserve"> 封</tspan><tspan class="cls-86" x="47.3" y="0">面</tspan><tspan class="cls-101" x="71.09" y="0">、</tspan><tspan x="83.3" y="0">歌词查看界面</tspan><tspan class="cls-36" x="0" y="28.8">•</tspan><tspan x="18" y="28.8" xml:space="preserve"> 播放列表查看界面</tspan><tspan class="cls-36" x="0" y="57.6">•</tspan><tspan x="18" y="57.6" xml:space="preserve"> 下载管理界面</tspan><tspan class="cls-36" x="0" y="86.4">•</tspan><tspan x="18" y="86.4" xml:space="preserve"> 本地音乐文件查看界面</tspan><tspan class="cls-36" x="0" y="115.2">•</tspan><tspan x="18" y="115.2" xml:space="preserve"> 主页快捷方</tspan><tspan class="cls-86" x="143.3" y="115.2">式</tspan><tspan class="cls-101" x="167.09" y="115.2">、</tspan><tspan x="179.3" y="115.2">收藏管理界面</tspan></text>
+        <text class="cls-10" transform="translate(546.79 168.64)"><tspan class="cls-78" x="0" y="0">F</tspan><tspan class="cls-65" x="14.76" y="0">r</tspan><tspan x="24.81" y="0">agmen</tspan><tspan class="cls-52" x="114.88" y="0">t</tspan><tspan x="125.05" y="0">s</tspan><tspan class="cls-79" x="138.15" y="0"> </tspan><tspan class="cls-75" x="131.43" y="0">（</tspan><tspan x="158.42" y="0">子界</tspan><tspan class="cls-103" x="214.42" y="0">面</tspan><tspan class="cls-44" x="241.41" y="0">）</tspan></text>
+        <text class="cls-39" transform="translate(507 210.12)"><tspan class="cls-36" x="0" y="0">•</tspan><tspan x="18" y="0" xml:space="preserve"> 封</tspan><tspan class="cls-87" x="47.3" y="0">面</tspan><tspan class="cls-102" x="71.09" y="0">、</tspan><tspan x="83.3" y="0">歌词查看界面</tspan><tspan class="cls-36" x="0" y="28.8">•</tspan><tspan x="18" y="28.8" xml:space="preserve"> 播放列表查看界面</tspan><tspan class="cls-36" x="0" y="57.6">•</tspan><tspan x="18" y="57.6" xml:space="preserve"> 下载管理界面</tspan><tspan class="cls-36" x="0" y="86.4">•</tspan><tspan x="18" y="86.4" xml:space="preserve"> 本地音乐文件查看界面</tspan><tspan class="cls-36" x="0" y="115.2">•</tspan><tspan x="18" y="115.2" xml:space="preserve"> 主页快捷方</tspan><tspan class="cls-87" x="143.3" y="115.2">式</tspan><tspan class="cls-102" x="167.09" y="115.2">、</tspan><tspan x="179.3" y="115.2">收藏管理界面</tspan></text>
       </g>
       <g id="Activity">
         <rect class="cls-29" x="225" y="180" width="198" height="126" rx="12" ry="12"/>
         <text class="cls-10" transform="translate(244.56 213.64)"><tspan x="0" y="0">A</tspan><tspan class="cls-52" x="17.02" y="0">c</tspan><tspan x="30.91" y="0">tivity 宿主</tspan></text>
         <text class="cls-39" transform="translate(264 255.12)"><tspan class="cls-36" x="0" y="0">•</tspan><tspan x="18" y="0" xml:space="preserve"> 主界面</tspan><tspan class="cls-36" x="0" y="28.8">•</tspan><tspan x="18" y="28.8" xml:space="preserve"> 播放器</tspan></text>
       </g>
-      <text id="View_层_UI表现_" data-name="View 层 （UI表现）" class="cls-3" transform="translate(77 231.64)"><tspan x="0" y="0">Vi</tspan><tspan class="cls-94" x="24.7" y="0">e</tspan><tspan x="40.49" y="0">w 层</tspan><tspan class="cls-74" x="-20.58" y="33.6">（</tspan><tspan x="6.41" y="33.6">UI表</tspan><tspan class="cls-102" x="63.59" y="33.6">现</tspan><tspan class="cls-44" x="90.58" y="33.6">）</tspan></text>
+      <text id="View_层_UI表现_" data-name="View 层 （UI表现）" class="cls-3" transform="translate(77 231.64)"><tspan x="0" y="0">Vi</tspan><tspan class="cls-95" x="24.7" y="0">e</tspan><tspan x="40.49" y="0">w 层</tspan><tspan class="cls-75" x="-20.58" y="33.6">（</tspan><tspan x="6.41" y="33.6">UI表</tspan><tspan class="cls-103" x="63.59" y="33.6">现</tspan><tspan class="cls-44" x="90.58" y="33.6">）</tspan></text>
     </g>
     <g id="Texts">
       <text class="cls-11" transform="translate(166.75 411.64)"><tspan x="0" y="0">用户交互</tspan></text>
       <text class="cls-11" transform="translate(650.5 413.89)"><tspan x="0" y="0">更新状态</tspan></text>
-      <text class="cls-11" transform="translate(450.25 397.02)"><tspan x="0" y="0">响应回馈</tspan><tspan class="cls-74" x="-68.99" y="33.6">（</tspan><tspan x="-42" y="33.6">观察者模式回</tspan><tspan class="cls-102" x="126" y="33.6">调</tspan><tspan class="cls-44" x="152.99" y="33.6">）</tspan></text>
+      <text class="cls-11" transform="translate(450.25 397.02)"><tspan x="0" y="0">响应回馈</tspan><tspan class="cls-75" x="-68.99" y="33.6">（</tspan><tspan x="-42" y="33.6">观察者模式回</tspan><tspan class="cls-103" x="126" y="33.6">调</tspan><tspan class="cls-44" x="152.99" y="33.6">）</tspan></text>
       <text class="cls-11" transform="translate(219.58 638.89)"><tspan x="0" y="0">调度</tspan></text>
-      <text class="cls-11" transform="translate(649 638.89)"><tspan x="0" y="0">回</tspan><tspan class="cls-78" x="28" y="0">调</tspan><tspan class="cls-74" x="43.01" y="0">（</tspan><tspan x="70" y="0">更新状</tspan><tspan class="cls-102" x="154" y="0">态</tspan><tspan class="cls-44" x="180.99" y="0">）</tspan></text>
+      <text class="cls-11" transform="translate(649 638.89)"><tspan x="0" y="0">回</tspan><tspan class="cls-79" x="28" y="0">调</tspan><tspan class="cls-75" x="43.01" y="0">（</tspan><tspan x="70" y="0">更新状</tspan><tspan class="cls-103" x="154" y="0">态</tspan><tspan class="cls-44" x="180.99" y="0">）</tspan></text>
       <text class="cls-11" transform="translate(243.31 915.64)"><tspan x="0" y="0">本地持久化+用户配置中心</tspan></text>
       <text class="cls-11" transform="translate(704.5 856.02)"><tspan x="0" y="0">面向下载</tspan></text>
     </g>
     <g id="Arrows">
       <g>
         <line class="cls-19" x1="297" y1="429.06" x2="297" y2="360"/>
-        <polygon class="cls-65" points="304.41 423.44 297 426.59 289.59 423.44 297 441 304.41 423.44"/>
+        <polygon class="cls-66" points="304.41 423.44 297 426.59 289.59 423.44 297 441 304.41 423.44"/>
       </g>
       <g>
         <line class="cls-19" x1="630" y1="371.94" x2="630" y2="441"/>
-        <polygon class="cls-65" points="622.59 377.56 630 374.41 637.41 377.56 630 360 622.59 377.56"/>
+        <polygon class="cls-66" points="622.59 377.56 630 374.41 637.41 377.56 630 360 622.59 377.56"/>
       </g>
       <g>
         <line class="cls-19" x1="297" y1="645.06" x2="297" y2="603"/>
-        <polygon class="cls-65" points="304.41 639.44 297 642.59 289.59 639.44 297 657 304.41 639.44"/>
+        <polygon class="cls-66" points="304.41 639.44 297 642.59 289.59 639.44 297 657 304.41 639.44"/>
       </g>
       <g>
         <line class="cls-19" x1="630" y1="614.94" x2="630" y2="657"/>
-        <polygon class="cls-65" points="622.59 620.56 630 617.41 637.41 620.56 630 603 622.59 620.56"/>
+        <polygon class="cls-66" points="622.59 620.56 630 617.41 637.41 620.56 630 603 622.59 620.56"/>
       </g>
       <g>
         <line class="cls-19" x1="675" y1="879.06" x2="675" y2="801"/>
-        <polygon class="cls-65" points="682.41 873.44 675 876.59 667.59 873.44 675 891 682.41 873.44"/>
+        <polygon class="cls-66" points="682.41 873.44 675 876.59 667.59 873.44 675 891 682.41 873.44"/>
       </g>
     </g>
-    <text class="cls-45" transform="translate(107.33 78.44)"><tspan x="0" y="0">M</tspan><tspan class="cls-43" x="32.41" y="0">V</tspan><tspan x="56.16" y="0">VM 架构图</tspan><tspan class="cls-75" x="234.72" y="0"> </tspan><tspan class="cls-51" x="226.02" y="0">（</tspan><tspan x="262.35" y="0">基于管理器模式的响应式架</tspan><tspan class="cls-79" x="718.35" y="0">构</tspan><tspan class="cls-75" x="754.68" y="0">）</tspan></text>
+    <text class="cls-45" transform="translate(107.33 78.44)"><tspan x="0" y="0">M</tspan><tspan class="cls-43" x="32.41" y="0">V</tspan><tspan x="56.16" y="0">VM 架构图</tspan><tspan class="cls-76" x="234.72" y="0"> </tspan><tspan class="cls-51" x="226.02" y="0">（</tspan><tspan x="262.35" y="0">基于管理器模式的响应式架</tspan><tspan class="cls-80" x="718.35" y="0">构</tspan><tspan class="cls-76" x="754.68" y="0">）</tspan></text>
   </g>
 </svg>
