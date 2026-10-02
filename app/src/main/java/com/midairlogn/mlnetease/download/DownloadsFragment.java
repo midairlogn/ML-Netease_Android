@@ -54,7 +54,7 @@ public class DownloadsFragment extends Fragment implements DownloadTaskManager.L
         RecyclerView recyclerView = view.findViewById(R.id.recycler_download_tasks);
 
         adapter = new DownloadTaskAdapter();
-        ResponsiveGrid.apply(recyclerView, 520, position ->
+        ResponsiveGrid.apply(recyclerView, 400, position ->
                 adapter.getItemViewType(position) == DownloadTaskListItem.TYPE_SECTION);
         adapter.setListener(new DownloadTaskAdapter.Listener() {
             @Override

@@ -116,12 +116,12 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
             getSupportFragmentManager().beginTransaction()
                     .add(R.id.fragment_container, homeFragment, TAB_HOME)
                     .commit();
+            checkAndRequestPermissions();
         } else {
             restoreFragments();
             activeFragment = resolveActiveFragment();
+            startMusicService();
         }
-
-        checkAndRequestPermissions();
 
         NavigationBarView navView = findViewById(R.id.nav_view);
         syncNavigationSelection(navView);
