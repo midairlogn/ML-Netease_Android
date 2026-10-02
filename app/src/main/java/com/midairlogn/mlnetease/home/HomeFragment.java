@@ -2,6 +2,7 @@ package com.midairlogn.mlnetease.home;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -73,6 +74,10 @@ public class HomeFragment extends Fragment {
     private long lastSearchTime = 0;
     private long lastPlayAllTime = 0;
     private static final long CLICK_DEBOUNCE_DELAY = 1000;
+    private static final long IME_DISMISS_GUARD_MS = 350;
+
+    /** Until this uptime, stray DOWN/focus events right after the IME opens cannot dismiss it (landscape resize quirk). */
+    private long keyboardShowGuardUntil;
 
     @Nullable
     @Override
@@ -91,9 +96,10 @@ public class HomeFragment extends Fragment {
 
         View.OnTouchListener hideKeyboardTouchListener = (v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                if (getActivity() != null && getActivity().getCurrentFocus() != null) {
-                    hideKeyboard(getActivity().getCurrentFocus());
-                    getActivity().getCurrentFocus().clearFocus();
+                View focus = getActivity() != null ? getActivity().getCurrentFocus() : null;
+                if (focus != null && SystemClock.uptimeMillis() >= keyboardShowGuardUntil) {
+                    hideKeyboard(focus);
+                    focus.clearFocus();
                 }
             }
             return false;
@@ -252,8 +258,9 @@ public class HomeFragment extends Fragment {
         });
 
         searchInput.setOnFocusChangeListener((v, hasFocus) -> {
-            if (!hasFocus) {
-                hideKeyboard(v);
+            if (hasFocus) {
+                keyboardShowGuardUntil = SystemClock.uptimeMillis() + IME_DISMISS_GUARD_MS;
+            } else {
                 String input = searchInput.getText().toString().trim();
                 String extractedId = extractId(input);
                 if (extractedId != null && !extractedId.isEmpty() && !extractedId.equals(input)) {
