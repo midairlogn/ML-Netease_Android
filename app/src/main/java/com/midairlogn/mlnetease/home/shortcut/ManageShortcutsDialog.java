@@ -166,6 +166,7 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
         editDialog = new Dialog(getContext());
         editDialog.setContentView(R.layout.dialog_edit_home_shortcut);
         editDialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT);
+        editDialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         editDialog.setOnDismissListener(dialog -> {
             if (this.editDialog == dialog) {
                 this.editDialog = null;

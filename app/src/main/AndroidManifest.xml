@@ -34,7 +34,8 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTask">
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -61,7 +62,8 @@
             android:launchMode="singleTask" />
         <activity
             android:name=".download.DownloadCustomizationActivity"
-            android:launchMode="singleTask" />
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".home.shortcut.DownloadShortcutActivity"
             android:excludeFromRecents="true"
