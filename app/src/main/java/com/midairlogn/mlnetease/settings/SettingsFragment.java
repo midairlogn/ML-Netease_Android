@@ -61,6 +61,7 @@ import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.MainActivity;
 import com.midairlogn.mlnetease.shared.model.Song;
 import com.midairlogn.mlnetease.shared.ui.HuaweiSafeScrollView;
+import com.midairlogn.mlnetease.shared.ui.MiniPlayerImeHelper;
 import com.midairlogn.mlnetease.shared.ui.UiLaunchGuards;
 
 import java.io.ByteArrayOutputStream;
@@ -462,6 +463,7 @@ public class SettingsFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
+        MiniPlayerImeHelper.setSuppressed(this, false);
         cancelPendingSave();
         stopHearingProtectionUiRefresh();
         if (settingsManager != null && preferenceChangeListener != null) {
@@ -541,10 +543,12 @@ public class SettingsFragment extends Fragment {
             return false;
         });
         inputMusicU.setOnFocusChangeListener((v, hasFocus) -> {
+            MiniPlayerImeHelper.onEditorFocusChanged(this, inputMusicU, hasFocus);
             if (!hasFocus) {
                 saveAndClearFocus(inputMusicU);
             }
         });
+        MiniPlayerImeHelper.keepSuppressedWhileEditing(this, inputMusicU);
 
         // Search Result Limit
         inputSearchLimit.addTextChangedListener(new TextWatcher() {
@@ -566,10 +570,12 @@ public class SettingsFragment extends Fragment {
             return false;
         });
         inputSearchLimit.setOnFocusChangeListener((v, hasFocus) -> {
+            MiniPlayerImeHelper.onEditorFocusChanged(this, inputSearchLimit, hasFocus);
             if (!hasFocus) {
                 saveAndClearFocus(inputSearchLimit);
             }
         });
+        MiniPlayerImeHelper.keepSuppressedWhileEditing(this, inputSearchLimit);
     }
 
     private void scheduleMusicUSave(String musicU) {
@@ -701,6 +707,8 @@ public class SettingsFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        MiniPlayerImeHelper.dropStaleFocus(inputMusicU);
+        MiniPlayerImeHelper.dropStaleFocus(inputSearchLimit);
         refreshSettingsUI();
         scheduleHearingProtectionUiRefresh();
         if (switchFloatingLyrics != null && switchFloatingLyrics.isChecked()) {

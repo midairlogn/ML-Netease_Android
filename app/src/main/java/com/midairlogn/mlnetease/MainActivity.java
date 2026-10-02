@@ -79,6 +79,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     private View miniPlayerDivider;
     private boolean miniPlayerSuppressed = false;
     private boolean sawImeSinceSuppress = false;
+    private boolean imeHideRestorePending = false;
 
     private MusicPlayerManager musicPlayerManager;
     private String currentCoverUrl;
@@ -484,12 +485,25 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         // Back-dismissing the IME keeps editor focus, so the focus-driven suppression
         // never inverts. Restore once the insets reporter has actually seen the IME
         // close; ROMs that never report IME insets just keep the focus-driven behavior.
+        // Spurious ime-hidden reports can arrive mid-show on some OEM insets stacks, so
+        // the restore is debounced and re-checked against the live root insets.
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (v, windowInsets) -> {
             if (miniPlayerSuppressed) {
                 if (windowInsets.isVisible(WindowInsetsCompat.Type.ime())) {
                     sawImeSinceSuppress = true;
-                } else if (sawImeSinceSuppress) {
-                    setMiniPlayerSuppressed(false);
+                } else if (sawImeSinceSuppress && !imeHideRestorePending) {
+                    imeHideRestorePending = true;
+                    v.postDelayed(() -> {
+                        imeHideRestorePending = false;
+                        if (!miniPlayerSuppressed || v.getRootWindowInsets() == null) {
+                            return;
+                        }
+                        boolean imeVisibleNow = WindowInsetsCompat.toWindowInsetsCompat(v.getRootWindowInsets())
+                                .isVisible(WindowInsetsCompat.Type.ime());
+                        if (!imeVisibleNow) {
+                            setMiniPlayerSuppressed(false);
+                        }
+                    }, 400);
                 }
             }
             return windowInsets;

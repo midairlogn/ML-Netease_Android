@@ -29,7 +29,6 @@ import com.midairlogn.mlnetease.home.model.HomeShortcut;
 import com.midairlogn.mlnetease.home.adapter.HomeShortcutAdapter;
 import com.midairlogn.mlnetease.home.shortcut.HomeShortcutIdParser;
 import com.midairlogn.mlnetease.home.shortcut.ManageShortcutsDialog;
-import com.midairlogn.mlnetease.MainActivity;
 import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.download.core.SongDownloadStarter;
 import com.midairlogn.mlnetease.network.NeteaseApi;
@@ -37,6 +36,7 @@ import com.midairlogn.mlnetease.playback.core.PlaybackActionDispatcher;
 import com.midairlogn.mlnetease.settings.SettingsManager;
 import com.midairlogn.mlnetease.shared.adapter.SongAdapter;
 import com.midairlogn.mlnetease.shared.model.Song;
+import com.midairlogn.mlnetease.shared.ui.MiniPlayerImeHelper;
 import com.midairlogn.mlnetease.shared.ui.ResponsiveGrid;
 import com.midairlogn.mlnetease.sharing.ShareUtils;
 import com.midairlogn.mlnetease.shared.ui.UiLaunchGuards;
@@ -109,6 +109,7 @@ public class HomeFragment extends Fragment {
         view.setOnTouchListener(hideKeyboardTouchListener);
 
         searchInput = view.findViewById(R.id.search_input);
+        MiniPlayerImeHelper.keepSuppressedWhileEditing(this, searchInput);
         searchButton = view.findViewById(R.id.search_button);
         btnResetSearch = view.findViewById(R.id.btn_reset_search);
         searchTypeGroup = view.findViewById(R.id.search_type_group);
@@ -259,7 +260,7 @@ public class HomeFragment extends Fragment {
         });
 
         searchInput.setOnFocusChangeListener((v, hasFocus) -> {
-            setImeSpaceSuppressed(hasFocus);
+            MiniPlayerImeHelper.onEditorFocusChanged(this, searchInput, hasFocus);
             if (hasFocus) {
                 keyboardShowGuardUntil = SystemClock.uptimeMillis() + IME_DISMISS_GUARD_MS;
             } else {
@@ -346,17 +347,7 @@ public class HomeFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).setMiniPlayerSuppressed(false);
-        }
-    }
-
-    /** While an editor owns the keyboard, tuck away the mini player so
-     *  landscape (where the IME eats most of the screen) keeps the search box visible. */
-    private void setImeSpaceSuppressed(boolean suppress) {
-        if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).setMiniPlayerSuppressed(suppress);
-        }
+        MiniPlayerImeHelper.setSuppressed(this, false);
     }
 
     @Override
@@ -365,9 +356,7 @@ public class HomeFragment extends Fragment {
         // Editor focus restored across activity recreation (fragment view state) has no
         // keyboard with it after rotation; drop it so the mini player is not suppressed
         // with no IME on screen.
-        if (searchInput != null && searchInput.isFocused()) {
-            searchInput.clearFocus();
-        }
+        MiniPlayerImeHelper.dropStaleFocus(searchInput);
         if (isAdded()) {
             loadShortcuts();
         }

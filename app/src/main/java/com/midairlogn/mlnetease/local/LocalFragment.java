@@ -1,5 +1,6 @@
 package com.midairlogn.mlnetease.local;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -10,6 +11,7 @@ import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -18,6 +20,7 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -33,6 +36,7 @@ import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.playback.core.PlaybackActionDispatcher;
 import com.midairlogn.mlnetease.shared.adapter.SongAdapter;
 import com.midairlogn.mlnetease.shared.model.Song;
+import com.midairlogn.mlnetease.shared.ui.MiniPlayerImeHelper;
 import com.midairlogn.mlnetease.shared.ui.ResponsiveGrid;
 
 import java.util.ArrayList;
@@ -88,6 +92,28 @@ public class LocalFragment extends Fragment {
         textStatus = view.findViewById(R.id.text_local_status);
         textEmpty = view.findViewById(R.id.text_local_empty);
         inputSearch = view.findViewById(R.id.input_local_search);
+        MiniPlayerImeHelper.setSuppressedOnFocus(this, inputSearch);
+        MiniPlayerImeHelper.keepSuppressedWhileEditing(this, inputSearch);
+
+        // Tap outside the editor dismisses the keyboard; without this a back-dismissed
+        // keyboard can leave the editor focused (and the mini player suppressed) until
+        // the user switches tabs.
+        View.OnTouchListener hideKeyboardTouchListener = (v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN && inputSearch.hasFocus()) {
+                InputMethodManager imm = (InputMethodManager) requireContext()
+                        .getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) {
+                    imm.hideSoftInputFromWindow(inputSearch.getWindowToken(), 0);
+                }
+                inputSearch.clearFocus();
+            }
+            return false;
+        };
+        view.setOnTouchListener(hideKeyboardTouchListener);
+        View songsList = view.findViewById(R.id.recycler_local_songs);
+        if (songsList != null) {
+            songsList.setOnTouchListener(hideKeyboardTouchListener);
+        }
         searchContainer = view.findViewById(R.id.layout_local_search);
         emptyLayout = view.findViewById(R.id.layout_local_empty);
         permissionLayout = view.findViewById(R.id.layout_local_permission);
@@ -364,7 +390,14 @@ public class LocalFragment extends Fragment {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        MiniPlayerImeHelper.dropStaleFocus(inputSearch);
+    }
+
+    @Override
     public void onDestroyView() {
+        MiniPlayerImeHelper.setSuppressed(this, false);
         if (pendingSearchRunnable != null) {
             searchHandler.removeCallbacks(pendingSearchRunnable);
             pendingSearchRunnable = null;
