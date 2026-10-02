@@ -475,7 +475,7 @@ public class SettingsManager {
             return false;
         }
         synchronized (FAVOURITES_LOCK) {
-            List<FavouriteSong> favourites = new ArrayList<>(getFavouriteSongs());
+            List<FavouriteSong> favourites = new ArrayList<>(readFavouriteSongs());
             for (FavouriteSong favourite : favourites) {
                 if (favourite.matchesSong(song)) {
                     return false;
@@ -496,7 +496,7 @@ public class SettingsManager {
             return false;
         }
         synchronized (FAVOURITES_LOCK) {
-            List<FavouriteSong> favourites = new ArrayList<>(getFavouriteSongs());
+            List<FavouriteSong> favourites = new ArrayList<>(readFavouriteSongs());
             for (int i = 0; i < favourites.size(); i++) {
                 if (favourites.get(i).matchesSong(song)) {
                     favourites.remove(i);

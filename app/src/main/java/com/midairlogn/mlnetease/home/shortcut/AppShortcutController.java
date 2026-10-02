@@ -6,6 +6,7 @@ import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.graphics.drawable.Icon;
 import android.os.Build;
+import android.util.Log;
 
 import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.MainActivity;
@@ -21,6 +22,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class AppShortcutController {
+    private static final String TAG = "AppShortcutController";
     public static final String ACTION_OPEN_DOWNLOADS = "com.midairlogn.mlnetease.action.OPEN_DOWNLOADS";
     public static final String ACTION_PLAY_FAVOURITES = "com.midairlogn.mlnetease.action.PLAY_FAVOURITES";
     public static final String ACTION_PLAY_HOME_SHORTCUT = "com.midairlogn.mlnetease.action.PLAY_HOME_SHORTCUT";
@@ -74,7 +76,7 @@ public final class AppShortcutController {
 
             shortcutManager.setDynamicShortcuts(shortcuts);
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.w(TAG, "refresh shortcuts failed", e);
         }
     }
 
