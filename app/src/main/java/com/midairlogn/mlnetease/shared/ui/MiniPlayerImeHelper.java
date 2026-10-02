@@ -32,8 +32,9 @@ public final class MiniPlayerImeHelper {
 
     /** Wires focus-driven suppression. Note: this also installs the tap re-assert
      *  listener (see {@link #setSuppressedOnClick}) and thereby owns the input's
-     *  OnClickListener; callers needing their own click handling must use
-     *  {@link #onEditorFocusChanged} plus {@link #setSuppressedOnClick} instead. */
+     *  OnClickListener; callers needing their own click handling must wire
+     *  {@link #onEditorFocusChanged} into their own focus listener and call
+     *  {@link #setSuppressed} from their own click listener instead. */
     public static void setSuppressedOnFocus(Fragment fragment, EditText input) {
         input.setOnFocusChangeListener((v, hasFocus) -> onEditorFocusChanged(fragment, input, hasFocus));
         setSuppressedOnClick(fragment, input);
