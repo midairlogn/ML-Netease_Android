@@ -362,6 +362,13 @@ public class HomeFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        // Window hierarchy state (including editor focus) is restored in
+        // Activity.onRestoreInstanceState, i.e. before this point. If the search box
+        // regained focus across a configuration change, its keyboard is not reopened;
+        // drop the focus so the mini player is not suppressed with no IME on screen.
+        if (searchInput != null && searchInput.isFocused()) {
+            searchInput.clearFocus();
+        }
         if (isAdded()) {
             loadShortcuts();
         }

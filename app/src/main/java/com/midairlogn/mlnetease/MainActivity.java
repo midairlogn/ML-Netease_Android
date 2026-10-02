@@ -23,6 +23,8 @@ import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.os.LocaleListCompat;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import com.google.android.material.navigation.NavigationBarView;
@@ -76,6 +78,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     private ImageButton miniPlayerPlaylist;
     private View miniPlayerDivider;
     private boolean miniPlayerSuppressed = false;
+    private boolean sawImeSinceSuppress = false;
 
     private MusicPlayerManager musicPlayerManager;
     private String currentCoverUrl;
@@ -478,6 +481,20 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         updateMiniPlayer(musicPlayerManager.getCurrentSong());
         updatePlaybackState(musicPlayerManager.isPlaying());
 
+        // Back-dismissing the IME keeps editor focus, so the focus-driven suppression
+        // never inverts. Restore once the insets reporter has actually seen the IME
+        // close; ROMs that never report IME insets just keep the focus-driven behavior.
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (v, windowInsets) -> {
+            if (miniPlayerSuppressed) {
+                if (windowInsets.isVisible(WindowInsetsCompat.Type.ime())) {
+                    sawImeSinceSuppress = true;
+                } else if (sawImeSinceSuppress) {
+                    setMiniPlayerSuppressed(false);
+                }
+            }
+            return windowInsets;
+        });
+
         // Listeners
         musicPlayerManager.addOnSongChangedListener(this);
         musicPlayerManager.addOnPlaybackStateChangedListener(this);
@@ -510,6 +527,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         boolean landscape = getResources().getConfiguration().orientation
                 == Configuration.ORIENTATION_LANDSCAPE;
         miniPlayerSuppressed = suppressed && landscape;
+        sawImeSinceSuppress = false;
         applyMiniPlayerVisibility();
     }
 
