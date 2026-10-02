@@ -8,6 +8,9 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import com.midairlogn.mlnetease.MainActivity;
 
+import java.util.Map;
+import java.util.WeakHashMap;
+
 /**
  * Keeps the MainActivity mini player hidden while an editor owns the keyboard. The
  * suppression is landscape-only (MainActivity decides) because the IME plus the mini
@@ -16,6 +19,7 @@ import com.midairlogn.mlnetease.MainActivity;
 public final class MiniPlayerImeHelper {
 
     private static final long RELEASE_POLL_MS = 400;
+    private static final Map<EditText, Boolean> ACTIVE_RELEASE_POLLS = new WeakHashMap<>();
 
     private MiniPlayerImeHelper() {
     }
@@ -28,6 +32,9 @@ public final class MiniPlayerImeHelper {
 
     public static void setSuppressedOnFocus(Fragment fragment, EditText input) {
         input.setOnFocusChangeListener((v, hasFocus) -> onEditorFocusChanged(fragment, input, hasFocus));
+        // Re-tapping an already-focused editor (e.g. after a back-dismissed keyboard was
+        // restored) raises no focus event, so the tap itself re-asserts suppression.
+        input.setOnClickListener(v -> setSuppressed(fragment, true));
     }
 
     /**
@@ -44,28 +51,38 @@ public final class MiniPlayerImeHelper {
     }
 
     private static void scheduleReleaseCheck(Fragment fragment, EditText input) {
+        if (ACTIVE_RELEASE_POLLS.containsKey(input)) {
+            return;
+        }
+        ACTIVE_RELEASE_POLLS.put(input, Boolean.TRUE);
+        pollRelease(fragment, input);
+    }
+
+    private static void pollRelease(Fragment fragment, EditText input) {
         input.postDelayed(() -> {
             if (fragment.getActivity() == null || input.getWindowToken() == null) {
+                ACTIVE_RELEASE_POLLS.remove(input);
                 setSuppressed(fragment, false);
-                return;
-            }
-            if (input.isFocused() || isImeVisible(input)) {
-                scheduleReleaseCheck(fragment, input);
+            } else if (input.isFocused() || isImeVisible(input)) {
+                pollRelease(fragment, input);
             } else {
+                ACTIVE_RELEASE_POLLS.remove(input);
                 setSuppressed(fragment, false);
             }
         }, RELEASE_POLL_MS);
     }
 
-    /** Any text typed into the editor re-asserts suppression so ROM focus quirks
-     *  cannot drop it mid-editing. */
+    /** Text typed into the focused editor re-asserts suppression so ROM focus quirks
+     *  cannot drop it mid-editing. Programmatic setText is ignored on purpose: it fires
+     *  without any editing session (e.g. settings refresh) and would strand the
+     *  suppression with no release path. */
     public static void keepSuppressedWhileEditing(Fragment fragment, EditText input) {
         input.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void afterTextChanged(Editable s) {}
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (s.length() > 0) {
+                if (s.length() > 0 && input.isFocused()) {
                     setSuppressed(fragment, true);
                 }
             }
