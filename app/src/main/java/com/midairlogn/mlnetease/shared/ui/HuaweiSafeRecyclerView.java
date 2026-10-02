@@ -8,14 +8,14 @@ import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
 /**
- * A RecyclerView subclass that includes a dummy mScroller field to satisfy 
+ * A RecyclerView subclass that includes a dummy mScroller field to satisfy
  * Huawei's AwareAnimationSmooth reflection-based optimizations and silence
  * the "No field in reflect mScroller" error log.
  */
 public class HuaweiSafeRecyclerView extends RecyclerView {
 
     @Keep
-    private Object mScroller; 
+    private Object mScroller;
 
     public HuaweiSafeRecyclerView(@NonNull Context context) {
         super(context);

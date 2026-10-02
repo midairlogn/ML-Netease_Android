@@ -1272,10 +1272,10 @@ public class MusicService extends Service {
             if (currentMeta != null) {
                 long metaDuration = currentMeta.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
                 if (metaDuration != duration) {
-                     MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder(currentMeta);
-                     builder.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration);
-                     mediaSession.setMetadata(builder.build());
-                     showNotification(currentSong, isPlaying, null, true, "playback:duration-updated");
+                    MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder(currentMeta);
+                    builder.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration);
+                    mediaSession.setMetadata(builder.build());
+                    showNotification(currentSong, isPlaying, null, true, "playback:duration-updated");
                 }
             }
         }
@@ -1314,12 +1314,12 @@ public class MusicService extends Service {
         // But if the song is the same, and we are getting a PlaybackState update:
         // - If it's a "not playing" state (isPlaying=false), we only update if we were previously "playing".
         // - This prevents jitter if multiple "paused/idle/buffering" events fire.
-        if (!songChanged && !isPlaying && !lastNotifiedPlayingState && !forceNotification && !modeChanged && !floatingStateChanged) {
-             // Already notified as Paused for this song. Keep MediaSession position/state synced
-             // (e.g. paused seeks), but skip redundant notification refreshes.
-             mediaSession.setPlaybackState(newState);
-             return;
-        }
+            if (!songChanged && !isPlaying && !lastNotifiedPlayingState && !forceNotification && !modeChanged && !floatingStateChanged) {
+                // Already notified as Paused for this song. Keep MediaSession position/state synced
+                // (e.g. paused seeks), but skip redundant notification refreshes.
+                mediaSession.setPlaybackState(newState);
+                return;
+            }
 
         if (songChanged || playStateChanged || modeChanged || floatingStateChanged || forceNotification) {
             String reason;
@@ -1381,7 +1381,7 @@ public class MusicService extends Service {
                 albumArt = metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON);
             }
             if (albumArt == null) {
-                 albumArt = getLogoPlaceholder();
+                albumArt = getLogoPlaceholder();
             }
         }
 

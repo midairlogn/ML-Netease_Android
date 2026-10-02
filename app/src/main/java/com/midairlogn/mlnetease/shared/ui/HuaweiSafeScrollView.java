@@ -8,14 +8,14 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 /**
- * A ScrollView subclass that includes a dummy mScroller field to satisfy 
+ * A ScrollView subclass that includes a dummy mScroller field to satisfy
  * Huawei's AwareAnimationSmooth reflection-based optimizations and silence
  * the "No field in reflect mScroller" error log.
  */
 public class HuaweiSafeScrollView extends ScrollView {
 
     @Keep
-    private Object mScroller; 
+    private Object mScroller;
 
     public HuaweiSafeScrollView(@NonNull Context context) {
         super(context);

@@ -338,9 +338,9 @@ public class FloatingLyricsManager {
 
                     case MotionEvent.ACTION_UP:
                         if (isClick) {
-                             if (!isExpanded) {
-                                 expand();
-                             }
+                            if (!isExpanded) {
+                                expand();
+                            }
                         }
                         return true;
 

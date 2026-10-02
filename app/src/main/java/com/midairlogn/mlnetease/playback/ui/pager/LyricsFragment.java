@@ -231,7 +231,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
             int bottom = centerView.getBottom();
             int height = bottom - top;
             int viewCenterY = (top + bottom) / 2;
-            
+
             int paddingTop = centerView.getPaddingTop();
             int paddingBottom = centerView.getPaddingBottom();
 
@@ -243,7 +243,7 @@ public class LyricsFragment extends Fragment implements MusicPlayerManager.OnSon
                 // Show Highlight
                 lyricsHighlightBg.setVisibility(View.VISIBLE);
                 lyricsTimelineLine.setVisibility(View.INVISIBLE); // Hide dashed line
-                
+
                 int textHeight = height - paddingTop - paddingBottom;
                 if (lyricsHighlightBg.getLayoutParams().height != textHeight) {
                     lyricsHighlightBg.getLayoutParams().height = textHeight;
