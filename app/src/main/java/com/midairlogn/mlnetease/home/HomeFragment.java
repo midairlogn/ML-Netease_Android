@@ -193,27 +193,36 @@ public class HomeFragment extends Fragment {
             lastSearchedId = savedInstanceState.getString("lastSearchedId", "");
             lastSearchedType = savedInstanceState.getString("lastSearchedType", "");
             lastSearchedTitle = savedInstanceState.getString("lastSearchedTitle", "");
+            isShortcutMode = savedInstanceState.getBoolean("isShortcutMode", true);
+            List<Song> savedSongs = new ArrayList<>();
             List<?> savedSongsRaw = (List<?>) savedInstanceState.getSerializable("songs");
             if (savedSongsRaw != null) {
-                List<Song> savedSongs = new ArrayList<>();
                 for (Object item : savedSongsRaw) {
                     if (item instanceof Song) {
                         savedSongs.add((Song) item);
                     }
                 }
-                adapter.setSongs(savedSongs);
-                int checkedId = searchTypeGroup.getCheckedRadioButtonId();
-                if (checkedId == R.id.radio_song) {
-                    btnPlayAll.setVisibility(View.GONE);
-                    btnDownloadAll.setVisibility(View.GONE);
-                    btnShareCollection.setVisibility(View.GONE);
-                } else {
-                    btnPlayAll.setVisibility(savedSongs.isEmpty() ? View.GONE : View.VISIBLE);
-                    boolean showDownload = !savedSongs.isEmpty() && ("playlist".equals(lastSearchedType) || "album".equals(lastSearchedType));
-                    btnDownloadAll.setVisibility(showDownload ? View.VISIBLE : View.GONE);
-                    btnShareCollection.setVisibility(showDownload ? View.VISIBLE : View.GONE);
-                }
             }
+            adapter.setSongs(savedSongs);
+            boolean hasResults = !isShortcutMode && !savedSongs.isEmpty();
+            boolean isCollectionSearch = hasResults && ("playlist".equals(lastSearchedType) || "album".equals(lastSearchedType));
+            btnPlayAll.setVisibility(hasResults ? View.VISIBLE : View.GONE);
+            btnDownloadAll.setVisibility(isCollectionSearch ? View.VISIBLE : View.GONE);
+            btnShareCollection.setVisibility(isCollectionSearch ? View.VISIBLE : View.GONE);
+            if (isCollectionSearch) {
+                btnAddToShortcut.setVisibility(View.VISIBLE);
+                boolean alreadyExists = false;
+                String currentType = lastSearchedType.equals("playlist") ? HomeShortcut.TYPE_PLAYLIST : HomeShortcut.TYPE_ALBUM;
+                for (HomeShortcut s : currentShortcuts) {
+                    if (s.type.equals(currentType) && s.id.equals(lastSearchedId)) {
+                        alreadyExists = true;
+                        break;
+                    }
+                }
+                btnAddToShortcut.setEnabled(!alreadyExists);
+                btnAddToShortcut.setAlpha(alreadyExists ? 0.3f : 1.0f);
+            }
+            updateViewMode();
         }
 
         btnResetSearch.setOnClickListener(v -> resetToShortcutMode());
@@ -313,6 +322,7 @@ public class HomeFragment extends Fragment {
         if (adapter != null && adapter.getSongs() != null) {
             outState.putSerializable("songs", new ArrayList<>(adapter.getSongs()));
         }
+        outState.putBoolean("isShortcutMode", isShortcutMode);
         outState.putString("lastSearchedId", lastSearchedId);
         outState.putString("lastSearchedType", lastSearchedType);
         outState.putString("lastSearchedTitle", lastSearchedTitle);
