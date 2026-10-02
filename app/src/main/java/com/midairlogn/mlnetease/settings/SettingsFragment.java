@@ -60,6 +60,7 @@ import com.midairlogn.mlnetease.playback.core.MusicService;
 import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.MainActivity;
 import com.midairlogn.mlnetease.shared.model.Song;
+import com.midairlogn.mlnetease.shared.ui.HuaweiSafeScrollView;
 import com.midairlogn.mlnetease.shared.ui.UiLaunchGuards;
 
 import java.io.ByteArrayOutputStream;
@@ -1172,6 +1173,9 @@ public class SettingsFragment extends Fragment {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
 
+        HuaweiSafeScrollView scrollView = new HuaweiSafeScrollView(context);
+        scrollView.addView(container);
+
         final int[] checkedIndex = {selectedIndex};
         updateCustomMinuteInputState(customInput, checkedIndex[0] == options.length);
         radioGroup.setOnCheckedChangeListener((group, checkedId) -> {
@@ -1190,7 +1194,7 @@ public class SettingsFragment extends Fragment {
 
         AlertDialog dialog = new AlertDialog.Builder(context)
                 .setTitle(titleResId)
-                .setView(container)
+                .setView(scrollView)
                 .setNegativeButton(R.string.cancel, null)
                 .setPositiveButton(R.string.confirm, null)
                 .create();
@@ -1288,9 +1292,12 @@ public class SettingsFragment extends Fragment {
         addAudioQualityOption(radioGroup, "sky", R.string.type_audio_quality_sky, currentQuality);
         addAudioQualityOption(radioGroup, "jymaster", R.string.type_audio_quality_jymaster, currentQuality);
 
+        HuaweiSafeScrollView scrollView = new HuaweiSafeScrollView(context);
+        scrollView.addView(radioGroup);
+
         AlertDialog dialog = new AlertDialog.Builder(context)
                 .setTitle(R.string.title_audio_quality)
-                .setView(radioGroup)
+                .setView(scrollView)
                 .setNegativeButton(R.string.cancel, null)
                 .setPositiveButton(R.string.confirm, (dialogInterface, which) -> {
                     int checkedId = radioGroup.getCheckedRadioButtonId();
