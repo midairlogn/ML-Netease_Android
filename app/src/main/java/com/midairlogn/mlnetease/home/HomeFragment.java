@@ -531,7 +531,11 @@ public class HomeFragment extends Fragment {
 
                 @Override
                 public void onError(String error) {
-                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show());
+                    if (getActivity() == null) return;
+                    getActivity().runOnUiThread(() -> {
+                        if (!isAdded()) return;
+                        Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show();
+                    });
                 }
             });
         } else if (shortcut.isAlbum()) {
@@ -543,7 +547,11 @@ public class HomeFragment extends Fragment {
 
                 @Override
                 public void onError(String error) {
-                    getActivity().runOnUiThread(() -> Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show());
+                    if (getActivity() == null) return;
+                    getActivity().runOnUiThread(() -> {
+                        if (!isAdded()) return;
+                        Toast.makeText(getContext(), getString(R.string.hint_error_title) + error, Toast.LENGTH_SHORT).show();
+                    });
                 }
             });
         }
@@ -629,10 +637,13 @@ public class HomeFragment extends Fragment {
         }
 
         if (isShortcut) {
+            if (getActivity() == null) return;
             getActivity().runOnUiThread(() -> {
+                if (!isAdded()) return;
                 playSongs(songs);
             });
         } else {
+            if (getActivity() == null) return;
             getActivity().runOnUiThread(() -> {
                 isShortcutMode = false;
                 updateViewMode();
@@ -685,6 +696,7 @@ public class HomeFragment extends Fragment {
                 songs.add(new Song(id, name, artists.toString(), album, picUrl));
             }
 
+            if (getActivity() == null) return;
             getActivity().runOnUiThread(() -> {
                 isShortcutMode = false;
                 updateViewMode();
@@ -707,9 +719,11 @@ public class HomeFragment extends Fragment {
         try {
             JSONObject root = new JSONObject(json);
             if (root.optInt("status") != 200) {
-                getActivity().runOnUiThread(() ->
-                        Toast.makeText(getContext(), R.string.song_not_found, Toast.LENGTH_SHORT).show()
-                );
+                if (getActivity() == null) return;
+                getActivity().runOnUiThread(() -> {
+                    if (!isAdded()) return;
+                    Toast.makeText(getContext(), R.string.song_not_found, Toast.LENGTH_SHORT).show();
+                });
                 return;
             }
 
@@ -723,6 +737,7 @@ public class HomeFragment extends Fragment {
             List<Song> songs = new ArrayList<>();
             songs.add(song);
 
+            if (getActivity() == null) return;
             getActivity().runOnUiThread(() -> {
                 isShortcutMode = false;
                 updateViewMode();
@@ -738,9 +753,11 @@ public class HomeFragment extends Fragment {
 
         } catch (Exception e) {
             e.printStackTrace();
-            getActivity().runOnUiThread(() ->
-                    Toast.makeText(getContext(), R.string.hint_parse_error, Toast.LENGTH_SHORT).show()
-            );
+            if (getActivity() == null) return;
+            getActivity().runOnUiThread(() -> {
+                if (!isAdded()) return;
+                Toast.makeText(getContext(), R.string.hint_parse_error, Toast.LENGTH_SHORT).show();
+            });
         }
     }
 
