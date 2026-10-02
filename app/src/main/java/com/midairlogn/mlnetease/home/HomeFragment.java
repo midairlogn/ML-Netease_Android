@@ -204,9 +204,9 @@ public class HomeFragment extends Fragment {
                 }
             }
             adapter.setSongs(savedSongs);
-            boolean hasResults = !isShortcutMode && !savedSongs.isEmpty();
-            boolean isCollectionSearch = hasResults && ("playlist".equals(lastSearchedType) || "album".equals(lastSearchedType));
-            btnPlayAll.setVisibility(hasResults ? View.VISIBLE : View.GONE);
+            boolean isCollectionSearch = !isShortcutMode && !savedSongs.isEmpty()
+                    && ("playlist".equals(lastSearchedType) || "album".equals(lastSearchedType));
+            btnPlayAll.setVisibility(isCollectionSearch ? View.VISIBLE : View.GONE);
             btnDownloadAll.setVisibility(isCollectionSearch ? View.VISIBLE : View.GONE);
             btnShareCollection.setVisibility(isCollectionSearch ? View.VISIBLE : View.GONE);
             if (isCollectionSearch) {
@@ -689,9 +689,13 @@ public class HomeFragment extends Fragment {
                 isShortcutMode = false;
                 updateViewMode();
                 adapter.setSongs(songs);
+                lastSearchedId = "";
+                lastSearchedType = "song";
+                lastSearchedTitle = "";
                 btnPlayAll.setVisibility(View.GONE);
                 btnDownloadAll.setVisibility(View.GONE);
                 btnShareCollection.setVisibility(View.GONE);
+                btnAddToShortcut.setVisibility(View.GONE);
             });
 
         } catch (Exception e) {
@@ -723,9 +727,13 @@ public class HomeFragment extends Fragment {
                 isShortcutMode = false;
                 updateViewMode();
                 adapter.setSongs(songs);
+                lastSearchedId = "";
+                lastSearchedType = "song";
+                lastSearchedTitle = "";
                 btnPlayAll.setVisibility(View.GONE);
                 btnDownloadAll.setVisibility(View.GONE);
                 btnShareCollection.setVisibility(View.GONE);
+                btnAddToShortcut.setVisibility(View.GONE);
             });
 
         } catch (Exception e) {
