@@ -66,6 +66,7 @@
             android:id="@+id/radio_song"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:minHeight="32dp"
             android:text="@string/song"
             android:textColor="@color/text_primary"
             android:buttonTint="@color/brand_primary"
@@ -75,6 +76,7 @@
             android:id="@+id/radio_playlist"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:minHeight="32dp"
             android:text="@string/playlist"
             android:textColor="@color/text_primary"
             android:buttonTint="@color/brand_primary"
@@ -84,18 +86,21 @@
             android:id="@+id/radio_album"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:minHeight="32dp"
             android:text="@string/album"
             android:textColor="@color/text_primary"
             android:buttonTint="@color/brand_primary"/>
     </RadioGroup>
 
     <LinearLayout
+        android:id="@+id/search_action_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:baselineAligned="false"
         android:layout_marginTop="4dp"
-        android:layout_marginBottom="4dp">
+        android:layout_marginBottom="4dp"
+        android:visibility="gone">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_add_to_shortcut"
@@ -243,11 +248,13 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/manage_shortcut_row"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_horizontal"
         android:layout_marginBottom="4dp"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:visibility="gone">
 
         <Button
             android:id="@+id/btn_manage_shortcuts"
@@ -255,8 +262,7 @@
             android:layout_height="wrap_content"
             android:text="@string/manage_shortcut"
             android:textColor="@color/text_on_brand"
-            android:backgroundTint="@color/brand_primary"
-            android:visibility="gone" />
+            android:backgroundTint="@color/brand_primary" />
     </LinearLayout>
 
     <com.midairlogn.mlnetease.shared.ui.HuaweiSafeRecyclerView

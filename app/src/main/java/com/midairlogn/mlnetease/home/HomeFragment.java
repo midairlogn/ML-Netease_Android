@@ -60,6 +60,8 @@ public class HomeFragment extends Fragment {
     private Button btnAddToShortcut;
     private Button btnShareCollection;
     private Button btnManageShortcuts;
+    private LinearLayout actionContainer;
+    private LinearLayout manageShortcutRow;
     private LinearLayout emptyShortcutLayout;
     private List<HomeShortcut> currentShortcuts = new ArrayList<>();
     private List<HomeEntry> homeEntries = new ArrayList<>();
@@ -105,6 +107,8 @@ public class HomeFragment extends Fragment {
         searchTypeGroup = view.findViewById(R.id.search_type_group);
         recyclerView = view.findViewById(R.id.home_recycler_view);
         btnManageShortcuts = view.findViewById(R.id.btn_manage_shortcuts);
+        actionContainer = view.findViewById(R.id.search_action_container);
+        manageShortcutRow = view.findViewById(R.id.manage_shortcut_row);
         emptyShortcutLayout = view.findViewById(R.id.home_shortcut_empty_state);
 
         recyclerView.setOnTouchListener(hideKeyboardTouchListener);
@@ -483,15 +487,27 @@ public class HomeFragment extends Fragment {
             btnDownloadAll.setVisibility(View.GONE);
             btnShareCollection.setVisibility(View.GONE);
             btnResetSearch.setVisibility(View.GONE);
-            btnManageShortcuts.setVisibility(currentShortcuts.isEmpty() ? View.GONE : View.VISIBLE);
+            boolean showManage = !currentShortcuts.isEmpty();
+            btnManageShortcuts.setVisibility(showManage ? View.VISIBLE : View.GONE);
+            manageShortcutRow.setVisibility(showManage ? View.VISIBLE : View.GONE);
             emptyShortcutLayout.setVisibility(View.GONE);
         } else {
             recyclerView.setAdapter(adapter);
             btnResetSearch.setVisibility(View.VISIBLE);
             btnManageShortcuts.setVisibility(View.GONE);
+            manageShortcutRow.setVisibility(View.GONE);
             emptyShortcutLayout.setVisibility(View.GONE);
             // btnPlayAll visibility managed by updateList() or search result callbacks
         }
+        syncSearchActionContainer();
+    }
+
+    private void syncSearchActionContainer() {
+        boolean anyVisible = btnAddToShortcut.getVisibility() == View.VISIBLE
+                || btnShareCollection.getVisibility() == View.VISIBLE
+                || btnPlayAll.getVisibility() == View.VISIBLE
+                || btnDownloadAll.getVisibility() == View.VISIBLE;
+        actionContainer.setVisibility(anyVisible ? View.VISIBLE : View.GONE);
     }
 
     private void loadShortcuts() {
@@ -658,6 +674,7 @@ public class HomeFragment extends Fragment {
                 btnDownloadAll.setVisibility(showDownload ? View.VISIBLE : View.GONE);
                 btnShareCollection.setVisibility(showDownload ? View.VISIBLE : View.GONE);
                 btnAddToShortcut.setVisibility(songs.isEmpty() ? View.GONE : View.VISIBLE);
+                syncSearchActionContainer();
 
                 boolean alreadyExists = false;
                 String currentType = lastSearchedType.equals("playlist") ? HomeShortcut.TYPE_PLAYLIST : HomeShortcut.TYPE_ALBUM;
@@ -714,6 +731,7 @@ public class HomeFragment extends Fragment {
                 btnDownloadAll.setVisibility(View.GONE);
                 btnShareCollection.setVisibility(View.GONE);
                 btnAddToShortcut.setVisibility(View.GONE);
+                syncSearchActionContainer();
             });
 
         } catch (Exception e) {
@@ -756,6 +774,7 @@ public class HomeFragment extends Fragment {
                 btnDownloadAll.setVisibility(View.GONE);
                 btnShareCollection.setVisibility(View.GONE);
                 btnAddToShortcut.setVisibility(View.GONE);
+                syncSearchActionContainer();
             });
 
         } catch (Exception e) {
