@@ -440,67 +440,67 @@
             android:visibility="gone"
             android:layout_marginBottom="24dp">
 
-             <TextView
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/title_lyric_highlight_color"
                 android:textColor="@color/text_primary"
                 android:layout_marginBottom="8dp"/>
 
-             <!-- Simple Color Selection for Main Settings -->
-             <LinearLayout
-                 style="?android:attr/buttonBarStyle"
-                 android:layout_width="match_parent"
-                 android:layout_height="wrap_content"
-                 android:orientation="horizontal">
+            <!-- Simple Color Selection for Main Settings -->
+            <LinearLayout
+                style="?android:attr/buttonBarStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
 
-                 <Button
-                     android:id="@+id/btn_color_red"
-                     style="?android:attr/buttonBarButtonStyle"
-                     android:layout_width="40dp"
-                     android:layout_height="40dp"
-                     android:backgroundTint="@color/lyrics_color_red"
-                     android:contentDescription="@string/highlight_color_red"
-                     android:layout_marginEnd="8dp" />
+                <Button
+                    android:id="@+id/btn_color_red"
+                    style="?android:attr/buttonBarButtonStyle"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:backgroundTint="@color/lyrics_color_red"
+                    android:contentDescription="@string/highlight_color_red"
+                    android:layout_marginEnd="8dp" />
 
-                 <Button
-                     android:id="@+id/btn_color_blue"
-                     style="?android:attr/buttonBarButtonStyle"
-                     android:layout_width="40dp"
-                     android:layout_height="40dp"
-                     android:backgroundTint="@color/lyrics_color_blue"
-                     android:contentDescription="@string/highlight_color_blue"
-                     android:layout_marginEnd="8dp" />
+                <Button
+                    android:id="@+id/btn_color_blue"
+                    style="?android:attr/buttonBarButtonStyle"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:backgroundTint="@color/lyrics_color_blue"
+                    android:contentDescription="@string/highlight_color_blue"
+                    android:layout_marginEnd="8dp" />
 
-                 <Button
-                     android:id="@+id/btn_color_green"
-                     style="?android:attr/buttonBarButtonStyle"
-                     android:layout_width="40dp"
-                     android:layout_height="40dp"
-                     android:backgroundTint="@color/lyrics_color_green"
-                     android:contentDescription="@string/highlight_color_green"
-                     android:layout_marginEnd="8dp" />
+                <Button
+                    android:id="@+id/btn_color_green"
+                    style="?android:attr/buttonBarButtonStyle"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:backgroundTint="@color/lyrics_color_green"
+                    android:contentDescription="@string/highlight_color_green"
+                    android:layout_marginEnd="8dp" />
 
-                 <Button
-                     android:id="@+id/btn_color_yellow"
-                     style="?android:attr/buttonBarButtonStyle"
-                     android:layout_width="40dp"
-                     android:layout_height="40dp"
-                     android:backgroundTint="@color/lyrics_color_yellow"
-                     android:contentDescription="@string/highlight_color_yellow"
-                     android:layout_marginEnd="8dp" />
+                <Button
+                    android:id="@+id/btn_color_yellow"
+                    style="?android:attr/buttonBarButtonStyle"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:backgroundTint="@color/lyrics_color_yellow"
+                    android:contentDescription="@string/highlight_color_yellow"
+                    android:layout_marginEnd="8dp" />
 
-                 <Button
-                     android:id="@+id/btn_color_purple"
-                     style="?android:attr/buttonBarButtonStyle"
-                     android:layout_width="40dp"
-                     android:layout_height="40dp"
-                     android:backgroundTint="@color/lyrics_color_purple"
-                     android:contentDescription="@string/highlight_color_purple"
-                     android:layout_marginEnd="8dp"/>
-             </LinearLayout>
+                <Button
+                    android:id="@+id/btn_color_purple"
+                    style="?android:attr/buttonBarButtonStyle"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:backgroundTint="@color/lyrics_color_purple"
+                    android:contentDescription="@string/highlight_color_purple"
+                    android:layout_marginEnd="8dp"/>
+            </LinearLayout>
 
-             <TextView
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/title_font_size"
@@ -508,32 +508,32 @@
                 android:layout_marginTop="12dp"
                 android:layout_marginBottom="8dp"/>
 
-             <LinearLayout
-                 android:layout_width="match_parent"
-                 android:layout_height="wrap_content"
-                 android:gravity="center_vertical">
-                 <Button
-                     android:id="@+id/btn_size_minus"
-                     android:layout_width="50dp"
-                     android:layout_height="wrap_content"
-                     android:contentDescription="@string/decrease_font_size"
-                     android:text="-"/>
-                 <TextView
-                     android:id="@+id/text_font_size"
-                     android:layout_width="wrap_content"
-                     android:layout_height="wrap_content"
-                     android:text="16"
-                     android:textColor="@color/text_primary"
-                     android:layout_marginHorizontal="16dp"/>
-                 <Button
-                     android:id="@+id/btn_size_plus"
-                     android:layout_width="50dp"
-                     android:layout_height="wrap_content"
-                     android:contentDescription="@string/increase_font_size"
-                     android:text="+"/>
-             </LinearLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical">
+                <Button
+                    android:id="@+id/btn_size_minus"
+                    android:layout_width="50dp"
+                    android:layout_height="wrap_content"
+                    android:contentDescription="@string/decrease_font_size"
+                    android:text="-"/>
+                <TextView
+                    android:id="@+id/text_font_size"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="16"
+                    android:textColor="@color/text_primary"
+                    android:layout_marginHorizontal="16dp"/>
+                <Button
+                    android:id="@+id/btn_size_plus"
+                    android:layout_width="50dp"
+                    android:layout_height="wrap_content"
+                    android:contentDescription="@string/increase_font_size"
+                    android:text="+"/>
+            </LinearLayout>
 
-             <TextView
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/preview"
@@ -541,42 +541,42 @@
                 android:layout_marginTop="12dp"
                 android:layout_marginBottom="8dp"/>
 
-             <FrameLayout
-                 android:layout_width="match_parent"
-                 android:layout_height="wrap_content"
-                 android:background="@drawable/bg_floating_window"
-                 android:padding="12dp">
-                 <LinearLayout
-                     android:layout_width="match_parent"
-                     android:layout_height="wrap_content"
-                     android:orientation="vertical"
-                     android:gravity="center">
-                     <TextView
-                         android:id="@+id/text_lyric_preview_current"
-                         android:layout_width="match_parent"
-                         android:layout_height="wrap_content"
-                         android:gravity="center"
-                         android:text="@string/lyrics_preview_line_one"
-                         android:singleLine="true"
-                         android:shadowColor="@color/lyrics_preview_shadow_color"
-                         android:shadowDx="2"
-                         android:shadowDy="2"
-                         android:shadowRadius="4"
-                         android:paddingBottom="4dp"/>
-                     <TextView
-                         android:id="@+id/text_lyric_preview_next"
-                         android:layout_width="match_parent"
-                         android:layout_height="wrap_content"
-                         android:gravity="center"
-                         android:text="@string/lyrics_preview_line_two"
-                         android:textColor="@color/lyrics_preview_text_color"
-                         android:singleLine="true"
-                         android:shadowColor="@color/lyrics_preview_shadow_color"
-                         android:shadowDx="2"
-                         android:shadowDy="2"
-                         android:shadowRadius="4"/>
-                 </LinearLayout>
-             </FrameLayout>
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_floating_window"
+                android:padding="12dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center">
+                    <TextView
+                        android:id="@+id/text_lyric_preview_current"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="@string/lyrics_preview_line_one"
+                        android:singleLine="true"
+                        android:shadowColor="@color/lyrics_preview_shadow_color"
+                        android:shadowDx="2"
+                        android:shadowDy="2"
+                        android:shadowRadius="4"
+                        android:paddingBottom="4dp"/>
+                    <TextView
+                        android:id="@+id/text_lyric_preview_next"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="@string/lyrics_preview_line_two"
+                        android:textColor="@color/lyrics_preview_text_color"
+                        android:singleLine="true"
+                        android:shadowColor="@color/lyrics_preview_shadow_color"
+                        android:shadowDx="2"
+                        android:shadowDy="2"
+                        android:shadowRadius="4"/>
+                </LinearLayout>
+            </FrameLayout>
         </LinearLayout>
 
         <TextView

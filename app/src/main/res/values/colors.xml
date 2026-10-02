@@ -55,7 +55,7 @@
     <color name="floating_window_lyrics_translation_secondary_current_color">#BBDDDDDD</color>
     <color name="floating_window_lyrics_translation_secondary_current_shadow_color">#FF000000</color>
     <color name="dim_translation_color">#B0B0B0</color>
-    
+
     <!-- Navigation -->
     <color name="nav_bar_background">#F9F9F9</color>
     <color name="nav_item_selected">#FA233B</color>
