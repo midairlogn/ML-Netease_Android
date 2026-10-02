@@ -9,6 +9,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -32,6 +33,7 @@ import com.midairlogn.mlnetease.shared.model.Song;
 import java.util.List;
 
 public class FloatingLyricsManager {
+    private static final String TAG = "FloatingLyricsManager";
     private Context context;
     private WindowManager windowManager;
     private View floatingView;
@@ -375,7 +377,7 @@ public class FloatingLyricsManager {
                                 try {
                                     windowManager.updateViewLayout(floatingView, params);
                                 } catch (Exception e) {
-                                    e.printStackTrace();
+                                    Log.d(TAG, "update floating lyrics layout during drag failed", e);
                                 }
                             }
                         }
@@ -467,7 +469,7 @@ public class FloatingLyricsManager {
         try {
             windowManager.addView(floatingView, params);
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.w(TAG, "add floating lyrics view failed", e);
             hide();
             return;
         }
@@ -486,7 +488,7 @@ public class FloatingLyricsManager {
             try {
                 windowManager.removeView(floatingView);
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.d(TAG, "remove floating lyrics view failed", e);
             }
         }
         stopLyricUpdates();
@@ -593,8 +595,7 @@ public class FloatingLyricsManager {
             try {
                 windowManager.updateViewLayout(floatingView, params);
             } catch (Exception e) {
-                // Ignore errors if the view is already detached or something similar
-                e.printStackTrace();
+                Log.d(TAG, "update floating lyrics layout failed", e);
             }
         }
     }

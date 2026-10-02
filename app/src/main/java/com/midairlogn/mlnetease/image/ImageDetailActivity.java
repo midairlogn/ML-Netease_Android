@@ -8,6 +8,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.Toast;
@@ -23,6 +24,7 @@ import java.io.FileOutputStream;
 import java.io.OutputStream;
 
 public class ImageDetailActivity extends AppCompatActivity {
+    private static final String TAG = "ImageDetailActivity";
     private ZoomImageView imageView;
     private String imageUrl;
     private Bitmap currentBitmap;
@@ -151,7 +153,7 @@ public class ImageDetailActivity extends AppCompatActivity {
                 }
 
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.w(TAG, "save image failed", e);
                 runOnUiThread(() -> Toast.makeText(this, getString(R.string.hint_save_failed_title) + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
         }).start();
@@ -182,7 +184,7 @@ public class ImageDetailActivity extends AppCompatActivity {
                 Uri imageUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", imageFile);
                 runOnUiThread(() -> ShareUtils.shareImage(this, getString(R.string.share_cover), imageUri, "image/jpeg"));
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.w(TAG, "share image failed", e);
                 runOnUiThread(() -> Toast.makeText(this, getString(R.string.share_image_failed) + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
         }).start();

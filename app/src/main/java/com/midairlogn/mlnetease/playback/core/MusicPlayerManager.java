@@ -6,6 +6,7 @@ import android.media.MediaPlayer;
 import android.media.audiofx.LoudnessEnhancer;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import com.midairlogn.mlnetease.image.ImageUtils;
 import com.midairlogn.mlnetease.local.media.LocalAudioMetadata;
@@ -26,6 +27,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.json.JSONObject;
 
 public class MusicPlayerManager {
+    private static final String TAG = "MusicPlayerManager";
+
     public static final int MODE_ORDER = 0;
     public static final int MODE_LOOP_ONE = 1;
     public static final int MODE_LOOP_ALL = 2;
@@ -605,11 +608,11 @@ public class MusicPlayerManager {
     private void handlePlaybackFailure(int index, long requestId, String reason) {
         if (requestId != activePlayRequestId || currentIndex != index) return;
 
-        android.util.Log.e("MusicPlayerManager", "Playback failure: " + reason + " for index " + index);
+        Log.e(TAG, "Playback failure: " + reason + " for index " + index);
 
         if (retryCount < MAX_RETRY) {
             retryCount++;
-            android.util.Log.d("MusicPlayerManager", "Retrying playback in " + RETRY_DELAY_MS + "ms... Attempt " + retryCount);
+            Log.d(TAG, "Retrying playback in " + RETRY_DELAY_MS + "ms... Attempt " + retryCount);
             // Delay retry to prevent rapid loops (especially when internet is down)
             mainHandler.postDelayed(() -> {
                 if (requestId == activePlayRequestId && currentIndex == index) {
@@ -617,7 +620,7 @@ public class MusicPlayerManager {
                 }
             }, RETRY_DELAY_MS);
         } else {
-            android.util.Log.e("MusicPlayerManager", "MAX_RETRY reached. Auto skipping in " + AUTO_SKIP_DELAY_MS + "ms...");
+            Log.e(TAG, "MAX_RETRY reached. Auto skipping in " + AUTO_SKIP_DELAY_MS + "ms...");
             isAutoSkipping = true;
             continuousSkipCount++;
 
@@ -628,7 +631,7 @@ public class MusicPlayerManager {
                     }
                 }, AUTO_SKIP_DELAY_MS);
             } else {
-                android.util.Log.e("MusicPlayerManager", "No playable songs found in the entire playlist.");
+                Log.e(TAG, "No playable songs found in the entire playlist.");
                 isAutoSkipping = false;
                 continuousSkipCount = 0;
                 isSwitchingSong = false;
@@ -696,7 +699,7 @@ public class MusicPlayerManager {
             } catch (Exception e) {
                 playbackActive = false;
                 mediaPlayerPrepared = false;
-                e.printStackTrace();
+                Log.w(TAG, "mediaPlayer reset failed", e);
             }
             // Release large mutable data from the previous song to allow GC.
             // These fields are repopulated by getSongFullInfo or local metadata read.
@@ -788,8 +791,8 @@ public class MusicPlayerManager {
                                 }
                             }
                             if (normalizationMetadata.hasGain) {
-                                android.util.Log.d(
-                                        "MusicPlayerManager",
+                                Log.d(
+                                        TAG,
                                         "Loudness normalization rawGainDb=" + song.gainDb
                                                 + " peak=" + song.peak
                                                 + " closedGainDb=" + song.closedGainDb
@@ -812,7 +815,7 @@ public class MusicPlayerManager {
                         notifyFullInfoAvailable(song);
 
                         if (!url.isEmpty() && !"null".equals(url)) {
-                            android.util.Log.d("MusicPlayerManager", "Playing URL: " + url);
+                            Log.d(TAG, "Playing URL: " + url);
                             playUrl(url, index, requestId);
                         } else {
                             handlePlaybackFailure(index, requestId, "Empty URL (Copyright/VIP/Deleted)");
@@ -821,7 +824,7 @@ public class MusicPlayerManager {
                         handlePlaybackFailure(index, requestId, "API Status: " + root.getInt("status"));
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    Log.w(TAG, "parse song url response failed", e);
                     handlePlaybackFailure(index, requestId, "JSON Parsing Exception: " + e.getMessage());
                 }
             }
@@ -903,7 +906,7 @@ public class MusicPlayerManager {
 
     private void playUrl(String url, int expectedIndex, long requestId) {
         if (url == null || url.trim().isEmpty() || "null".equals(url)) {
-            android.util.Log.e("MusicPlayerManager", "playUrl called with invalid url: " + url);
+            Log.e(TAG, "playUrl called with invalid url: " + url);
             if (requestId == activePlayRequestId) {
                 isSwitchingSong = false;
             }
@@ -940,7 +943,7 @@ public class MusicPlayerManager {
                     try {
                         player.setDataSource(context, uri, headers);
                     } catch (Exception e) {
-                        android.util.Log.w("MusicPlayerManager", "setDataSource with headers failed, falling back to string path: " + e.getMessage());
+                        Log.w(TAG, "setDataSource with headers failed, falling back to string path: " + e.getMessage());
                         player.reset();
                         player.setDataSource(uri.toString());
                     }
@@ -1038,8 +1041,7 @@ public class MusicPlayerManager {
             if (requestId == activePlayRequestId) {
                 isSwitchingSong = false;
             }
-            e.printStackTrace();
-            android.util.Log.e("MusicPlayerManager", "playUri exception", e);
+            Log.e(TAG, "playUri exception", e);
             if (failureReported.compareAndSet(false, true)) {
                 handlePlaybackFailure(expectedIndex, requestId, e.getMessage() == null ? "playback exception" : e.getMessage());
             }

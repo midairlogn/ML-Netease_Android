@@ -12,6 +12,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -42,6 +43,7 @@ public class SongDownloadService extends Service {
     public static final String EXTRA_TASK_ID = "extra_download_task_id";
 
     private static final String CHANNEL_ID = "download_channel";
+    private static final String TAG = "SongDownloadService";
     private static final int NOTIFICATION_ID = 2001;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final OkHttpClient httpClient = new OkHttpClient();
@@ -203,7 +205,7 @@ public class SongDownloadService extends Service {
                     if (serviceShuttingDown) {
                         break;
                     }
-                    e.printStackTrace();
+                    Log.w(TAG, "download task failed: " + activeTask.id, e);
                     taskManager.failTask(activeTask.id, messageOrFallback(e, getString(R.string.download_failed)));
                 }
 
@@ -256,7 +258,7 @@ public class SongDownloadService extends Service {
             } catch (PausedTaskException | CancelledTaskException e) {
                 throw e;
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.w(TAG, "download song failed: " + song.id, e);
                 taskManager.markSongCompleted(task.id, song, false, false, messageOrFallback(e, getString(R.string.download_failed)));
             }
         }

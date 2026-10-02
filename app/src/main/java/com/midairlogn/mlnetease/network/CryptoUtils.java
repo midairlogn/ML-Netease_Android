@@ -1,5 +1,7 @@
 package com.midairlogn.mlnetease.network;
 
+import android.util.Log;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import javax.crypto.Cipher;
@@ -8,6 +10,7 @@ import org.json.JSONObject;
 
 public class CryptoUtils {
 
+    private static final String TAG = "CryptoUtils";
     private static final String AES_KEY = "e82ckenh8dichen8";
 
     public static String eapiEncrypt(String url, String jsonPayload) {
@@ -22,7 +25,7 @@ public class CryptoUtils {
 
             return aesEncrypt(params, AES_KEY);
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "eapiEncrypt failed", e);
             return "";
         }
     }
@@ -73,7 +76,7 @@ public class CryptoUtils {
             result = result.replace('/', '_').replace('+', '-');
             return result;
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "neteaseEncryptId failed", e);
             return "";
         }
     }
@@ -115,7 +118,7 @@ public class CryptoUtils {
 
             return json.toString();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "toPayloadJsonStr failed", e);
             return "{}";
         }
     }

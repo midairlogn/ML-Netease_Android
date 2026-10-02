@@ -8,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioGroup;
@@ -45,6 +46,7 @@ import java.util.List;
 
 public class HomeFragment extends Fragment {
 
+    private static final String TAG = "HomeFragment";
     private NeteaseApi neteaseApi;
     private EditText searchInput;
     private Button searchButton;
@@ -381,7 +383,7 @@ public class HomeFragment extends Fragment {
                                 });
                             }
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            Log.w(TAG, "parse song full info failed", e);
                             // Fallback to keyword search
                             neteaseApi.search(input, new NeteaseApi.ApiCallback() {
                                 @Override
@@ -600,7 +602,7 @@ public class HomeFragment extends Fragment {
             lastSearchedTitle = playlist == null ? lastSearchedId : playlist.optString("name", lastSearchedId);
             updateList(songsArray, isShortcut);
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.w(TAG, "parse playlist result failed", e);
             Toast.makeText(getContext(), R.string.hint_parse_error, Toast.LENGTH_SHORT).show();
         }
     }
@@ -620,7 +622,7 @@ public class HomeFragment extends Fragment {
             lastSearchedTitle = album.optString("name", lastSearchedId);
             updateList(songsArray, isShortcut);
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.w(TAG, "parse album result failed", e);
             Toast.makeText(getContext(), R.string.hint_parse_error, Toast.LENGTH_SHORT).show();
         }
     }
@@ -715,7 +717,7 @@ public class HomeFragment extends Fragment {
             });
 
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.w(TAG, "parse search result failed", e);
         }
     }
 
@@ -757,7 +759,7 @@ public class HomeFragment extends Fragment {
             });
 
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.w(TAG, "parse song id result failed", e);
             if (getActivity() == null) return;
             getActivity().runOnUiThread(() -> {
                 if (!isAdded()) return;
