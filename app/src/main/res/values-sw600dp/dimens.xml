@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="page_padding_horizontal">48dp</dimen>
+    <dimen name="list_page_padding_horizontal">48dp</dimen>
+    <dimen name="settings_page_padding_horizontal">64dp</dimen>
+    <dimen name="download_customize_padding_horizontal">64dp</dimen>
+</resources>

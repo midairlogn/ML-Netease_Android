@@ -25,7 +25,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.midairlogn.mlnetease.local.media.LocalAudioRepository;
@@ -34,6 +33,7 @@ import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.playback.core.PlaybackActionDispatcher;
 import com.midairlogn.mlnetease.shared.adapter.SongAdapter;
 import com.midairlogn.mlnetease.shared.model.Song;
+import com.midairlogn.mlnetease.shared.ui.ResponsiveGrid;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -97,7 +97,7 @@ public class LocalFragment extends Fragment {
         btnSearch = view.findViewById(R.id.btn_local_search);
 
         RecyclerView recyclerView = view.findViewById(R.id.recycler_local_songs);
-        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        ResponsiveGrid.apply(recyclerView, 240);
         adapter = new SongAdapter();
         adapter.setOnItemClickListener(song -> PlaybackActionDispatcher.addOrPlaySong(requireContext(), song));
         recyclerView.setAdapter(adapter);

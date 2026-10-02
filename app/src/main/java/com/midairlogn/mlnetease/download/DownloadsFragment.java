@@ -8,8 +8,8 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import com.midairlogn.mlnetease.shared.ui.ResponsiveGrid;
 
 import android.widget.Button;
 import android.widget.TextView;
@@ -53,7 +53,7 @@ public class DownloadsFragment extends Fragment implements DownloadTaskManager.L
         emptyLayout = view.findViewById(R.id.layout_downloads_empty);
         RecyclerView recyclerView = view.findViewById(R.id.recycler_download_tasks);
 
-        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        ResponsiveGrid.apply(recyclerView, 520);
         adapter = new DownloadTaskAdapter();
         adapter.setListener(new DownloadTaskAdapter.Listener() {
             @Override

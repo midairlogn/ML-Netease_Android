@@ -24,7 +24,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.navigation.NavigationBarView;
 import com.midairlogn.mlnetease.home.shortcut.AppShortcutController;
 import com.midairlogn.mlnetease.download.file.DownloadFolderOpener;
 import com.midairlogn.mlnetease.download.DownloadsFragment;
@@ -123,7 +123,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
 
         checkAndRequestPermissions();
 
-        BottomNavigationView navView = findViewById(R.id.nav_view);
+        NavigationBarView navView = findViewById(R.id.nav_view);
         syncNavigationSelection(navView);
         navView.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
@@ -156,7 +156,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        BottomNavigationView navView = findViewById(R.id.nav_view);
+        NavigationBarView navView = findViewById(R.id.nav_view);
         if (navView != null) {
             applyRequestedTab(intent, navView, false);
         }
@@ -167,7 +167,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         }
     }
 
-    private void applyRequestedTab(Intent intent, BottomNavigationView navView, boolean firstCreate) {
+    private void applyRequestedTab(Intent intent, NavigationBarView navView, boolean firstCreate) {
         if (intent == null || navView == null) {
             return;
         }
@@ -278,7 +278,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         return homeFragment != null ? homeFragment : settingsFragment;
     }
 
-    private void syncNavigationSelection(BottomNavigationView navView) {
+    private void syncNavigationSelection(NavigationBarView navView) {
         if (navView == null || activeFragment == null) {
             return;
         }
@@ -600,7 +600,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         if (Intent.ACTION_VIEW.equals(action) && data != null) {
             String type = intent.getType();
             if (type == null || type.startsWith("audio/")) {
-                BottomNavigationView navView = findViewById(R.id.nav_view);
+                NavigationBarView navView = findViewById(R.id.nav_view);
                 if (navView != null) {
                     navView.setSelectedItemId(R.id.navigation_local);
                 }

@@ -16,7 +16,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.midairlogn.mlnetease.download.model.DownloadRequest;
@@ -35,6 +34,7 @@ import com.midairlogn.mlnetease.playback.core.PlaybackActionDispatcher;
 import com.midairlogn.mlnetease.settings.SettingsManager;
 import com.midairlogn.mlnetease.shared.adapter.SongAdapter;
 import com.midairlogn.mlnetease.shared.model.Song;
+import com.midairlogn.mlnetease.shared.ui.ResponsiveGrid;
 import com.midairlogn.mlnetease.sharing.ShareUtils;
 import com.midairlogn.mlnetease.shared.ui.UiLaunchGuards;
 
@@ -168,7 +168,7 @@ public class HomeFragment extends Fragment {
 
         btnShareCollection.setOnClickListener(v -> shareCurrentCollection());
 
-        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        ResponsiveGrid.apply(recyclerView, 240);
         adapter = new SongAdapter();
         shortcutAdapter = new HomeShortcutAdapter();
 

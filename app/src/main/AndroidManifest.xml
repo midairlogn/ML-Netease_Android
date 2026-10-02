@@ -34,8 +34,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTask"
-            android:screenOrientation="portrait">
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -59,12 +58,10 @@
         </activity>
         <activity
             android:name=".playback.ui.PlayerActivity"
-            android:launchMode="singleTask"
-            android:screenOrientation="portrait" />
+            android:launchMode="singleTask" />
         <activity
             android:name=".download.DownloadCustomizationActivity"
-            android:launchMode="singleTask"
-            android:screenOrientation="portrait" />
+            android:launchMode="singleTask" />
         <activity
             android:name=".home.shortcut.DownloadShortcutActivity"
             android:excludeFromRecents="true"
@@ -76,8 +73,7 @@
             android:theme="@style/Theme.MLNetease.ShortcutProxy" />
         <activity
             android:name=".image.ImageDetailActivity"
-            android:launchMode="singleTask"
-            android:screenOrientation="portrait" />
+            android:launchMode="singleTask" />
 
         <service
             android:name=".playback.core.MusicService"

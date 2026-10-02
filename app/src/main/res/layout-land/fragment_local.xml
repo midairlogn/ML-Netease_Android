@@ -5,57 +5,57 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/background_primary"
-    android:paddingVertical="24dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="24dp"
     android:paddingHorizontal="@dimen/list_page_padding_horizontal">
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/local_music_nav"
-        android:textColor="@color/text_primary"
-        android:textSize="32sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/text_local_status"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:textColor="@color/text_secondary"
-        android:textSize="14sp"
-        android:text="@string/local_music_not_scanned" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginTop="12dp"
-        android:layout_marginBottom="12dp">
+        android:gravity="center_vertical">
 
-        <Button
-            android:id="@+id/btn_scan_local_music"
+        <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:text="@string/local_music_nav"
+            android:textColor="@color/text_primary"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btn_scan_local_music"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:text="@string/local_music_scan"
             android:textColor="@color/text_on_brand"
             android:backgroundTint="@color/brand_primary" />
 
         <Button
             android:id="@+id/btn_pick_local_audio"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:layout_marginStart="8dp"
             android:text="@string/local_music_pick"
             android:textColor="@color/text_on_brand"
             android:backgroundTint="@color/brand_primary" />
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/text_local_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textColor="@color/text_secondary"
+        android:textSize="14sp"
+        android:text="@string/local_music_not_scanned" />
+
     <LinearLayout
         android:id="@+id/layout_local_search"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:layout_marginBottom="8dp"
         android:background="@drawable/search_background"
         android:gravity="center_vertical"
@@ -128,11 +128,11 @@
             android:layout_height="match_parent"
             android:orientation="vertical"
             android:gravity="center"
-            android:paddingVertical="24dp">
+            android:paddingVertical="12dp">
 
             <ImageView
-                android:layout_width="96dp"
-                android:layout_height="96dp"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
                 android:alpha="0.28"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_folder"
