@@ -548,6 +548,7 @@ public class SettingsFragment extends Fragment {
                 saveAndClearFocus(inputMusicU);
             }
         });
+        MiniPlayerImeHelper.setSuppressedOnClick(this, inputMusicU);
         MiniPlayerImeHelper.keepSuppressedWhileEditing(this, inputMusicU);
 
         // Search Result Limit
@@ -575,6 +576,7 @@ public class SettingsFragment extends Fragment {
                 saveAndClearFocus(inputSearchLimit);
             }
         });
+        MiniPlayerImeHelper.setSuppressedOnClick(this, inputSearchLimit);
         MiniPlayerImeHelper.keepSuppressedWhileEditing(this, inputSearchLimit);
     }
 

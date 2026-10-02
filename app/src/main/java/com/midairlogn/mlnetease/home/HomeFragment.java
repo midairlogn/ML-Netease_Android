@@ -110,7 +110,7 @@ public class HomeFragment extends Fragment {
 
         searchInput = view.findViewById(R.id.search_input);
         MiniPlayerImeHelper.keepSuppressedWhileEditing(this, searchInput);
-        searchInput.setOnClickListener(v -> MiniPlayerImeHelper.setSuppressed(this, true));
+        MiniPlayerImeHelper.setSuppressedOnClick(this, searchInput);
         searchButton = view.findViewById(R.id.search_button);
         btnResetSearch = view.findViewById(R.id.btn_reset_search);
         searchTypeGroup = view.findViewById(R.id.search_type_group);

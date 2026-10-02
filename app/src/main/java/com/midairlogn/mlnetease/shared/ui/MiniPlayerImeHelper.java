@@ -30,10 +30,18 @@ public final class MiniPlayerImeHelper {
         }
     }
 
+    /** Wires focus-driven suppression. Note: this also installs the tap re-assert
+     *  listener (see {@link #setSuppressedOnClick}) and thereby owns the input's
+     *  OnClickListener; callers needing their own click handling must use
+     *  {@link #onEditorFocusChanged} plus {@link #setSuppressedOnClick} instead. */
     public static void setSuppressedOnFocus(Fragment fragment, EditText input) {
         input.setOnFocusChangeListener((v, hasFocus) -> onEditorFocusChanged(fragment, input, hasFocus));
-        // Re-tapping an already-focused editor (e.g. after a back-dismissed keyboard was
-        // restored) raises no focus event, so the tap itself re-asserts suppression.
+        setSuppressedOnClick(fragment, input);
+    }
+
+    /** Re-asserts suppression on tap: re-tapping an already-focused editor (e.g. after
+     *  a back-dismissed keyboard was restored) raises no focus event. */
+    public static void setSuppressedOnClick(Fragment fragment, EditText input) {
         input.setOnClickListener(v -> setSuppressed(fragment, true));
     }
 
@@ -72,17 +80,18 @@ public final class MiniPlayerImeHelper {
         }, RELEASE_POLL_MS);
     }
 
-    /** Text typed into the focused editor re-asserts suppression so ROM focus quirks
-     *  cannot drop it mid-editing. Programmatic setText is ignored on purpose: it fires
-     *  without any editing session (e.g. settings refresh) and would strand the
-     *  suppression with no release path. */
+    /** Text typed into the editor re-asserts suppression so ROM focus quirks cannot
+     *  drop it mid-editing. The check uses focus OR live IME visibility instead of
+     *  focus alone: some ROMs clear editor focus during the secure-IME handoff while
+     *  the keyboard stays up, and programmatic setText without any editing session
+     *  (e.g. a settings refresh) has no IME and must not strand the suppression. */
     public static void keepSuppressedWhileEditing(Fragment fragment, EditText input) {
         input.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void afterTextChanged(Editable s) {}
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (s.length() > 0 && input.isFocused()) {
+                if (s.length() > 0 && (input.isFocused() || isImeVisible(input))) {
                     setSuppressed(fragment, true);
                 }
             }
