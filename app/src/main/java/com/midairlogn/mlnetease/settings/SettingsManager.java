@@ -311,6 +311,17 @@ public class SettingsManager {
     private static final Object FAVOURITES_LOCK = new Object();
 
     public List<FavouriteSong> getFavouriteSongs() {
+        List<FavouriteSong> favourites = readFavouriteSongs();
+        List<FavouriteSong> unplayable = collectUnplayableFavourites(favourites);
+        if (!unplayable.isEmpty()) {
+            pruneFavourites(unplayable);
+            favourites.removeAll(unplayable);
+            normalizeFavouriteSequences(favourites);
+        }
+        return favourites;
+    }
+
+    private List<FavouriteSong> readFavouriteSongs() {
         synchronized (FAVOURITES_LOCK) {
             List<FavouriteSong> favourites = new ArrayList<>();
             String raw = prefs.getString(KEY_FAVOURITE_SONGS, "[]");
@@ -349,11 +360,37 @@ public class SettingsManager {
 
             Collections.sort(favourites, Comparator.comparingInt(song -> song.sequence));
             normalizeFavouriteSequences(favourites);
-            boolean removedMissingLocalFiles = removeUnavailableLocalFavourites(favourites);
-            if (removedMissingLocalFiles) {
-                setFavouriteSongs(favourites);
-            }
             return favourites;
+        }
+    }
+
+    private List<FavouriteSong> collectUnplayableFavourites(List<FavouriteSong> favourites) {
+        List<FavouriteSong> unplayable = new ArrayList<>();
+        for (FavouriteSong favourite : favourites) {
+            if (favourite != null && !favourite.isPlayable(appContext)) {
+                unplayable.add(favourite);
+            }
+        }
+        return unplayable;
+    }
+
+    private void pruneFavourites(List<FavouriteSong> unplayable) {
+        synchronized (FAVOURITES_LOCK) {
+            List<FavouriteSong> current = readFavouriteSongs();
+            boolean changed = false;
+            for (int i = current.size() - 1; i >= 0; i--) {
+                FavouriteSong candidate = current.get(i);
+                for (FavouriteSong favourite : unplayable) {
+                    if (favourite.mediaUri != null && favourite.mediaUri.equals(candidate.mediaUri)) {
+                        current.remove(i);
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+            if (changed) {
+                setFavouriteSongs(current);
+            }
         }
     }
 
@@ -418,21 +455,6 @@ public class SettingsManager {
         for (int i = 0; i < favourites.size(); i++) {
             favourites.get(i).sequence = i;
         }
-    }
-
-    private boolean removeUnavailableLocalFavourites(List<FavouriteSong> favourites) {
-        boolean changed = false;
-        for (int i = favourites.size() - 1; i >= 0; i--) {
-            FavouriteSong favourite = favourites.get(i);
-            if (favourite != null && !favourite.isPlayable(appContext)) {
-                favourites.remove(i);
-                changed = true;
-            }
-        }
-        if (changed) {
-            normalizeFavouriteSequences(favourites);
-        }
-        return changed;
     }
 
     public boolean isFavouriteSong(Song song) {
