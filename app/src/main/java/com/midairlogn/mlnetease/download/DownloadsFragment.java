@@ -55,7 +55,8 @@ public class DownloadsFragment extends Fragment implements DownloadTaskManager.L
 
         adapter = new DownloadTaskAdapter();
         ResponsiveGrid.apply(recyclerView, 400, position ->
-                adapter.getItemViewType(position) == DownloadTaskListItem.TYPE_SECTION);
+                position < adapter.getItemCount()
+                        && adapter.getItemViewType(position) == DownloadTaskListItem.TYPE_SECTION);
         adapter.setListener(new DownloadTaskAdapter.Listener() {
             @Override
             public void onPauseClicked(DownloadTaskSnapshot task) {
