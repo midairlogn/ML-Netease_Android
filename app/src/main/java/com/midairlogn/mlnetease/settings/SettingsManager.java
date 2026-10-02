@@ -28,6 +28,9 @@ import javax.crypto.spec.SecretKeySpec;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import androidx.annotation.AnyThread;
+
+@AnyThread
 public class SettingsManager {
     private static final String PREF_NAME = "ml_netease_prefs";
     private static final String KEY_MUSIC_U = "music_u";

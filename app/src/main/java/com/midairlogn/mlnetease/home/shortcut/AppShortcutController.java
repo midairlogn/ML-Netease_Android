@@ -13,8 +13,12 @@ import com.midairlogn.mlnetease.download.file.DownloadFolderOpener;
 import com.midairlogn.mlnetease.home.model.HomeShortcut;
 import com.midairlogn.mlnetease.settings.SettingsManager;
 
+import androidx.annotation.AnyThread;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public final class AppShortcutController {
     public static final String ACTION_OPEN_DOWNLOADS = "com.midairlogn.mlnetease.action.OPEN_DOWNLOADS";
@@ -29,39 +33,49 @@ public final class AppShortcutController {
     private AppShortcutController() {
     }
 
+    private static final ExecutorService REFRESH_EXECUTOR = Executors.newSingleThreadExecutor();
+
+    @AnyThread
     public static void refresh(Context context) {
         if (context == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) {
             return;
         }
-
         Context appContext = context.getApplicationContext();
-        ShortcutManager shortcutManager = appContext.getSystemService(ShortcutManager.class);
-        if (shortcutManager == null) {
-            return;
-        }
+        REFRESH_EXECUTOR.execute(() -> refreshSync(appContext));
+    }
 
-        SettingsManager settingsManager = new SettingsManager(appContext);
-        List<ShortcutInfo> shortcuts = new ArrayList<>();
-        int maxShortcuts = Math.max(0, shortcutManager.getMaxShortcutCountPerActivity());
-        if (maxShortcuts == 0) {
-            shortcutManager.removeAllDynamicShortcuts();
-            return;
-        }
-
-        shortcuts.add(buildDownloadsShortcut(appContext));
-        if (!settingsManager.getFavouriteSongs().isEmpty() && shortcuts.size() < maxShortcuts) {
-            shortcuts.add(buildFavouritesShortcut(appContext));
-        }
-
-        List<HomeShortcut> homeShortcuts = settingsManager.getHomeShortcuts();
-        for (HomeShortcut shortcut : homeShortcuts) {
-            if (shortcut == null || shortcuts.size() >= maxShortcuts) {
-                break;
+    private static void refreshSync(Context context) {
+        try {
+            ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
+            if (shortcutManager == null) {
+                return;
             }
-            shortcuts.add(buildHomeShortcut(appContext, shortcut));
-        }
 
-        shortcutManager.setDynamicShortcuts(shortcuts);
+            SettingsManager settingsManager = new SettingsManager(context);
+            List<ShortcutInfo> shortcuts = new ArrayList<>();
+            int maxShortcuts = Math.max(0, shortcutManager.getMaxShortcutCountPerActivity());
+            if (maxShortcuts == 0) {
+                shortcutManager.removeAllDynamicShortcuts();
+                return;
+            }
+
+            shortcuts.add(buildDownloadsShortcut(context));
+            if (!settingsManager.getFavouriteSongs().isEmpty() && shortcuts.size() < maxShortcuts) {
+                shortcuts.add(buildFavouritesShortcut(context));
+            }
+
+            List<HomeShortcut> homeShortcuts = settingsManager.getHomeShortcuts();
+            for (HomeShortcut shortcut : homeShortcuts) {
+                if (shortcut == null || shortcuts.size() >= maxShortcuts) {
+                    break;
+                }
+                shortcuts.add(buildHomeShortcut(context, shortcut));
+            }
+
+            shortcutManager.setDynamicShortcuts(shortcuts);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public static HomeShortcut findHomeShortcut(Context context, String type, String id) {
