@@ -29,6 +29,7 @@ import com.midairlogn.mlnetease.home.model.HomeShortcut;
 import com.midairlogn.mlnetease.home.adapter.HomeShortcutAdapter;
 import com.midairlogn.mlnetease.home.shortcut.HomeShortcutIdParser;
 import com.midairlogn.mlnetease.home.shortcut.ManageShortcutsDialog;
+import com.midairlogn.mlnetease.MainActivity;
 import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.download.core.SongDownloadStarter;
 import com.midairlogn.mlnetease.network.NeteaseApi;
@@ -258,6 +259,7 @@ public class HomeFragment extends Fragment {
         });
 
         searchInput.setOnFocusChangeListener((v, hasFocus) -> {
+            setImeSpaceSuppressed(hasFocus);
             if (hasFocus) {
                 keyboardShowGuardUntil = SystemClock.uptimeMillis() + IME_DISMISS_GUARD_MS;
             } else {
@@ -344,6 +346,17 @@ public class HomeFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).setMiniPlayerSuppressed(false);
+        }
+    }
+
+    /** While an editor owns the keyboard, tuck away the mini player so
+     *  landscape (where the IME eats most of the screen) keeps the search box visible. */
+    private void setImeSpaceSuppressed(boolean suppress) {
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).setMiniPlayerSuppressed(suppress);
+        }
     }
 
     @Override

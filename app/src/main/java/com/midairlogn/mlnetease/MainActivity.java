@@ -11,6 +11,7 @@ import android.widget.Toast;
 import android.provider.Settings;
 import android.net.Uri;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.media.AudioManager;
 import android.Manifest;
 import androidx.activity.result.ActivityResultLauncher;
@@ -74,6 +75,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     private ImageView miniPlayerPlayPause;
     private ImageButton miniPlayerPlaylist;
     private View miniPlayerDivider;
+    private boolean miniPlayerSuppressed = false;
 
     private MusicPlayerManager musicPlayerManager;
     private String currentCoverUrl;
@@ -488,7 +490,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
             return;
         }
 
-        miniPlayerRoot.setVisibility(View.VISIBLE);
+        miniPlayerRoot.setVisibility(miniPlayerSuppressed ? View.GONE : View.VISIBLE);
         miniPlayerTitle.setText(song.name);
         miniPlayerArtist.setText(song.artists);
 
@@ -499,6 +501,26 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         } else {
             miniPlayerThumb.setImageResource(R.drawable.ic_ml_app_logo_foreground);
             miniPlayerThumb.setTag(null);
+        }
+    }
+
+    /** Fragments suppress the mini player while an editor has focus: in landscape the IME
+     *  plus mini player leave the content area too little height for the focused input. */
+    public void setMiniPlayerSuppressed(boolean suppressed) {
+        boolean landscape = getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+        miniPlayerSuppressed = suppressed && landscape;
+        applyMiniPlayerVisibility();
+    }
+
+    private void applyMiniPlayerVisibility() {
+        if (miniPlayerRoot == null) {
+            return;
+        }
+        if (miniPlayerSuppressed) {
+            miniPlayerRoot.setVisibility(View.GONE);
+        } else {
+            updateMiniPlayer(musicPlayerManager.getCurrentSong());
         }
     }
 
