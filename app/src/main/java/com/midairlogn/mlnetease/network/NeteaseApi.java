@@ -263,7 +263,7 @@ public class NeteaseApi {
 
                 JSONObject album = json.optJSONObject("album");
                 if (album == null) {
-                    postError(callback, context.getString(R.string.album_not_found));
+                    postError(callGroup, callback, context.getString(R.string.album_not_found));
                     return;
                 }
 
@@ -333,7 +333,7 @@ public class NeteaseApi {
                 JSONObject json1 = new JSONObject(body1);
 
                 if (!json1.has("playlist")) {
-                    postError(callback, context.getString(R.string.playlist_not_found));
+                    postError(callGroup, callback, context.getString(R.string.playlist_not_found));
                     return;
                 }
 
@@ -616,14 +616,6 @@ public class NeteaseApi {
             }
         });
         return callGroup;
-    }
-
-    private void postSuccess(ApiCallback callback, String result) {
-        mainHandler.post(() -> callback.onSuccess(result));
-    }
-
-    private void postError(ApiCallback callback, String error) {
-        mainHandler.post(() -> callback.onError(error));
     }
 
     /** Re-checks cancellation inside the posted runnable: cancel() can race the post
