@@ -281,6 +281,9 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
                 mainHandler.post(() -> {
                     shareInProgress.set(false);
                     if (isFinishing() || isDestroyed()) {
+                        // Nobody is left to share through; don't orphan the
+                        // prepared file in the share cache directory.
+                        preparedAudioFile.file.delete();
                         return;
                     }
                     dismissShareProgressDialog();

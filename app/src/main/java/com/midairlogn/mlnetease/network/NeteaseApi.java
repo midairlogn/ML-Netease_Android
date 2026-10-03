@@ -321,6 +321,9 @@ public class NeteaseApi {
         CallGroup callGroup = new CallGroup();
         apiExecutor.execute(() -> {
             try {
+                if (callGroup.isCanceled()) {
+                    return;
+                }
                 // 1. Get Playlist Info
                 Request req1 = getBrowserBuilder("https://music.163.com/api/v6/playlist/detail")
                         .post(new FormBody.Builder().add("id", id).build())
