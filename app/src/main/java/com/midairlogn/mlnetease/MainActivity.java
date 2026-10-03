@@ -3,6 +3,8 @@ package com.midairlogn.mlnetease;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
+
+import java.lang.ref.WeakReference;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
@@ -710,17 +712,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
 
         if (AppShortcutController.ACTION_PLAY_FAVOURITES.equals(action)) {
             switchToTab(TAB_HOME);
-            ShortcutPlaybackLauncher.playFavourites(getApplicationContext(), new ShortcutPlaybackLauncher.PlaybackCallback() {
-                @Override
-                public void onStarted() {
-                    clearHandledIntent(intent);
-                }
-
-                @Override
-                public void onError() {
-                    clearHandledIntent(intent);
-                }
-            });
+            ShortcutPlaybackLauncher.playFavourites(getApplicationContext(), shortcutResultCallback(intent));
             return;
         }
 
@@ -735,17 +727,36 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
                 clearHandledIntent(intent);
                 return;
             }
-            ShortcutPlaybackLauncher.playHomeShortcut(getApplicationContext(), shortcut, new ShortcutPlaybackLauncher.PlaybackCallback() {
-                @Override
-                public void onStarted() {
-                    clearHandledIntent(intent);
-                }
+            ShortcutPlaybackLauncher.playHomeShortcut(getApplicationContext(), shortcut, shortcutResultCallback(intent));
+        }
+    }
 
-                @Override
-                public void onError() {
-                    clearHandledIntent(intent);
-                }
-            });
+    /**
+     * Shortcut launches resolve asynchronously and their callbacks live until the
+     * underlying playlist/album fetch finishes. Reach them through a weak reference
+     * so a destroyed activity is not retained for the duration of the fetch; when
+     * the activity is already gone there is nothing left to clear (a relaunch gets
+     * a fresh intent from the system).
+     */
+    private ShortcutPlaybackLauncher.PlaybackCallback shortcutResultCallback(Intent intent) {
+        WeakReference<MainActivity> activityRef = new WeakReference<>(this);
+        return new ShortcutPlaybackLauncher.PlaybackCallback() {
+            @Override
+            public void onStarted() {
+                clearShortcutResult(activityRef, intent);
+            }
+
+            @Override
+            public void onError() {
+                clearShortcutResult(activityRef, intent);
+            }
+        };
+    }
+
+    private void clearShortcutResult(WeakReference<MainActivity> activityRef, Intent intent) {
+        MainActivity activity = activityRef.get();
+        if (activity != null) {
+            activity.clearHandledIntent(intent);
         }
     }
 

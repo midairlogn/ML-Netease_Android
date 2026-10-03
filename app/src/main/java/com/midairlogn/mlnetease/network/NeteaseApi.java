@@ -307,10 +307,10 @@ public class NeteaseApi {
                 result.put("album", info);
                 result.put("status", 200);
 
-                postSuccess(callback, result.toString());
+                postSuccess(callGroup, callback, result.toString());
             } catch (Exception e) {
                 if (!callGroup.isCanceled()) {
-                    postError(callback, e.getMessage());
+                    postError(callGroup, callback, e.getMessage());
                 }
             }
         });
@@ -410,11 +410,11 @@ public class NeteaseApi {
                 result.put("songs", allSongs); // Add processed songs
                 result.put("status", 200);
 
-                postSuccess(callback, result.toString());
+                postSuccess(callGroup, callback, result.toString());
 
             } catch (Exception e) {
                 if (!callGroup.isCanceled()) {
-                    postError(callback, e.getMessage());
+                    postError(callGroup, callback, e.getMessage());
                 }
             }
         });
@@ -540,7 +540,7 @@ public class NeteaseApi {
                     }
                 } else {
                     // No song details found, invalid ID
-                    postError(callback, context.getString(R.string.song_not_found));
+                    postError(callGroup, callback, context.getString(R.string.song_not_found));
                     return;
                 }
                 jsonDetail = null;
@@ -557,11 +557,11 @@ public class NeteaseApi {
                 result.put("id", id);
                 result.put("status", 200);
 
-                postSuccess(callback, result.toString());
+                postSuccess(callGroup, callback, result.toString());
 
             } catch (Exception e) {
                 if (!callGroup.isCanceled()) {
-                    postError(callback, e.getMessage());
+                    postError(callGroup, callback, e.getMessage());
                 }
             }
         });
@@ -596,21 +596,22 @@ public class NeteaseApi {
             @Override
             public void onFailure(Call call, IOException e) {
                 callGroup.unregister(call);
-                if (!callGroup.isCanceled()) {
-                    postError(callback, e.getMessage());
-                }
+                postError(callGroup, callback, e.getMessage());
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 callGroup.unregister(call);
-                if (callGroup.isCanceled()) {
-                    return;
-                }
-                if (response.isSuccessful()) {
-                    postSuccess(callback, response.body().string());
-                } else {
-                    postError(callback, context.getString(R.string.title_http_error) + response.code());
+                try (Response ignored = response) {
+                    if (callGroup.isCanceled()) {
+                        return;
+                    }
+                    if (response.isSuccessful()) {
+                        ResponseBody body = response.body();
+                        postSuccess(callGroup, callback, body == null ? "" : body.string());
+                    } else {
+                        postError(callGroup, callback, context.getString(R.string.title_http_error) + response.code());
+                    }
                 }
             }
         });
@@ -623,5 +624,24 @@ public class NeteaseApi {
 
     private void postError(ApiCallback callback, String error) {
         mainHandler.post(() -> callback.onError(error));
+    }
+
+    /** Re-checks cancellation inside the posted runnable: cancel() can race the post
+     *  (worker passes isCanceled(), the callback is enqueued, then cancel() lands on
+     *  the main thread before the runnable executes). */
+    private void postSuccess(CallGroup callGroup, ApiCallback callback, String result) {
+        mainHandler.post(() -> {
+            if (!callGroup.isCanceled()) {
+                callback.onSuccess(result);
+            }
+        });
+    }
+
+    private void postError(CallGroup callGroup, ApiCallback callback, String error) {
+        mainHandler.post(() -> {
+            if (!callGroup.isCanceled()) {
+                callback.onError(error);
+            }
+        });
     }
 }
