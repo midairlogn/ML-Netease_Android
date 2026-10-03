@@ -103,7 +103,6 @@ public class MusicPlayerManager {
     private volatile boolean isAutoSkipping = false;
     private int continuousSkipCount = 0;
     private Runnable pendingSongNotifyRunnable;
-    private Runnable pendingFullInfoNotifyRunnable;
     private static final int NOTIFY_DEBOUNCE_MS = 500;
 
     // Callbacks
@@ -582,10 +581,6 @@ public class MusicPlayerManager {
         if (pendingSongNotifyRunnable != null) {
             mainHandler.removeCallbacks(pendingSongNotifyRunnable);
             pendingSongNotifyRunnable = null;
-        }
-        if (pendingFullInfoNotifyRunnable != null) {
-            mainHandler.removeCallbacks(pendingFullInfoNotifyRunnable);
-            pendingFullInfoNotifyRunnable = null;
         }
         play(index, false);
     }
@@ -1389,12 +1384,19 @@ public class MusicPlayerManager {
             if (pendingSongNotifyRunnable != null) {
                 mainHandler.removeCallbacks(pendingSongNotifyRunnable);
             }
-            pendingSongNotifyRunnable = () -> {
-                for (OnSongChangedListener listener : songChangedListeners) {
-                    listener.onSongChanged(song);
+            Runnable notifyTask = new Runnable() {
+                @Override
+                public void run() {
+                    if (pendingSongNotifyRunnable == this) {
+                        pendingSongNotifyRunnable = null;
+                    }
+                    for (OnSongChangedListener listener : songChangedListeners) {
+                        listener.onSongChanged(song);
+                    }
                 }
             };
-            mainHandler.postDelayed(pendingSongNotifyRunnable, NOTIFY_DEBOUNCE_MS);
+            pendingSongNotifyRunnable = notifyTask;
+            mainHandler.postDelayed(notifyTask, NOTIFY_DEBOUNCE_MS);
         } else {
             runOnMainThread(() -> {
                 for (OnSongChangedListener listener : songChangedListeners) {

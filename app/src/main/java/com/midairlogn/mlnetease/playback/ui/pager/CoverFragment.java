@@ -20,6 +20,7 @@ import com.midairlogn.mlnetease.shared.model.Song;
 public class CoverFragment extends Fragment implements MusicPlayerManager.OnSongChangedListener, MusicPlayerManager.OnFullInfoAvailableListener {
 
     private ImageView albumCover;
+    private MusicPlayerManager musicPlayerManager;
     private String currentUrl;
     private String currentEmbeddedCacheKey;
     private boolean isPlaceholder = true;
@@ -41,7 +42,7 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
                 intent.putExtra("url", currentUrl);
                 if (currentEmbeddedCacheKey != null) {
                     intent.putExtra("embedded_cache_key", currentEmbeddedCacheKey);
-                    Song current = MusicPlayerManager.getInstance(getContext()).getCurrentSong();
+                    Song current = musicPlayerManager.getCurrentSong();
                     if (current != null && current.embeddedPicture != null) {
                         String key = ImageManager.storePendingEmbeddedBytes(current.embeddedPicture);
                         intent.putExtra("embedded_bytes_key", key);
@@ -52,10 +53,10 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
             }
         });
 
-        MusicPlayerManager manager = MusicPlayerManager.getInstance(getContext());
-        manager.addOnSongChangedListener(this);
-        manager.addOnFullInfoAvailableListener(this);
-        Song current = manager.getCurrentSong();
+        musicPlayerManager = MusicPlayerManager.getInstance(requireContext());
+        musicPlayerManager.addOnSongChangedListener(this);
+        musicPlayerManager.addOnFullInfoAvailableListener(this);
+        Song current = musicPlayerManager.getCurrentSong();
         if (current != null) {
             updateCover(current);
         }
@@ -64,8 +65,12 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        MusicPlayerManager.getInstance(getContext()).removeOnSongChangedListener(this);
-        MusicPlayerManager.getInstance(getContext()).removeOnFullInfoAvailableListener(this);
+        if (musicPlayerManager != null) {
+            musicPlayerManager.removeOnSongChangedListener(this);
+            musicPlayerManager.removeOnFullInfoAvailableListener(this);
+            musicPlayerManager = null;
+        }
+        albumCover = null;
         currentEmbeddedCacheKey = null;
     }
 
@@ -84,6 +89,9 @@ public class CoverFragment extends Fragment implements MusicPlayerManager.OnSong
     }
 
     private void updateCover(Song song) {
+        if (albumCover == null || song == null) {
+            return;
+        }
         if (song.embeddedPicture != null && song.embeddedPicture.length > 0) {
             currentEmbeddedCacheKey = "embedded:" + song.id;
             ImageManager.getInstance().loadOriginalEmbedded(currentEmbeddedCacheKey, song.embeddedPicture, albumCover, R.drawable.ic_ml_app_logo_foreground);

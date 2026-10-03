@@ -279,15 +279,21 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerMana
                 );
                 Uri uri = songShareHelper.getSharableUri(preparedAudioFile.file);
                 mainHandler.post(() -> {
+                    shareInProgress.set(false);
+                    if (isFinishing() || isDestroyed()) {
+                        return;
+                    }
                     dismissShareProgressDialog();
                     ShareUtils.shareAudio(this, getString(R.string.share_song), uri, preparedAudioFile.mimeType);
-                    shareInProgress.set(false);
                 });
             } catch (Exception e) {
                 mainHandler.post(() -> {
+                    shareInProgress.set(false);
+                    if (isFinishing() || isDestroyed()) {
+                        return;
+                    }
                     dismissShareProgressDialog();
                     Toast.makeText(this, getString(R.string.share_audio_failed) + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    shareInProgress.set(false);
                 });
             }
         });

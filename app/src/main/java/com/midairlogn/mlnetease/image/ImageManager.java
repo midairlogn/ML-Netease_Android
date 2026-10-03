@@ -713,6 +713,11 @@ public class ImageManager {
         } else if (level == android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
             memoryCache.trimToSize(memoryCache.maxSize() / 2);
             encodedMemoryCache.trimToSize(encodedMemoryCache.maxSize() / 2);
+            // The 2048px original bitmap and the retained encoded payload of the
+            // current track can hold tens of MB; drop them while the UI is hidden
+            // (playback artwork re-fetches from the halved LRU or network on return).
+            clearRetainedOriginalBitmap();
+            clearRetainedPlaybackEncoded();
         } else if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
             memoryCache.trimToSize(memoryCache.maxSize() / 2);
             encodedMemoryCache.trimToSize(encodedMemoryCache.maxSize() / 2);

@@ -77,8 +77,27 @@ public class HomeFragment extends Fragment {
     private static final long CLICK_DEBOUNCE_DELAY = 1000;
     private static final long IME_DISMISS_GUARD_MS = 350;
 
+    // In-flight network requests whose callbacks capture this fragment. Tracked so
+    // they can be canceled when the view (or a superseding request) goes away;
+    // otherwise a slow playlist fetch keeps the destroyed fragment + view tree
+    // alive until every request in the chain times out.
+    private final List<NeteaseApi.CancelableRequest> activeRequests = new ArrayList<>();
+
     /** Until this uptime, stray DOWN/focus events right after the IME opens cannot dismiss it (landscape resize quirk). */
     private long keyboardShowGuardUntil;
+
+    private void trackRequest(NeteaseApi.CancelableRequest request) {
+        if (request != null && request != NeteaseApi.CancelableRequest.NONE) {
+            activeRequests.add(request);
+        }
+    }
+
+    private void cancelActiveRequests() {
+        for (NeteaseApi.CancelableRequest request : activeRequests) {
+            request.cancel();
+        }
+        activeRequests.clear();
+    }
 
     @Nullable
     @Override
@@ -348,6 +367,7 @@ public class HomeFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        cancelActiveRequests();
         MiniPlayerImeHelper.setSuppressed(this, false);
     }
 
@@ -375,13 +395,14 @@ public class HomeFragment extends Fragment {
         String input = searchInput.getText().toString().trim();
         if (input.isEmpty()) return;
 
+        cancelActiveRequests();
         int checkedId = searchTypeGroup.getCheckedRadioButtonId();
         if (checkedId == R.id.radio_song) {
             String extractedId = extractId(input);
             boolean isIdOrUrl = input.contains("music.163.com") || input.matches("\\d+");
 
             if (isIdOrUrl) {
-                neteaseApi.getSongFullInfo(extractedId, new NeteaseApi.ApiCallback() {
+                trackRequest(neteaseApi.getSongFullInfo(extractedId, new NeteaseApi.ApiCallback() {
                     @Override
                     public void onSuccess(String result) {
                         try {
@@ -390,7 +411,7 @@ public class HomeFragment extends Fragment {
                                 parseSongIdResult(result);
                             } else {
                                 // Fallback to keyword search
-                                neteaseApi.search(input, new NeteaseApi.ApiCallback() {
+                                trackRequest(neteaseApi.search(input, new NeteaseApi.ApiCallback() {
                                     @Override
                                     public void onSuccess(String result) {
                                         parseSearchResult(result);
@@ -400,12 +421,12 @@ public class HomeFragment extends Fragment {
                                     public void onError(String error) {
                                         showErrorToast(error);
                                     }
-                                });
+                                }));
                             }
                         } catch (Exception e) {
                             Log.w(TAG, "parse song full info failed", e);
                             // Fallback to keyword search
-                            neteaseApi.search(input, new NeteaseApi.ApiCallback() {
+                            trackRequest(neteaseApi.search(input, new NeteaseApi.ApiCallback() {
                                 @Override
                                 public void onSuccess(String result) {
                                     parseSearchResult(result);
@@ -415,14 +436,14 @@ public class HomeFragment extends Fragment {
                                 public void onError(String error) {
                                     showErrorToast(error);
                                 }
-                            });
+                            }));
                         }
                     }
 
                     @Override
                     public void onError(String error) {
                         // Fallback to keyword search
-                        neteaseApi.search(input, new NeteaseApi.ApiCallback() {
+                        trackRequest(neteaseApi.search(input, new NeteaseApi.ApiCallback() {
                             @Override
                             public void onSuccess(String result) {
                                 parseSearchResult(result);
@@ -432,11 +453,11 @@ public class HomeFragment extends Fragment {
                             public void onError(String error) {
                                 showErrorToast(error);
                             }
-                        });
+                        }));
                     }
-                });
+                }));
             } else {
-                neteaseApi.search(input, new NeteaseApi.ApiCallback() {
+                trackRequest(neteaseApi.search(input, new NeteaseApi.ApiCallback() {
                     @Override
                     public void onSuccess(String result) {
                         parseSearchResult(result);
@@ -446,13 +467,13 @@ public class HomeFragment extends Fragment {
                     public void onError(String error) {
                         showErrorToast(error);
                     }
-                });
+                }));
             }
         } else if (checkedId == R.id.radio_playlist) {
             String id = extractId(input);
             lastSearchedId = id;
             lastSearchedType = "playlist";
-            neteaseApi.playlistDetail(id, new NeteaseApi.ApiCallback() {
+            trackRequest(neteaseApi.playlistDetail(id, new NeteaseApi.ApiCallback() {
                 @Override
                 public void onSuccess(String result) {
                     parsePlaylistResult(result, false);
@@ -462,12 +483,12 @@ public class HomeFragment extends Fragment {
                 public void onError(String error) {
                     showErrorToast(error);
                 }
-            });
+            }));
         } else if (checkedId == R.id.radio_album) {
             String id = extractId(input);
             lastSearchedId = id;
             lastSearchedType = "album";
-            neteaseApi.albumDetail(id, new NeteaseApi.ApiCallback() {
+            trackRequest(neteaseApi.albumDetail(id, new NeteaseApi.ApiCallback() {
                 @Override
                 public void onSuccess(String result) {
                     parseAlbumResult(result, false);
@@ -477,7 +498,7 @@ public class HomeFragment extends Fragment {
                 public void onError(String error) {
                     showErrorToast(error);
                 }
-            });
+            }));
         }
     }
 
@@ -563,9 +584,10 @@ public class HomeFragment extends Fragment {
     private void executeShortcut(HomeShortcut shortcut) {
         hideKeyboard(getView());
         searchInput.clearFocus();
+        cancelActiveRequests();
 
         if (shortcut.isPlaylist()) {
-            neteaseApi.playlistDetail(shortcut.id, new NeteaseApi.ApiCallback() {
+            trackRequest(neteaseApi.playlistDetail(shortcut.id, new NeteaseApi.ApiCallback() {
                 @Override
                 public void onSuccess(String result) {
                     parsePlaylistResult(result, true);
@@ -575,9 +597,9 @@ public class HomeFragment extends Fragment {
                 public void onError(String error) {
                     showErrorToast(error);
                 }
-            });
+            }));
         } else if (shortcut.isAlbum()) {
-            neteaseApi.albumDetail(shortcut.id, new NeteaseApi.ApiCallback() {
+            trackRequest(neteaseApi.albumDetail(shortcut.id, new NeteaseApi.ApiCallback() {
                 @Override
                 public void onSuccess(String result) {
                     parseAlbumResult(result, true);
@@ -587,7 +609,7 @@ public class HomeFragment extends Fragment {
                 public void onError(String error) {
                     showErrorToast(error);
                 }
-            });
+            }));
         }
     }
 

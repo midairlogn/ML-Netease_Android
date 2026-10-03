@@ -80,6 +80,8 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
     private boolean miniPlayerSuppressed = false;
     private boolean sawImeSinceSuppress = false;
     private boolean imeHideRestorePending = false;
+    private Runnable imeHideRestoreRunnable;
+    private View imeHideRestoreHost;
 
     private MusicPlayerManager musicPlayerManager;
     private String currentCoverUrl;
@@ -492,18 +494,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
                 if (windowInsets.isVisible(WindowInsetsCompat.Type.ime())) {
                     sawImeSinceSuppress = true;
                 } else if (sawImeSinceSuppress && !imeHideRestorePending) {
-                    imeHideRestorePending = true;
-                    v.postDelayed(() -> {
-                        imeHideRestorePending = false;
-                        if (!miniPlayerSuppressed || v.getRootWindowInsets() == null) {
-                            return;
-                        }
-                        boolean imeVisibleNow = WindowInsetsCompat.toWindowInsetsCompat(v.getRootWindowInsets())
-                                .isVisible(WindowInsetsCompat.Type.ime());
-                        if (!imeVisibleNow) {
-                            setMiniPlayerSuppressed(false);
-                        }
-                    }, 400);
+                    scheduleImeHideRestore(v);
                 }
             }
             return windowInsets;
@@ -513,6 +504,39 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         musicPlayerManager.addOnSongChangedListener(this);
         musicPlayerManager.addOnPlaybackStateChangedListener(this);
         musicPlayerManager.addOnFullInfoAvailableListener(this);
+    }
+
+    private void scheduleImeHideRestore(View host) {
+        cancelPendingImeHideRestore();
+        imeHideRestorePending = true;
+        imeHideRestoreHost = host;
+        imeHideRestoreRunnable = () -> {
+            imeHideRestorePending = false;
+            imeHideRestoreRunnable = null;
+            View runnableHost = imeHideRestoreHost;
+            imeHideRestoreHost = null;
+            if (isFinishing() || isDestroyed() || runnableHost == null) {
+                return;
+            }
+            if (!miniPlayerSuppressed || runnableHost.getRootWindowInsets() == null) {
+                return;
+            }
+            boolean imeVisibleNow = WindowInsetsCompat.toWindowInsetsCompat(runnableHost.getRootWindowInsets())
+                    .isVisible(WindowInsetsCompat.Type.ime());
+            if (!imeVisibleNow) {
+                setMiniPlayerSuppressed(false);
+            }
+        };
+        host.postDelayed(imeHideRestoreRunnable, 400);
+    }
+
+    private void cancelPendingImeHideRestore() {
+        if (imeHideRestoreRunnable != null && imeHideRestoreHost != null) {
+            imeHideRestoreHost.removeCallbacks(imeHideRestoreRunnable);
+        }
+        imeHideRestoreRunnable = null;
+        imeHideRestoreHost = null;
+        imeHideRestorePending = false;
     }
 
     private void updateMiniPlayer(Song song) {
@@ -579,6 +603,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
 
     @Override
     protected void onDestroy() {
+        cancelPendingImeHideRestore();
         if (activeDialog != null && activeDialog.isShowing()) {
             activeDialog.dismiss();
         }
@@ -685,7 +710,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
 
         if (AppShortcutController.ACTION_PLAY_FAVOURITES.equals(action)) {
             switchToTab(TAB_HOME);
-            ShortcutPlaybackLauncher.playFavourites(this, new ShortcutPlaybackLauncher.PlaybackCallback() {
+            ShortcutPlaybackLauncher.playFavourites(getApplicationContext(), new ShortcutPlaybackLauncher.PlaybackCallback() {
                 @Override
                 public void onStarted() {
                     clearHandledIntent(intent);
@@ -710,7 +735,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
                 clearHandledIntent(intent);
                 return;
             }
-            ShortcutPlaybackLauncher.playHomeShortcut(this, shortcut, new ShortcutPlaybackLauncher.PlaybackCallback() {
+            ShortcutPlaybackLauncher.playHomeShortcut(getApplicationContext(), shortcut, new ShortcutPlaybackLauncher.PlaybackCallback() {
                 @Override
                 public void onStarted() {
                     clearHandledIntent(intent);

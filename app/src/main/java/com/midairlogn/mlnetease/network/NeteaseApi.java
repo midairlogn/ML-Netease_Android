@@ -150,7 +150,7 @@ public class NeteaseApi {
         return builder;
     }
 
-    public void search(String keyword, ApiCallback callback) {
+    public CancelableRequest search(String keyword, ApiCallback callback) {
         String limit = String.valueOf(settingsManager.getSearchLimit());
         FormBody body = new FormBody.Builder()
                 .add("s", keyword)
@@ -162,7 +162,7 @@ public class NeteaseApi {
                 .post(body)
                 .build();
 
-        execute(request, callback);
+        return execute(request, callback);
     }
 
     public void songDetail(String ids, ApiCallback callback) {
@@ -245,14 +245,20 @@ public class NeteaseApi {
         execute(request, callback);
     }
 
-    public void albumDetail(String id, ApiCallback callback) {
+    public CancelableRequest albumDetail(String id, ApiCallback callback) {
+        CallGroup callGroup = new CallGroup();
         apiExecutor.execute(() -> {
             try {
+                if (callGroup.isCanceled()) {
+                    return;
+                }
                 Request request = getBrowserBuilder("https://music.163.com/api/v1/album/" + id)
                         .get()
                         .build();
-                Response response = client.newCall(request).execute();
-                String body = response.body().string();
+                String body = executeSync(client.newCall(request), callGroup);
+                if (callGroup.isCanceled()) {
+                    return;
+                }
                 JSONObject json = new JSONObject(body);
 
                 JSONObject album = json.optJSONObject("album");
@@ -303,12 +309,16 @@ public class NeteaseApi {
 
                 postSuccess(callback, result.toString());
             } catch (Exception e) {
-                postError(callback, e.getMessage());
+                if (!callGroup.isCanceled()) {
+                    postError(callback, e.getMessage());
+                }
             }
         });
+        return callGroup;
     }
 
-    public void playlistDetail(String id, ApiCallback callback) {
+    public CancelableRequest playlistDetail(String id, ApiCallback callback) {
+        CallGroup callGroup = new CallGroup();
         apiExecutor.execute(() -> {
             try {
                 // 1. Get Playlist Info
@@ -316,8 +326,10 @@ public class NeteaseApi {
                         .post(new FormBody.Builder().add("id", id).build())
                         .build();
 
-                Response res1 = client.newCall(req1).execute();
-                String body1 = res1.body().string();
+                String body1 = executeSync(client.newCall(req1), callGroup);
+                if (callGroup.isCanceled()) {
+                    return;
+                }
                 JSONObject json1 = new JSONObject(body1);
 
                 if (!json1.has("playlist")) {
@@ -360,8 +372,11 @@ public class NeteaseApi {
                             .post(songBody)
                             .build();
 
-                    Response songRes = client.newCall(songReq).execute();
-                    JSONObject songJson = new JSONObject(songRes.body().string());
+                    String songBodyStr = executeSync(client.newCall(songReq), callGroup);
+                    if (callGroup.isCanceled()) {
+                        return;
+                    }
+                    JSONObject songJson = new JSONObject(songBodyStr);
 
                     if (songJson.has("songs")) {
                         JSONArray songs = songJson.getJSONArray("songs");
@@ -398,9 +413,12 @@ public class NeteaseApi {
                 postSuccess(callback, result.toString());
 
             } catch (Exception e) {
-                postError(callback, e.getMessage());
+                if (!callGroup.isCanceled()) {
+                    postError(callback, e.getMessage());
+                }
             }
         });
+        return callGroup;
     }
 
     public CancelableRequest getSongFullInfo(String id, ApiCallback callback) {
@@ -551,7 +569,11 @@ public class NeteaseApi {
     }
 
     private String executeSync(Request request, CallGroup callGroup) throws IOException {
-        Call call = callGroup.register(client.newCall(request));
+        return executeSync(client.newCall(request), callGroup);
+    }
+
+    private String executeSync(Call call, CallGroup callGroup) throws IOException {
+        callGroup.register(call);
         try (Response response = call.execute()) {
             if (!response.isSuccessful()) {
                 throw new IOException(context.getString(R.string.title_http_error) + response.code());
@@ -566,15 +588,25 @@ public class NeteaseApi {
         }
     }
 
-    private void execute(Request request, ApiCallback callback) {
-        client.newCall(request).enqueue(new Callback() {
+    private CancelableRequest execute(Request request, ApiCallback callback) {
+        CallGroup callGroup = new CallGroup();
+        Call call = client.newCall(request);
+        callGroup.register(call);
+        call.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                postError(callback, e.getMessage());
+                callGroup.unregister(call);
+                if (!callGroup.isCanceled()) {
+                    postError(callback, e.getMessage());
+                }
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
+                callGroup.unregister(call);
+                if (callGroup.isCanceled()) {
+                    return;
+                }
                 if (response.isSuccessful()) {
                     postSuccess(callback, response.body().string());
                 } else {
@@ -582,6 +614,7 @@ public class NeteaseApi {
                 }
             }
         });
+        return callGroup;
     }
 
     private void postSuccess(ApiCallback callback, String result) {
