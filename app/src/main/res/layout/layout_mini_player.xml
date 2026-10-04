@@ -18,7 +18,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <!-- Album Art Thumbnail -->
-    <ImageView
+    <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/mini_player_thumb"
         android:layout_width="44dp"
         android:layout_height="44dp"
@@ -27,6 +27,7 @@
         android:scaleType="centerCrop"
         android:src="@drawable/ic_music_note"
         android:background="@android:color/transparent"
+        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.CoverSmall"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
