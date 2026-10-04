@@ -16,12 +16,10 @@
         android:layout_width="52dp"
         android:layout_height="52dp"
         android:layout_marginEnd="12dp"
-        android:background="@drawable/search_background"
         android:contentDescription="@string/download"
-        android:padding="2dp"
         android:scaleType="centerCrop"
         android:src="@drawable/ic_ml_app_logo_foreground"
-        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.CoverFramed" />
+        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.CoverSmall" />
 
     <LinearLayout
         android:layout_width="0dp"

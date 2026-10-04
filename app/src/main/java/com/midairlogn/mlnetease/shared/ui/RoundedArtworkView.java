@@ -37,6 +37,10 @@ public class RoundedArtworkView extends AppCompatImageView {
 
     @Override
     protected void onDraw(Canvas canvas) {
+        if (getScaleType() != ScaleType.FIT_CENTER) {
+            super.onDraw(canvas);
+            return;
+        }
         Drawable drawable = getDrawable();
         Bitmap bitmap = drawable instanceof BitmapDrawable ? ((BitmapDrawable) drawable).getBitmap() : null;
         if (bitmap == null || bitmap.getWidth() == 0 || bitmap.getHeight() == 0
