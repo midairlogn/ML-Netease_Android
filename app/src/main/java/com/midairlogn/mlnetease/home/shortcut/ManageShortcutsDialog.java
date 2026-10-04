@@ -2,7 +2,9 @@ package com.midairlogn.mlnetease.home.shortcut;
 
 import android.app.Dialog;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -165,7 +167,9 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
         }
         editDialog = new Dialog(getContext());
         editDialog.setContentView(R.layout.dialog_edit_home_shortcut);
-        editDialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT);
+        editDialog.getWindow().setLayout(
+                isLandscape() ? landscapeDialogWidthPx() : WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.WRAP_CONTENT);
         editDialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         editDialog.setOnDismissListener(dialog -> {
             if (this.editDialog == dialog) {
@@ -282,8 +286,29 @@ public class ManageShortcutsDialog extends DialogFragment implements ShortcutAda
     public void onStart() {
         super.onStart();
         if (getDialog() != null && getDialog().getWindow() != null) {
-            getDialog().getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
+            if (isLandscape()) {
+                // Float as a centered panel instead of stretching across the screen.
+                getDialog().getWindow().setLayout(landscapeDialogWidthPx(), landscapeDialogHeightPx());
+            } else {
+                getDialog().getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
+            }
         }
+    }
+
+    private boolean isLandscape() {
+        return getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+    }
+
+    private int landscapeDialogWidthPx() {
+        DisplayMetrics metrics = getResources().getDisplayMetrics();
+        int cap = Math.round(560f * metrics.density);
+        return Math.min(metrics.widthPixels - Math.round(32f * metrics.density), cap);
+    }
+
+    private int landscapeDialogHeightPx() {
+        DisplayMetrics metrics = getResources().getDisplayMetrics();
+        int cap = Math.round(640f * metrics.density);
+        return Math.min(metrics.heightPixels - Math.round(48f * metrics.density), cap);
     }
 
     @Override
