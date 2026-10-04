@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace 'com.midairlogn.mlnetease'
+    namespace = 'com.midairlogn.mlnetease'
     compileSdk 36
 
     defaultConfig {
@@ -20,7 +20,7 @@ android {
     buildTypes {
         release {
             minifyEnabled true
-            shrinkResources true
+            shrinkResources = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -30,7 +30,7 @@ android {
     }
 
     buildFeatures {
-        buildConfig true
+        buildConfig = true
     }
 }
 
