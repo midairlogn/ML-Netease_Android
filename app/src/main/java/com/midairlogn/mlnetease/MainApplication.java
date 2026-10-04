@@ -4,8 +4,11 @@ import android.app.Application;
 import android.app.Activity;
 import android.os.Bundle;
 
+import androidx.appcompat.app.AppCompatDelegate;
+
 import com.midairlogn.mlnetease.download.core.DownloadTaskManager;
 import com.midairlogn.mlnetease.image.ImageManager;
+import com.midairlogn.mlnetease.settings.SettingsManager;
 import com.midairlogn.mlnetease.sharing.ShareCacheCleaner;
 
 import java.util.ArrayList;
@@ -26,6 +29,8 @@ public class MainApplication extends Application implements Application.Activity
     @Override
     public void onCreate() {
         super.onCreate();
+        AppCompatDelegate.setDefaultNightMode(
+                SettingsManager.resolveNightMode(new SettingsManager(this).getAppTheme()));
         registerActivityLifecycleCallbacks(this);
         DownloadTaskManager taskManager = DownloadTaskManager.getInstance(this);
         if (taskManager.hasWaitingOrActiveWork()) {

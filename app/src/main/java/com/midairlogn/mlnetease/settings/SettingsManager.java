@@ -47,6 +47,7 @@ public class SettingsManager {
     private static final String KEY_HOME_SHORTCUTS = "home_shortcuts";
     private static final String KEY_FAVOURITE_SONGS = "favourite_songs";
     private static final String KEY_APP_LANGUAGE = "app_language";
+    private static final String KEY_APP_THEME = "app_theme";
     private static final String KEY_HEARING_PROTECTION_ENABLED = "hearing_protection_enabled";
     private static final String KEY_HEARING_PROTECTION_LISTEN_MINUTES = "hearing_protection_listen_minutes";
     private static final String KEY_HEARING_PROTECTION_REST_MINUTES = "hearing_protection_rest_minutes";
@@ -518,6 +519,28 @@ public class SettingsManager {
 
     public String getAppLanguage() {
         return prefs.getString(KEY_APP_LANGUAGE, "system"); // Default to system language
+    }
+
+    public void setAppTheme(String theme) {
+        String value = theme == null ? "system" : theme;
+        if (value.equals(getAppTheme())) {
+            return;
+        }
+        prefs.edit().putString(KEY_APP_THEME, value).apply();
+    }
+
+    public String getAppTheme() {
+        return normalizeTheme(prefs.getString(KEY_APP_THEME, "system")); // Default to system theme
+    }
+
+    public static int resolveNightMode(String theme) {
+        if ("light".equals(theme)) {
+            return androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO;
+        }
+        if ("dark".equals(theme)) {
+            return androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES;
+        }
+        return androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
     }
 
     public void setHearingProtectionEnabled(boolean enabled) {
@@ -1084,6 +1107,7 @@ public class SettingsManager {
         json.put(KEY_HOME_SHORTCUTS, serializeHomeShortcuts());
         json.put(KEY_FAVOURITE_SONGS, serializeFavouriteSongs());
         json.put(KEY_APP_LANGUAGE, getAppLanguage());
+        json.put(KEY_APP_THEME, getAppTheme());
         json.put(KEY_DOWNLOAD_FILENAME_TEMPLATE, getDownloadFileNameTemplate());
         json.put(KEY_DOWNLOAD_FILENAME_SEPARATOR, getDownloadFileNameSeparator());
         json.put(KEY_DOWNLOAD_METADATA_ENABLED, isDownloadMetadataEnabled());
@@ -1127,6 +1151,7 @@ public class SettingsManager {
         importHomeShortcuts(json.optJSONArray(KEY_HOME_SHORTCUTS));
         importFavouriteSongs(json.optJSONArray(KEY_FAVOURITE_SONGS));
         setAppLanguage(normalizeLanguage(json.optString(KEY_APP_LANGUAGE, "system")));
+        setAppTheme(normalizeTheme(json.optString(KEY_APP_THEME, "system")));
 
         DownloadCustomizationSettings downloadSettings = new DownloadCustomizationSettings();
         downloadSettings.fileNameTemplate = json.optString(KEY_DOWNLOAD_FILENAME_TEMPLATE, DEFAULT_DOWNLOAD_FILENAME_TEMPLATE);
@@ -1312,6 +1337,13 @@ public class SettingsManager {
     private String normalizeLanguage(String language) {
         if ("en".equals(language) || "zh".equals(language)) {
             return language;
+        }
+        return "system";
+    }
+
+    private String normalizeTheme(String theme) {
+        if ("light".equals(theme) || "dark".equals(theme)) {
+            return theme;
         }
         return "system";
     }

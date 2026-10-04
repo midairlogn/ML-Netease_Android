@@ -89,6 +89,7 @@ public class SettingsFragment extends Fragment {
     private TextView textAppVolumeValue;
     private Switch switchDynamicVolume;
     private Spinner spinnerLanguage;
+    private Spinner spinnerTheme;
     private View layoutDownloadCustomize;
     private TextView textDownloadCustomizeSummary;
     private Switch switchHearingProtection;
@@ -132,6 +133,7 @@ public class SettingsFragment extends Fragment {
 
     private SharedPreferences.OnSharedPreferenceChangeListener preferenceChangeListener;
     private boolean isUpdatingLanguageSpinner;
+    private boolean isUpdatingThemeSpinner;
     private boolean isRefreshingSettingsUi;
     private AlertDialog activeDialog;
 
@@ -205,6 +207,7 @@ public class SettingsFragment extends Fragment {
         textAppVolumeValue = view.findViewById(R.id.text_app_volume_value);
         switchDynamicVolume = view.findViewById(R.id.switch_dynamic_volume);
         spinnerLanguage = view.findViewById(R.id.spinner_language);
+        spinnerTheme = view.findViewById(R.id.spinner_theme);
         layoutDownloadCustomize = view.findViewById(R.id.layout_download_customize);
         textDownloadCustomizeSummary = view.findViewById(R.id.text_download_customize_summary);
         switchHearingProtection = view.findViewById(R.id.switch_hearing_protection);
@@ -303,6 +306,35 @@ public class SettingsFragment extends Fragment {
             }
         });
         updateLanguageSpinnerSelection();
+
+        spinnerTheme.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (isUpdatingThemeSpinner) {
+                    return;
+                }
+                String selectedTheme;
+                switch (position) {
+                    case 0: selectedTheme = "system"; break;
+                    case 1: selectedTheme = "light"; break;
+                    case 2: selectedTheme = "dark"; break;
+                    default: selectedTheme = "system"; break;
+                }
+                if (!settingsManager.getAppTheme().equals(selectedTheme)) {
+                    settingsManager.setAppTheme(selectedTheme);
+                    // Trigger app theme change
+                    if (getActivity() instanceof MainActivity) {
+                        ((MainActivity) getActivity()).setAppTheme(selectedTheme);
+                    }
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Do nothing
+            }
+        });
+        updateThemeSpinnerSelection();
 
         switchTranslationIntegration.setChecked(settingsManager.isTranslationIntegrationEnabled());
         switchTranslationIntegration.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -476,6 +508,7 @@ public class SettingsFragment extends Fragment {
         seekbarAppVolume = null;
         textAppVolumeValue = null;
         spinnerLanguage = null;
+        spinnerTheme = null;
         layoutDownloadCustomize = null;
         textDownloadCustomizeSummary = null;
         switchHearingProtection = null;
@@ -791,6 +824,7 @@ public class SettingsFragment extends Fragment {
                 });
             }
             updateLanguageSpinnerSelection();
+            updateThemeSpinnerSelection();
 
             String currentQuality = settingsManager.getQuality();
             updateAudioQualitySummary(currentQuality);
@@ -887,6 +921,25 @@ public class SettingsFragment extends Fragment {
         isUpdatingLanguageSpinner = true;
         spinnerLanguage.setSelection(selection, false);
         isUpdatingLanguageSpinner = false;
+    }
+
+    private void updateThemeSpinnerSelection() {
+        if (spinnerTheme == null || settingsManager == null) {
+            return;
+        }
+        String currentTheme = settingsManager.getAppTheme();
+        int selection = 0;
+        if ("light".equals(currentTheme)) {
+            selection = 1;
+        } else if ("dark".equals(currentTheme)) {
+            selection = 2;
+        }
+        if (spinnerTheme.getSelectedItemPosition() == selection) {
+            return;
+        }
+        isUpdatingThemeSpinner = true;
+        spinnerTheme.setSelection(selection, false);
+        isUpdatingThemeSpinner = false;
     }
 
     private void refreshDownloadCustomizeSummary() {
@@ -1631,6 +1684,7 @@ public class SettingsFragment extends Fragment {
             refreshSettingsUI();
             if (getActivity() instanceof MainActivity) {
                 ((MainActivity) getActivity()).setAppLocale(settingsManager.getAppLanguage());
+                ((MainActivity) getActivity()).setAppTheme(settingsManager.getAppTheme());
                 ((MainActivity) getActivity()).reloadHomeShortcuts();
             }
             notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_ALL_RUNTIME);

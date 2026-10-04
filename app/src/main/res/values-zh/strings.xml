@@ -13,6 +13,13 @@
         <item>English</item>
         <item>简体中文</item>
     </string-array>
+    <string name="theme_title">主题</string>
+    <string name="theme_selector">应用主题</string>
+    <string-array name="theme_options">
+        <item>跟随系统</item>
+        <item>浅色</item>
+        <item>深色</item>
+    </string-array>
     <string name="title_music_u_cookie">账号 MUSIC_U</string>
     <string name="hint_music_u_cookie">请输入 MUSIC_U</string>
     <string name="title_search_limit">搜索返回数量（默认 10）</string>

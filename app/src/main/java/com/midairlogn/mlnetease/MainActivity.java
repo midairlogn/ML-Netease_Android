@@ -112,6 +112,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         super.onCreate(savedInstanceState);
         settingsManager = new SettingsManager(this);
         setAppLocale(settingsManager.getAppLanguage());
+        setAppTheme(settingsManager.getAppTheme());
         setContentView(R.layout.activity_main);
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         AppShortcutController.refresh(this);
@@ -654,6 +655,14 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
             return;
         }
         AppCompatDelegate.setApplicationLocales(locales);
+    }
+
+    public void setAppTheme(String theme) {
+        int nightMode = SettingsManager.resolveNightMode(theme);
+        if (AppCompatDelegate.getDefaultNightMode() == nightMode) {
+            return;
+        }
+        AppCompatDelegate.setDefaultNightMode(nightMode);
     }
 
     private boolean hasIncomingAudioIntent(Intent intent) {
