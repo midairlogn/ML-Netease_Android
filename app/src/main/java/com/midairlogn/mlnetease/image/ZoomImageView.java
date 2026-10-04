@@ -199,7 +199,7 @@ public class ZoomImageView extends AppCompatImageView {
 
         updateOverlayPadding();
 
-        if (oldMeasuredHeight == viewWidth && oldMeasuredHeight == viewHeight
+        if (oldMeasuredWidth == viewWidth && oldMeasuredHeight == viewHeight
                 || viewWidth == 0 || viewHeight == 0)
             return;
         oldMeasuredHeight = viewHeight;

@@ -255,7 +255,7 @@ public class SongDownloadService extends Service {
             try {
                 SongDownloadResult result = downloadSong(task, song, i, total);
                 taskManager.markSongCompleted(task.id, song, true, result != null && result.skipped, null);
-            } catch (PausedTaskException | CancelledTaskException e) {
+            } catch (PausedTaskException | CancelledTaskException | ServiceStoppingException e) {
                 throw e;
             } catch (Exception e) {
                 Log.w(TAG, "download song failed: " + song.id, e);
