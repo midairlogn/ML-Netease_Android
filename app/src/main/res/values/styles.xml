@@ -11,9 +11,4 @@
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">6dp</item>
     </style>
-
-    <style name="ShapeAppearanceOverlay.CoverLarge" parent="">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">24dp</item>
-    </style>
 </resources>
