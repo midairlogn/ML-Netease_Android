@@ -1,9 +1,11 @@
 package com.midairlogn.mlnetease.playback.ui;
 
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
@@ -13,6 +15,7 @@ import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.core.content.ContextCompat;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.midairlogn.mlnetease.R;
 import com.midairlogn.mlnetease.playback.core.MusicPlayerManager;
@@ -116,6 +119,24 @@ public class PlaylistBottomSheetFragment extends BottomSheetDialogFragment imple
 
         musicPlayerManager.addOnPlaylistChangedListener(this);
         musicPlayerManager.addOnSongChangedListener(this);
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        // In landscape the default half-expanded peek only shows the title on the short window,
+        // so open fully expanded and skip the collapsed peek. Portrait keeps the default behavior.
+        if (getContext() == null || getDialog() == null
+                || getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE) {
+            return;
+        }
+        FrameLayout bottomSheet = getDialog().findViewById(com.google.android.material.R.id.design_bottom_sheet);
+        if (bottomSheet == null) {
+            return;
+        }
+        BottomSheetBehavior<FrameLayout> behavior = BottomSheetBehavior.from(bottomSheet);
+        behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+        behavior.setSkipCollapsed(true);
     }
 
     @Override
