@@ -1707,6 +1707,7 @@ public class SettingsFragment extends Fragment {
                 Toast.makeText(requireContext(), R.string.settings_backup_extension_required, Toast.LENGTH_SHORT).show();
                 return;
             }
+            cancelPendingSave();
             boolean wasHearingProtectionEnabled = settingsManager.isHearingProtectionEnabled();
             byte[] data = readAllBytes(sourceUri);
             lastImportSkippedFloatingLyrics = settingsManager.importEncryptedData(data, action.password);
