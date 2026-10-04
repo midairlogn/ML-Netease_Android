@@ -1466,6 +1466,7 @@ public class SettingsFragment extends Fragment {
         if (settingsManager == null) {
             return;
         }
+        cancelPendingSave();
         settingsManager.resetAllSettings();
         MusicPlayerManager.getInstance(requireContext()).reloadPlaybackModeFromSettings();
         refreshSettingsUI();
