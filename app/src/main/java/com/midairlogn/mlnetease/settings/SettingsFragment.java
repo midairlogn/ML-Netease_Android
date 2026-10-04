@@ -135,6 +135,7 @@ public class SettingsFragment extends Fragment {
     private boolean isUpdatingLanguageSpinner;
     private boolean isUpdatingThemeSpinner;
     private boolean isRefreshingSettingsUi;
+    private boolean isDiscardingInputEdits;
     private AlertDialog activeDialog;
 
     private int tempColor = 0;
@@ -577,7 +578,7 @@ public class SettingsFragment extends Fragment {
         });
         inputMusicU.setOnFocusChangeListener((v, hasFocus) -> {
             MiniPlayerImeHelper.onEditorFocusChanged(this, inputMusicU, hasFocus);
-            if (!hasFocus) {
+            if (!hasFocus && !isDiscardingInputEdits) {
                 saveAndClearFocus(inputMusicU);
             }
         });
@@ -605,7 +606,7 @@ public class SettingsFragment extends Fragment {
         });
         inputSearchLimit.setOnFocusChangeListener((v, hasFocus) -> {
             MiniPlayerImeHelper.onEditorFocusChanged(this, inputSearchLimit, hasFocus);
-            if (!hasFocus) {
+            if (!hasFocus && !isDiscardingInputEdits) {
                 saveAndClearFocus(inputSearchLimit);
             }
         });
@@ -644,6 +645,21 @@ public class SettingsFragment extends Fragment {
         }
         cancelPendingAppVolumeUpdate();
         debounceHandler.removeCallbacksAndMessages(null);
+    }
+
+    private void discardPendingInputEdits() {
+        cancelPendingSave();
+        isDiscardingInputEdits = true;
+        try {
+            if (inputMusicU != null && inputMusicU.hasFocus()) {
+                inputMusicU.clearFocus();
+            }
+            if (inputSearchLimit != null && inputSearchLimit.hasFocus()) {
+                inputSearchLimit.clearFocus();
+            }
+        } finally {
+            isDiscardingInputEdits = false;
+        }
     }
 
     private void saveAndClearFocus(EditText editText) {
@@ -1466,7 +1482,7 @@ public class SettingsFragment extends Fragment {
         if (settingsManager == null) {
             return;
         }
-        cancelPendingSave();
+        discardPendingInputEdits();
         settingsManager.resetAllSettings();
         MusicPlayerManager.getInstance(requireContext()).reloadPlaybackModeFromSettings();
         refreshSettingsUI();
@@ -1707,10 +1723,10 @@ public class SettingsFragment extends Fragment {
                 Toast.makeText(requireContext(), R.string.settings_backup_extension_required, Toast.LENGTH_SHORT).show();
                 return;
             }
-            cancelPendingSave();
             boolean wasHearingProtectionEnabled = settingsManager.isHearingProtectionEnabled();
             byte[] data = readAllBytes(sourceUri);
             lastImportSkippedFloatingLyrics = settingsManager.importEncryptedData(data, action.password);
+            discardPendingInputEdits();
             boolean isHearingProtectionEnabled = settingsManager.isHearingProtectionEnabled();
             MusicPlayerManager.getInstance(requireContext()).reloadPlaybackModeFromSettings();
             refreshSettingsUI();
