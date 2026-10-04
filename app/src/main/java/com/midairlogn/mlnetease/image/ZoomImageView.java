@@ -1,6 +1,7 @@
 package com.midairlogn.mlnetease.image;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.Matrix;
 import android.graphics.PointF;
 import android.graphics.drawable.Drawable;
@@ -53,10 +54,9 @@ public class ZoomImageView extends AppCompatImageView {
         setImageMatrix(matrix);
         setScaleType(ScaleType.MATRIX);
 
-        // Calculate padding to avoid UI elements (X button at top, Download button at bottom)
-        float density = context.getResources().getDisplayMetrics().density;
-        paddingTop = 64 * density; // 16dp margin + 48dp button
-        paddingBottom = 96 * density; // 32dp margin + 48dp button + extra room
+        // Calculate padding to avoid UI elements; re-evaluated per measure so
+        // orientation changes pick up the matching activity layout.
+        updateOverlayPadding();
 
         setOnTouchListener((v, event) -> {
             mScaleDetector.onTouchEvent(event);
@@ -98,6 +98,17 @@ public class ZoomImageView extends AppCompatImageView {
             invalidate();
             return true;
         });
+    }
+
+    private void updateOverlayPadding() {
+        float density = getResources().getDisplayMetrics().density;
+        boolean landscape = getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+        // Portrait: close button on top (16dp margin + 48dp button), share/download bar
+        // at the bottom (32dp margin + 48dp button + extra room). Landscape: actions
+        // float on the right edge, so only a small safe band is needed.
+        paddingTop = (landscape ? 16f : 64f) * density;
+        paddingBottom = (landscape ? 16f : 96f) * density;
     }
 
     public void resetZoom() {
@@ -185,6 +196,8 @@ public class ZoomImageView extends AppCompatImageView {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
         viewWidth = View.MeasureSpec.getSize(widthMeasureSpec);
         viewHeight = View.MeasureSpec.getSize(heightMeasureSpec);
+
+        updateOverlayPadding();
 
         if (oldMeasuredHeight == viewWidth && oldMeasuredHeight == viewHeight
                 || viewWidth == 0 || viewHeight == 0)
