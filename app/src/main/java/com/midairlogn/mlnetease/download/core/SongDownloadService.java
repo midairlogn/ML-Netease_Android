@@ -579,6 +579,27 @@ public class SongDownloadService extends Service {
         super.onDestroy();
     }
 
+    // Android 15+ (targetSdk 35+): dataSync foreground services are capped at 6 hours
+    // per 24h window. The system gives a few seconds to stop before crashing the app.
+    @Override
+    public void onTimeout(int startId) {
+        handleForegroundServiceTimeout();
+    }
+
+    @Override
+    public void onTimeout(int startId, int fgsType) {
+        handleForegroundServiceTimeout();
+    }
+
+    private void handleForegroundServiceTimeout() {
+        Log.w(TAG, "dataSync foreground service timed out; pausing queue and stopping");
+        // Mirror onDestroy: flag + interrupt makes the worker abort at its next
+        // checkpoint and its finally block recovers the active task as paused.
+        serviceShuttingDown = true;
+        executor.shutdownNow();
+        stopSelf();
+    }
+
     private static final class PausedTaskException extends Exception {
     }
 

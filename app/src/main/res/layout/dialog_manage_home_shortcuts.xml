@@ -7,7 +7,8 @@
     <TextView
         android:id="@+id/tv_manage_shortcuts_title"
         android:layout_width="wrap_content"
-        android:layout_height="36dp"
+        android:layout_height="wrap_content"
+        android:minHeight="36dp"
         android:text="@string/title_homepage_shortcut"
         android:textColor="@color/text_primary"
         android:textSize="20sp"

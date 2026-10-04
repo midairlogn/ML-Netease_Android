@@ -265,15 +265,19 @@
 
         <Button
             android:id="@+id/btn_font_plus"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="48dp"
+            android:minHeight="48dp"
             android:text="@string/increase_text_size"
             android:textSize="14sp"/>
 
         <Button
             android:id="@+id/btn_font_minus"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="48dp"
+            android:minHeight="48dp"
             android:text="@string/decrease_text_size"
             android:textSize="14sp"/>
 
