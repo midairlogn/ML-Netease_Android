@@ -275,6 +275,10 @@
     <string name="settings_backup_wrong_password">密码错误或文件已被损坏</string>
     <string name="settings_backup_read_error">无法打开文件</string>
     <string name="settings_backup_write_error">无法写入数据文件</string>
+    <string name="settings_reset">重置设置</string>
+    <string name="settings_reset_confirm_title">重置全部设置</string>
+    <string name="settings_reset_confirm_message">这将把所有设置恢复为默认值，包括首页快捷方式、收藏歌曲和歌词样式。你的 MUSIC_U 登录信息将被保留。此操作无法撤销。</string>
+    <string name="settings_reset_success">已重置全部设置</string>
     <string name="delete_shortcut">删除收藏</string>
     <string name="dont_show_again">不再显示</string>
     <string name="hearing_protection_background_prompt_title">保持听力保护运行</string>

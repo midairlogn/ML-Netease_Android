@@ -1432,7 +1432,8 @@ public class SettingsFragment extends Fragment {
     private void showDataBackupActions() {
         String[] actions = new String[] {
                 getString(R.string.settings_export),
-                getString(R.string.settings_import)
+                getString(R.string.settings_import),
+                getString(R.string.settings_reset)
         };
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.settings_backup_choose_action)
@@ -1443,10 +1444,39 @@ public class SettingsFragment extends Fragment {
                     } else if (which == 1) {
                         hearingProtectionUiHandler.post(() ->
                                 importSettingsBackupLauncher.launch(new String[] {"application/octet-stream", "application/json"}));
+                    } else if (which == 2) {
+                        hearingProtectionUiHandler.post(this::showResetSettingsConfirmDialog);
                     }
                 })
                 .create();
         showManagedDialog(dialog);
+    }
+
+    private void showResetSettingsConfirmDialog() {
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.settings_reset_confirm_title)
+                .setMessage(R.string.settings_reset_confirm_message)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.settings_reset, (dialogInterface, which) -> resetAllSettings())
+                .create();
+        showManagedDialog(dialog);
+    }
+
+    private void resetAllSettings() {
+        if (settingsManager == null) {
+            return;
+        }
+        settingsManager.resetAllSettings();
+        MusicPlayerManager.getInstance(requireContext()).reloadPlaybackModeFromSettings();
+        refreshSettingsUI();
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).setAppLocale(settingsManager.getAppLanguage());
+            ((MainActivity) getActivity()).setAppTheme(settingsManager.getAppTheme());
+            ((MainActivity) getActivity()).reloadHomeShortcuts();
+        }
+        notifyRuntimeSettingsChanged(MusicService.SETTINGS_UPDATE_ALL_RUNTIME);
+        stopHearingProtectionUiRefresh();
+        Toast.makeText(requireContext(), R.string.settings_reset_success, Toast.LENGTH_SHORT).show();
     }
 
     private void showExportPasswordDialog() {

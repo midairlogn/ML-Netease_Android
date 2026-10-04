@@ -1025,6 +1025,22 @@ public class SettingsManager {
         prefs.edit().putBoolean(KEY_DOWNLOAD_METADATA_VOLUME, enabled).apply();
     }
 
+    public void resetAllSettings() {
+        String musicU = getMusicU();
+        synchronized (FAVOURITES_LOCK) {
+            prefs.edit()
+                    .clear()
+                    .putString(KEY_MUSIC_U, musicU)
+                    .apply();
+        }
+        lastPlaybackSnapshotQueue = null;
+        lastPlaybackSnapshotIndex = -1;
+        lastPlaybackSnapshotPositionMs = 0;
+        lastPlaybackSnapshotWasPlaying = false;
+        hasLastPlaybackSnapshotWasPlaying = false;
+        AppShortcutController.refresh(appContext);
+    }
+
     private String normalizeDownloadTemplate(String template) {
         if (template == null || template.trim().isEmpty()) {
             return DEFAULT_DOWNLOAD_FILENAME_TEMPLATE;

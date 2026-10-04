@@ -44,6 +44,10 @@
     <string name="settings_backup_read_error">Could not read the selected file</string>
     <string name="settings_backup_write_error">Could not write the selected file</string>
     <string name="settings_backup_filename" translatable="false">mlnetease-data-%1$s.mlns</string>
+    <string name="settings_reset">Reset settings</string>
+    <string name="settings_reset_confirm_title">Reset all settings</string>
+    <string name="settings_reset_confirm_message">This will restore all settings to their defaults, including homepage shortcuts, favourites, and lyric styling. Your MUSIC_U login will be kept. This cannot be undone.</string>
+    <string name="settings_reset_success">All settings have been reset</string>
     <string name="playlist">Playlist</string>
     <string name="album">Album</string>
     <string name="back">Back</string>
