@@ -21,18 +21,29 @@ import androidx.appcompat.widget.AppCompatImageView;
  */
 public class RoundedArtworkView extends AppCompatImageView {
 
-    private static final float CORNER_RADIUS_DP = 24f;
+    /**
+     * Corner radius scales sub-linearly with artwork size (Apple Music uses ~3.5%
+     * on full-screen art, small art uses proportionally more). A ratio slightly
+     * above Apple's nominal value compensates for circular arcs reading tighter
+     * than Apple's continuous squircles.
+     */
+    private static final float CORNER_RADIUS_RATIO = 0.045f;
+    private static final float MIN_CORNER_RADIUS_DP = 12f;
+    private static final float MAX_CORNER_RADIUS_DP = 20f;
 
     private final Paint bitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final RectF contentBounds = new RectF();
     private final Matrix shaderMatrix = new Matrix();
-    private final float cornerRadiusPx;
+    private final float minCornerRadiusPx;
+    private final float maxCornerRadiusPx;
     private Bitmap shaderBitmap;
     private BitmapShader shader;
 
     public RoundedArtworkView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        cornerRadiusPx = CORNER_RADIUS_DP * getResources().getDisplayMetrics().density;
+        float density = getResources().getDisplayMetrics().density;
+        minCornerRadiusPx = MIN_CORNER_RADIUS_DP * density;
+        maxCornerRadiusPx = MAX_CORNER_RADIUS_DP * density;
     }
 
     @Override
@@ -62,7 +73,9 @@ public class RoundedArtworkView extends AppCompatImageView {
         shader.setLocalMatrix(shaderMatrix);
         bitmapPaint.setShader(shader);
 
-        canvas.drawRoundRect(contentBounds, cornerRadiusPx, cornerRadiusPx, bitmapPaint);
+        float radius = Math.min(contentBounds.width(), contentBounds.height()) * CORNER_RADIUS_RATIO;
+        radius = Math.max(minCornerRadiusPx, Math.min(maxCornerRadiusPx, radius));
+        canvas.drawRoundRect(contentBounds, radius, radius, bitmapPaint);
     }
 
     private boolean computeContentBounds(Bitmap bitmap, RectF out) {
