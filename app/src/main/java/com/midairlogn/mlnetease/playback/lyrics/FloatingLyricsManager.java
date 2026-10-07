@@ -68,6 +68,8 @@ public class FloatingLyricsManager {
     private float currentTranslationWidth = -1f;
     private int screenWidth, screenHeight;
     private int portraitWidth; // Fixed width based on portrait mode
+    private float anchorFractionX = 0.5f;
+    private float anchorFractionY = 0.8f;
 
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable lyricUpdateTask;
@@ -180,8 +182,27 @@ public class FloatingLyricsManager {
         portraitWidth = (int) (minDimension * 0.9f);
     }
 
+    private int overlayWindowWidth() {
+        int width = floatingView != null ? floatingView.getWidth() : 0;
+        return width > 0 ? width : (params != null ? params.width : 0);
+    }
+
+    private void storePositionFractions() {
+        int availWidth = Math.max(1, screenWidth - overlayWindowWidth());
+        anchorFractionX = Math.max(0f, Math.min(1f, params.x / (float) availWidth));
+        anchorFractionY = Math.max(0f, Math.min(1f, params.y / (float) screenHeight));
+    }
+
+    private void applyPositionFromFractions() {
+        int availWidth = Math.max(0, screenWidth - overlayWindowWidth());
+        params.x = Math.round(anchorFractionX * availWidth);
+        params.y = Math.round(anchorFractionY * screenHeight);
+    }
+
     private void initView() {
         if (floatingView != null) return;
+
+        updateScreenSize();
 
         // Use a ContextThemeWrapper to ensure theme attributes can be resolved
         Context themeContext = new android.view.ContextThemeWrapper(context, R.style.Theme_MLNetease);
@@ -373,6 +394,7 @@ public class FloatingLyricsManager {
 
                             params.x = newX;
                             params.y = newY;
+                            storePositionFractions();
                             if (floatingView.getWindowToken() != null) {
                                 try {
                                     windowManager.updateViewLayout(floatingView, params);
@@ -404,9 +426,7 @@ public class FloatingLyricsManager {
                 PixelFormat.TRANSLUCENT);
 
         params.gravity = Gravity.TOP | Gravity.LEFT;
-        params.x = (screenWidth - portraitWidth) / 2;
-        // Default position: Bottom area (approx 80% down)
-        params.y = (int) (screenHeight * 0.8f);
+        applyPositionFromFractions();
 
     }
 
@@ -563,9 +583,12 @@ public class FloatingLyricsManager {
         // Update screen size in case of orientation change
         updateScreenSize();
 
+        boolean changed = false;
+
         // Update params width to ensure it matches the current portraitWidth calculation
         if (params.width != portraitWidth) {
             params.width = portraitWidth;
+            changed = true;
         }
 
         int width = floatingView.getWidth();
@@ -578,8 +601,6 @@ public class FloatingLyricsManager {
             return;
         }
 
-        boolean changed = false;
-
         if (params.x + width > screenWidth) {
             params.x = Math.max(0, screenWidth - width);
             changed = true;
@@ -591,7 +612,7 @@ public class FloatingLyricsManager {
         if (params.x < 0) { params.x = 0; changed = true; }
         if (params.y < 0) { params.y = 0; changed = true; }
 
-        if (changed || params.width != portraitWidth) {
+        if (changed) {
             try {
                 windowManager.updateViewLayout(floatingView, params);
             } catch (Exception e) {
@@ -603,6 +624,16 @@ public class FloatingLyricsManager {
     public void onConfigurationChanged() {
         if (floatingView != null && floatingView.getWindowToken() != null) {
             updateScreenSize();
+            int oldX = params.x;
+            int oldY = params.y;
+            applyPositionFromFractions();
+            if (params.x != oldX || params.y != oldY) {
+                try {
+                    windowManager.updateViewLayout(floatingView, params);
+                } catch (Exception e) {
+                    Log.d(TAG, "update floating lyrics layout on rotation failed", e);
+                }
+            }
             checkBoundaries();
         }
     }
