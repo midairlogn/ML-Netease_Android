@@ -34,6 +34,11 @@ import java.util.List;
 
 public class FloatingLyricsManager {
     private static final String TAG = "FloatingLyricsManager";
+
+    private static final class OrientationPosition {
+        int screenW, screenH, x, y;
+        boolean valid;
+    }
     private Context context;
     private WindowManager windowManager;
     private View floatingView;
@@ -68,9 +73,8 @@ public class FloatingLyricsManager {
     private float currentTranslationWidth = -1f;
     private int screenWidth, screenHeight;
     private int portraitWidth; // Fixed width based on portrait mode
-    private float anchorFractionX = 0.5f;
-    private float anchorFractionY = 0.8f;
-    private boolean hasUserPosition = false;
+    private final OrientationPosition portraitPosition = new OrientationPosition();
+    private final OrientationPosition landscapePosition = new OrientationPosition();
 
     private Handler handler = new Handler(Looper.getMainLooper());
     private Runnable lyricUpdateTask;
@@ -183,43 +187,51 @@ public class FloatingLyricsManager {
         portraitWidth = (int) (minDimension * 0.9f);
     }
 
-    private int overlayWindowWidth() {
-        int width = floatingView != null ? floatingView.getWidth() : 0;
-        return width > 0 ? width : (params != null ? params.width : 0);
+    private boolean isPortrait(int width, int height) {
+        return width <= height;
     }
 
-    private int overlayWindowHeight() {
-        return floatingView != null ? floatingView.getHeight() : 0;
+    private OrientationPosition positionSlot(int width, int height) {
+        return isPortrait(width, height) ? portraitPosition : landscapePosition;
     }
 
-    private void storePositionFractions() {
-        int availWidth = Math.max(1, screenWidth - overlayWindowWidth());
-        int availHeight = Math.max(1, screenHeight - overlayWindowHeight());
-        anchorFractionX = Math.max(0f, Math.min(1f, params.x / (float) availWidth));
-        anchorFractionY = Math.max(0f, Math.min(1f, params.y / (float) availHeight));
+    private void rememberCurrentPosition(int width, int height) {
+        OrientationPosition slot = positionSlot(width, height);
+        slot.screenW = width;
+        slot.screenH = height;
+        slot.x = params.x;
+        slot.y = params.y;
+        slot.valid = true;
     }
 
-    private void applyPositionFromFractions() {
-        int availWidth = Math.max(0, screenWidth - overlayWindowWidth());
-        int availHeight = Math.max(0, screenHeight - overlayWindowHeight());
-        params.x = Math.round(anchorFractionX * availWidth);
-        params.y = Math.round(anchorFractionY * availHeight);
-    }
-
-    private final Runnable rotationReapplyTask = new Runnable() {
-        @Override
-        public void run() {
-            if (floatingView == null || floatingView.getWindowToken() == null) return;
-            updateScreenSize();
-            applyPositionFromFractions();
-            try {
-                windowManager.updateViewLayout(floatingView, params);
-            } catch (Exception e) {
-                Log.d(TAG, "reapply floating lyrics position after rotation failed", e);
-            }
-            checkBoundaries();
+    private void applyRememberedOrDefaultPosition() {
+        OrientationPosition slot = positionSlot(screenWidth, screenHeight);
+        if (slot.valid && slot.screenW == screenWidth && slot.screenH == screenHeight) {
+            params.x = slot.x;
+            params.y = slot.y;
+        } else {
+            params.x = (screenWidth - portraitWidth) / 2;
+            // Default position: Bottom area (approx 80% down)
+            params.y = (int) (screenHeight * 0.8f);
         }
-    };
+    }
+
+    private void handleDisplayChange() {
+        if (floatingView == null || floatingView.getWindowToken() == null) return;
+        rememberCurrentPosition(screenWidth, screenHeight);
+        int prevW = screenWidth, prevH = screenHeight;
+        updateScreenSize();
+        if (screenWidth == prevW && screenHeight == prevH) return;
+        applyRememberedOrDefaultPosition();
+        try {
+            windowManager.updateViewLayout(floatingView, params);
+        } catch (Exception e) {
+            Log.d(TAG, "update floating lyrics layout on display change failed", e);
+        }
+        checkBoundaries();
+    }
+
+    private final Runnable rotationReapplyTask = this::handleDisplayChange;
 
     private void initView() {
         if (floatingView != null) return;
@@ -416,8 +428,7 @@ public class FloatingLyricsManager {
 
                             params.x = newX;
                             params.y = newY;
-                            hasUserPosition = true;
-                            storePositionFractions();
+                            rememberCurrentPosition(screenWidth, screenHeight);
                             if (floatingView.getWindowToken() != null) {
                                 try {
                                     windowManager.updateViewLayout(floatingView, params);
@@ -449,7 +460,7 @@ public class FloatingLyricsManager {
                 PixelFormat.TRANSLUCENT);
 
         params.gravity = Gravity.TOP | Gravity.LEFT;
-        applyPositionFromFractions();
+        applyRememberedOrDefaultPosition();
 
     }
 
@@ -524,19 +535,6 @@ public class FloatingLyricsManager {
         updateLyrics(musicPlayerManager.getCurrentLyric(), musicPlayerManager.getCurrentTLyric());
         updateSongInfo(musicPlayerManager.getCurrentSong());
         startLyricUpdates();
-
-        rootLayout.post(() -> {
-            if (floatingView == null || floatingView.getWindowToken() == null) return;
-            if (!hasUserPosition) {
-                storePositionFractions();
-            }
-            applyPositionFromFractions();
-            try {
-                windowManager.updateViewLayout(floatingView, params);
-            } catch (Exception e) {
-                Log.d(TAG, "apply floating lyrics position after first layout failed", e);
-            }
-        });
     }
 
     public void hide() {
@@ -660,21 +658,10 @@ public class FloatingLyricsManager {
 
     public void onConfigurationChanged() {
         if (floatingView != null && floatingView.getWindowToken() != null) {
-            updateScreenSize();
-            int oldX = params.x;
-            int oldY = params.y;
-            applyPositionFromFractions();
-            if (params.x != oldX || params.y != oldY) {
-                try {
-                    windowManager.updateViewLayout(floatingView, params);
-                } catch (Exception e) {
-                    Log.d(TAG, "update floating lyrics layout on rotation failed", e);
-                }
-            }
-            checkBoundaries();
+            handleDisplayChange();
             // The config callback may run before the display reports the new
-            // rotation, so re-apply from freshly read metrics on the next frame
-            // and once more after the rotation has fully settled.
+            // rotation, so re-check on the next frame and once more after the
+            // rotation has fully settled.
             handler.removeCallbacks(rotationReapplyTask);
             rootLayout.post(rotationReapplyTask);
             handler.postDelayed(rotationReapplyTask, 250);
