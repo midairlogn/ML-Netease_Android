@@ -527,7 +527,7 @@ public class SongDownloadService extends Service {
 
     private NotificationCompat.Builder baseNotificationBuilder() {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                .setSmallIcon(R.drawable.ic_download_done)
                 .setOnlyAlertOnce(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setContentIntent(buildMainPendingIntent());

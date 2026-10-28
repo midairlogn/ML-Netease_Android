@@ -61,7 +61,7 @@
             android:id="@+id/btn_close"
             android:layout_width="24dp"
             android:layout_height="24dp"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:src="@drawable/ic_close"
             android:background="@android:color/transparent"
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
@@ -181,7 +181,7 @@
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="32dp"
-            android:src="@android:drawable/ic_media_previous"
+            android:src="@drawable/ic_skip_previous"
             android:background="@android:color/transparent"
             android:contentDescription="@string/previous"/>
 
@@ -190,7 +190,7 @@
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="32dp"
-            android:src="@android:drawable/ic_media_play"
+            android:src="@drawable/ic_play"
             android:background="@android:color/transparent"
             android:contentDescription="@string/play"/>
 
@@ -199,7 +199,7 @@
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="32dp"
-            android:src="@android:drawable/ic_media_next"
+            android:src="@drawable/ic_skip_next"
             android:background="@android:color/transparent"
             android:contentDescription="@string/next"/>
 

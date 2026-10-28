@@ -53,6 +53,6 @@
         android:layout_height="40dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         app:tint="@color/text_secondary"
-        android:src="@android:drawable/ic_menu_close_clear_cancel"
+        android:src="@drawable/ic_close"
         android:contentDescription="@string/delete_shortcut" />
 </LinearLayout>

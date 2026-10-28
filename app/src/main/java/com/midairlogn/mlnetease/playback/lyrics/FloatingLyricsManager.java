@@ -363,7 +363,7 @@ public class FloatingLyricsManager {
         });
 
         // Initial play button state
-        btnPlay.setImageResource(musicPlayerManager.isPlaying() ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
+        btnPlay.setImageResource(musicPlayerManager.isPlaying() ? R.drawable.ic_pause : R.drawable.ic_play);
         updateTranslationButtonState();
 
         // Drag & Touch Listener
@@ -948,7 +948,7 @@ public class FloatingLyricsManager {
         if (floatingView != null) {
             ImageButton btnPlay = floatingView.findViewById(R.id.btn_play);
             if (btnPlay != null) {
-                btnPlay.setImageResource(isPlaying ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
+                btnPlay.setImageResource(isPlaying ? R.drawable.ic_pause : R.drawable.ic_play);
             }
         }
     }

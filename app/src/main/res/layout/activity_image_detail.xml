@@ -58,7 +58,7 @@
             android:contentDescription="@string/close"
             android:padding="9dp"
             android:scaleType="centerInside"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:src="@drawable/ic_close"
             app:tint="@color/image_detail_icon_tint" />
     </com.google.android.material.card.MaterialCardView>
 

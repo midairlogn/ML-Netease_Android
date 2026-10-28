@@ -109,7 +109,7 @@
                 android:layout_height="16dp"
                 android:layout_gravity="center"
                 android:contentDescription="@string/mini_player_play_pause"
-                android:src="@android:drawable/ic_media_play"
+                android:src="@drawable/ic_play"
                 app:tint="@color/text_primary" />
         </FrameLayout>
 

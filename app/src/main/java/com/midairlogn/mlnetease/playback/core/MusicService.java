@@ -1390,11 +1390,11 @@ public class MusicService extends Service {
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
 
         NotificationCompat.Action playPauseAction = isPlaying ?
-                new NotificationCompat.Action(android.R.drawable.ic_media_pause, "Pause",
+                new NotificationCompat.Action(R.drawable.ic_pause, "Pause",
                         PendingIntent.getService(this, 120,
                                 new Intent(this, MusicService.class).setAction(ACTION_NOTIFICATION_PAUSE),
                                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT)) :
-                new NotificationCompat.Action(android.R.drawable.ic_media_play, "Play",
+                new NotificationCompat.Action(R.drawable.ic_play, "Play",
                         PendingIntent.getService(this, 121,
                                 new Intent(this, MusicService.class).setAction(ACTION_NOTIFICATION_PLAY),
                                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
@@ -1432,12 +1432,12 @@ public class MusicService extends Service {
                 .setContentIntent(pendingIntent)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .addAction(modeAction)
-                .addAction(android.R.drawable.ic_media_previous, "Previous",
+                .addAction(R.drawable.ic_skip_previous, "Previous",
                         PendingIntent.getService(this, 124,
                                 new Intent(this, MusicService.class).setAction(ACTION_NOTIFICATION_PREVIOUS),
                                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT))
                 .addAction(playPauseAction)
-                .addAction(android.R.drawable.ic_media_next, "Next",
+                .addAction(R.drawable.ic_skip_next, "Next",
                         PendingIntent.getService(this, 125,
                                 new Intent(this, MusicService.class).setAction(ACTION_NOTIFICATION_NEXT),
                                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT))

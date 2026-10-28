@@ -184,7 +184,7 @@
                 android:textColor="@color/text_on_brand"
                 app:backgroundTint="@color/brand_primary"
                 app:cornerRadius="8dp"
-                app:icon="@android:drawable/ic_media_play"
+                app:icon="@drawable/ic_play"
                 app:iconGravity="textStart"
                 app:iconPadding="4dp"
                 app:iconSize="16dp"

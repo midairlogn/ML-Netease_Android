@@ -586,7 +586,7 @@ public class MainActivity extends AppCompatActivity implements MusicPlayerManage
         if (isPlaying == lastIsPlaying && miniPlayerPlayPause.getDrawable() != null) return;
         lastIsPlaying = isPlaying;
         miniPlayerPlayPause.setImageResource(isPlaying ?
-            android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
+            R.drawable.ic_pause : R.drawable.ic_play);
     }
 
     @Override

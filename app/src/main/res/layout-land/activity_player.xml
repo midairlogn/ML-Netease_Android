@@ -187,7 +187,7 @@
                     android:layout_height="40dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/playback_mode"
-                    android:src="@android:drawable/ic_menu_rotate"
+                    android:src="@drawable/ic_mode_order"
                     android:scaleType="fitCenter"
                     android:padding="4dp"
                     app:tint="@color/text_primary"
@@ -199,7 +199,7 @@
                     android:layout_height="48dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/previous"
-                    android:src="@android:drawable/ic_media_previous"
+                    android:src="@drawable/ic_skip_previous"
                     android:scaleType="fitCenter"
                     app:tint="@color/text_primary"/>
 
@@ -209,7 +209,7 @@
                     android:layout_height="60dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/play"
-                    android:src="@android:drawable/ic_media_play"
+                    android:src="@drawable/ic_play"
                     android:scaleType="fitCenter"
                     app:tint="@color/text_primary"
                     android:layout_marginStart="12dp"
@@ -221,7 +221,7 @@
                     android:layout_height="48dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/next"
-                    android:src="@android:drawable/ic_media_next"
+                    android:src="@drawable/ic_skip_next"
                     android:scaleType="fitCenter"
                     app:tint="@color/text_primary"/>
 
@@ -231,7 +231,7 @@
                     android:layout_height="40dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/open_playlist"
-                    android:src="@android:drawable/ic_menu_agenda"
+                    android:src="@drawable/ic_playlist"
                     android:scaleType="fitCenter"
                     android:padding="4dp"
                     app:tint="@color/text_primary"
