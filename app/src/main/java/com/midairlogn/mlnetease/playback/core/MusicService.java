@@ -1161,7 +1161,8 @@ public class MusicService extends Service {
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artists)
                 .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, song.album)
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration > 0 ? duration : 0)
-                .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, thumbnail);
+                .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, thumbnail)
+                .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, thumbnail);
 
         mediaSession.setMetadata(builder.build());
     }

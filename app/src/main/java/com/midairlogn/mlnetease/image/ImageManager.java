@@ -55,7 +55,7 @@ public class ImageManager {
     private static final int MAX_MINI_ART_SIZE_PX = 192;
     private static final int MAX_COVER_ART_SIZE_PX = 512;
     private static final int ORIGINAL_ART_SIZE_PX = 2048;
-    private static final int THUMBNAIL_SIZE_PX = 96;
+    private static final int THUMBNAIL_SIZE_PX = 384;
     private static final int MIN_CACHE_SIZE_KB = 4 * 1024;
     private static final int MAX_CACHE_SIZE_KB = 16 * 1024;
     private static final int MAX_IMAGE_DOWNLOAD_BYTES = 16 * 1024 * 1024;
@@ -528,7 +528,7 @@ public class ImageManager {
     }
 
     /**
-     * Returns a 96×96 thumbnail for the given bitmap, cached per source URL.
+     * Returns a thumbnail (bounded to 384×384) for the given bitmap, cached per source URL.
      * Eliminates bitmap allocation churn during rapid song switching.
      */
     public Bitmap getThumbnail(Bitmap source, String sourceUrl) {
