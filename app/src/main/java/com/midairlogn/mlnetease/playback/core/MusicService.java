@@ -1155,14 +1155,14 @@ public class MusicService extends Service {
 
     private void updateMediaSessionMetadata(Song song, Bitmap albumArt) {
         long duration = musicPlayerManager.getDuration();
-        Bitmap displayIcon = ImageManager.getInstance().getThumbnail(albumArt, song.picUrl);
-        Bitmap lockscreenArt = (albumArt != null && !albumArt.isRecycled()) ? albumArt : displayIcon;
+        Bitmap lockscreenArt = (albumArt != null && !albumArt.isRecycled())
+                ? albumArt
+                : ImageManager.getInstance().getThumbnail(albumArt, song.picUrl);
         MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, song.name)
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song.artists)
                 .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, song.album)
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration > 0 ? duration : 0)
-                .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, displayIcon)
                 .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, lockscreenArt);
 
         if ((song.embeddedPicture == null || song.embeddedPicture.length == 0)
@@ -1389,7 +1389,10 @@ public class MusicService extends Service {
         if (albumArt == null) {
             MediaMetadataCompat metadata = mediaSession.getController().getMetadata();
             if (metadata != null) {
-                albumArt = metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON);
+                albumArt = metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART);
+                if (albumArt == null) {
+                    albumArt = metadata.getBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON);
+                }
             }
             if (albumArt == null) {
                 albumArt = getLogoPlaceholder();

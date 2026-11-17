@@ -54,6 +54,7 @@ public class ImageManager {
 
     private static final int MAX_MINI_ART_SIZE_PX = 192;
     private static final int MAX_COVER_ART_SIZE_PX = 512;
+    private static final int MAX_PLAYBACK_ART_SIZE_PX = 640;
     private static final int ORIGINAL_ART_SIZE_PX = 2048;
     private static final int THUMBNAIL_SIZE_PX = 384;
     private static final int MIN_CACHE_SIZE_KB = 4 * 1024;
@@ -157,7 +158,7 @@ public class ImageManager {
     }
 
     public void fetchPlaybackBitmap(String url, FetchCallback callback) {
-        fetchBitmap(url, MAX_COVER_ART_SIZE_PX, true, true, callback);
+        fetchBitmap(url, MAX_PLAYBACK_ART_SIZE_PX, true, true, callback);
     }
 
     public void fetchOriginalBitmap(String url, FetchCallback callback) {
@@ -217,9 +218,14 @@ public class ImageManager {
                     return;
                 }
                 executorService.submit(() -> {
-                Bitmap bitmap = targetSizePx == ORIGINAL_ART_SIZE_PX
-                        ? decodeOriginalFromBytes(imageData)
-                        : decodeSampledBitmapFromBytes(imageData, targetSizePx);
+                Bitmap bitmap;
+                if (targetSizePx == ORIGINAL_ART_SIZE_PX) {
+                    bitmap = decodeOriginalFromBytes(imageData);
+                } else if (targetSizePx == MAX_PLAYBACK_ART_SIZE_PX) {
+                    bitmap = decodeExactBoundedBitmapFromBytes(imageData, targetSizePx);
+                } else {
+                    bitmap = decodeSampledBitmapFromBytes(imageData, targetSizePx);
+                }
                 if (bitmap != null) {
                     memoryCache.put(cacheKey, bitmap);
                     if (targetSizePx == ORIGINAL_ART_SIZE_PX) {
@@ -460,7 +466,7 @@ public class ImageManager {
 
     public Bitmap getCachedPlaybackBitmap(String url) {
         if (url == null || url.isEmpty()) return null;
-        String cacheKey = remoteCacheKey(ImageUtils.originalImageUrl(url), MAX_COVER_ART_SIZE_PX);
+        String cacheKey = remoteCacheKey(ImageUtils.originalImageUrl(url), MAX_PLAYBACK_ART_SIZE_PX);
         Bitmap cached = memoryCache.get(cacheKey);
         if (cached != null && !cached.isRecycled()) {
             return cached;
@@ -592,11 +598,10 @@ public class ImageManager {
         if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
             return null;
         }
-        int targetSize = large ? MAX_COVER_ART_SIZE_PX : MAX_MINI_ART_SIZE_PX;
-        BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
-        decodeOptions.inSampleSize = calculateInSampleSize(boundsOptions, targetSize, targetSize);
-        decodeOptions.inPreferredConfig = Bitmap.Config.RGB_565;
-        Bitmap bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, decodeOptions);
+        int targetSize = large ? MAX_PLAYBACK_ART_SIZE_PX : MAX_MINI_ART_SIZE_PX;
+        Bitmap bitmap = large
+                ? decodeExactBoundedBitmapFromBytes(imageData, targetSize)
+                : decodeSampledBitmapFromBytes(imageData, targetSize);
         if (bitmap != null) {
             memoryCache.put(sizedKey, bitmap);
         }
@@ -684,6 +689,55 @@ public class ImageManager {
             decodeOptions.inSampleSize = calculateInSampleSize(boundsOptions, maxDimensionPx, maxDimensionPx);
             decodeOptions.inPreferredConfig = Bitmap.Config.RGB_565;
             return BitmapFactory.decodeByteArray(data, 0, data.length, decodeOptions);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Decodes a bitmap using the largest power-of-two sample size that keeps the image at or above
+     * maxDimensionPx (when the source is at least that large), then scales down to exact bounds.
+     * Prevents 1080px-1600px covers from dropping to 270px-400px due to power-of-two rounding.
+     */
+    private Bitmap decodeExactBoundedBitmapFromBytes(byte[] data, int maxDimensionPx) {
+        try {
+            if (data == null || data.length == 0) return null;
+
+            BitmapFactory.Options boundsOptions = new BitmapFactory.Options();
+            boundsOptions.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(data, 0, data.length, boundsOptions);
+            if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
+                return null;
+            }
+
+            int inSampleSize = 1;
+            while ((boundsOptions.outHeight / (inSampleSize * 2)) >= maxDimensionPx
+                    && (boundsOptions.outWidth / (inSampleSize * 2)) >= maxDimensionPx) {
+                inSampleSize *= 2;
+            }
+
+            BitmapFactory.Options decodeOptions = new BitmapFactory.Options();
+            decodeOptions.inSampleSize = inSampleSize;
+            decodeOptions.inPreferredConfig = Bitmap.Config.RGB_565;
+            Bitmap decoded = BitmapFactory.decodeByteArray(data, 0, data.length, decodeOptions);
+            if (decoded == null) {
+                return null;
+            }
+
+            int w = decoded.getWidth();
+            int h = decoded.getHeight();
+            if (w <= maxDimensionPx && h <= maxDimensionPx) {
+                return decoded;
+            }
+
+            float scale = Math.min((float) maxDimensionPx / w, (float) maxDimensionPx / h);
+            int targetW = Math.max(1, Math.round(w * scale));
+            int targetH = Math.max(1, Math.round(h * scale));
+            Bitmap scaled = Bitmap.createScaledBitmap(decoded, targetW, targetH, true);
+            if (scaled != decoded) {
+                decoded.recycle();
+            }
+            return scaled;
         } catch (Exception e) {
             return null;
         }
