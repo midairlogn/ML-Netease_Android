@@ -30,6 +30,7 @@
     <!-- Lyrics -->
     <color name="lyrics_highlight">#1C1C1E</color>
     <color name="lyrics_normal">#8E8E93</color>
+    <color name="lyrics_fade_transparent">#00FFFFFF</color>
 
     <!-- Lyrics Choices -->
     <color name="lyrics_color_red">#F44336</color>

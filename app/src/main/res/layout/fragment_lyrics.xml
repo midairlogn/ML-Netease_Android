@@ -23,6 +23,26 @@
         android:paddingHorizontal="8dp"
         android:overScrollMode="never" />
 
+    <View
+        android:id="@+id/lyrics_top_fade"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_gravity="top"
+        android:background="@drawable/bg_lyrics_fade_top"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no" />
+
+    <View
+        android:id="@+id/lyrics_bottom_fade"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_gravity="bottom"
+        android:background="@drawable/bg_lyrics_fade_bottom"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no" />
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/lyrics_timeline_overlay"
         android:layout_width="match_parent"

@@ -29,6 +29,7 @@
     <!-- Lyrics -->
     <color name="lyrics_highlight">#FFFFFF</color>
     <color name="lyrics_normal">#98989D</color>
+    <color name="lyrics_fade_transparent">#001C1C1E</color>
 
     <!-- Navigation -->
     <color name="nav_bar_background">#1C1C1E</color>
